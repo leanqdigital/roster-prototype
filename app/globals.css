@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #07080a;
+  --surface-1: #0e1115;
+  --surface-2: #15181d;
+  --surface-3: #1e2229;
+  --surface-4: #2a2f38;
+  --hairline: #ffffff1f;
+
+  --ink: #eceef0;
+  --ink-muted: #a3a9b1;
+  --ink-subtle: #6d737c;
+  --ink-faint: #464b53;
+
+  --primary: #5e6ad2;
+  --primary-hover: #6c77e0;
+  --primary-weak: #5e6ad2 2b;
+
+  --success: #2fc06a;
+  --success-weak: #2fc06a 17;
+  --warning: #e6a310;
+  --warning-weak: #e6a310 17;
+  --danger: #f0575a;
+  --danger-hover: #e04f52;
+  --danger-weak: #f0575a 17;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --canvas: #f7f8fa;
+  --surface-1: #ffffff;
+  --surface-2: #ffffff;
+  --surface-3: #f1f2f5;
+  --surface-4: #e4e6eb;
+  --hairline: #00000014;
+
+  --ink: #14161a;
+  --ink-muted: #565c66;
+  --ink-subtle: #878d97;
+  --ink-faint: #b8bcc4;
+
+  --primary: #5e6ad2;
+  --primary-hover: #6c77e0;
+  --primary-weak: #5e6ad2 1f;
+
+  --success: #2fc06a;
+  --success-weak: #2fc06a 14;
+  --warning: #e6a310;
+  --warning-weak: #e6a310 14;
+  --danger: #f0575a;
+  --danger-hover: #e04f52;
+  --danger-weak: #f0575a 14;
+}
+
+@theme inline {
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-canvas: var(--canvas);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+  --color-hairline: var(--hairline);
+
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-weak: var(--primary-weak);
+
+  --color-success: var(--success);
+  --color-success-weak: var(--success-weak);
+  --color-warning: var(--warning);
+  --color-warning-weak: var(--warning-weak);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-weak: var(--danger-weak);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), "Inter", system-ui, "Helvetica Neue",
+    Arial, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+button:not(:disabled),
+[role="button"]:not(:disabled),
+a[href],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="color"],
+select:not(:disabled),
+label[for],
+summary,
+details[open],
+[role="menuitem"],
+[role="tab"] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-4) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-4);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-subtle);
+  background-clip: padding-box;
+}
