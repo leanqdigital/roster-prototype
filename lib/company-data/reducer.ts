@@ -161,7 +161,7 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
                 reviewerComment: action.reviewerComment,
                 reviewedBy: action.reviewedBy,
                 reviewedAt: action.reviewedAt,
-                updatedAt: action.reviewedAt,
+                updatedAt: action.reviewedAt ?? l.updatedAt,
               }
             : l,
         ),

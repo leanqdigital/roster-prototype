@@ -224,10 +224,10 @@ export type CompanyAction =
   | {
       type: "reviewLeaveRequest";
       id: string;
-      status: "approved" | "denied";
+      status: "approved" | "denied" | "pending";
       reviewerComment?: string;
-      reviewedBy: string;
-      reviewedAt: string;
+      reviewedBy?: string;
+      reviewedAt?: string;
     }
   | { type: "createShiftTemplate"; template: ShiftTemplate }
   | { type: "updateShiftTemplate"; id: string; patch: Partial<ShiftTemplate> }
@@ -255,7 +255,7 @@ export type CompanyAction =
   | {
       type: "reviewAssignment";
       id: string;
-      status: "approved" | "rejected";
+      status: "approved" | "rejected" | "pending";
       approvedAt?: string;
       approvedBy?: string;
     }
@@ -335,6 +335,7 @@ export interface CompanyContextValue extends CompanyState {
   cancelLeaveRequest: (id: string) => Promise<void>;
   approveLeave: (id: string, reviewedBy: string) => Promise<void>;
   denyLeave: (id: string, reviewedBy: string, comment?: string) => Promise<void>;
+  revertLeaveApproval: (id: string, revertedBy: string) => Promise<void>;
   markActivityRead: (id: string) => Promise<void>;
   markAllActivityRead: (personId: string) => Promise<void>;
   createShiftTemplate: (input: ShiftTemplateInput) => Promise<{
@@ -398,5 +399,6 @@ export interface CompanyContextValue extends CompanyState {
   cancelSelfAssignment: (id: string) => Promise<void>;
   approveShiftRequest: (assignmentId: string, reviewedBy: string) => Promise<void>;
   denyShiftRequest: (assignmentId: string, reviewedBy: string) => Promise<void>;
+  revertShiftApproval: (assignmentId: string, revertedBy: string) => Promise<void>;
   getAvailableShiftsForPerson: (personId: string, teamId: string) => Shift[];
 }

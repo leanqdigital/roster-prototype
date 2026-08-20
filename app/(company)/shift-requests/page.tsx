@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import type { AssignmentStatus } from "@/lib/company-data";
 import { CalendarIcon } from "@/components/ui/icons";
+import Pagination from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 10;
 
 const STATUS_FILTERS: { value: AssignmentStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -20,9 +23,10 @@ function formatTime(time: string): string {
 }
 
 export default function CompanyShiftRequestsPage() {
-  const { shiftAssignments, shifts, people, teams, approveShiftRequest, denyShiftRequest } = useCompany();
+  const { shiftAssignments, shifts, people, teams, approveShiftRequest, denyShiftRequest, revertShiftApproval } = useCompany();
   const [statusFilter, setStatusFilter] = useState<AssignmentStatus | "all">("pending");
   const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
 
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
@@ -39,7 +43,22 @@ export default function CompanyShiftRequestsPage() {
       .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
   }, [shiftAssignments, statusFilter, teamFilter, shiftMap]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+
   const pendingCount = shiftAssignments.filter((a) => a.status === "pending").length;
+
+  const approvedCountByShift = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of shiftAssignments) {
+      if (a.status === "approved") map.set(a.shiftId, (map.get(a.shiftId) ?? 0) + 1);
+    }
+    return map;
+  }, [shiftAssignments]);
 
   const handleApprove = (assignmentId: string) => {
     approveShiftRequest(assignmentId, "Company Admin");
@@ -47,6 +66,10 @@ export default function CompanyShiftRequestsPage() {
 
   const handleDeny = (assignmentId: string) => {
     denyShiftRequest(assignmentId, "Company Admin");
+  };
+
+  const handleUndo = (assignmentId: string) => {
+    revertShiftApproval(assignmentId, "Company Admin");
   };
 
   return (
@@ -63,7 +86,10 @@ export default function CompanyShiftRequestsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={teamFilter}
-            onChange={(e) => setTeamFilter(e.target.value)}
+            onChange={(e) => {
+              setTeamFilter(e.target.value);
+              setPage(1);
+            }}
             className="h-8 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary"
           >
             <option value="all">All teams</option>
@@ -78,7 +104,10 @@ export default function CompanyShiftRequestsPage() {
               <button
                 key={f.value}
                 type="button"
-                onClick={() => setStatusFilter(f.value)}
+                onClick={() => {
+                  setStatusFilter(f.value);
+                  setPage(1);
+                }}
                 className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
                   statusFilter === f.value
                     ? "bg-primary text-white"
@@ -117,11 +146,13 @@ export default function CompanyShiftRequestsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((assignment) => {
+              {paged.map((assignment) => {
                 const person = personById.get(assignment.personId);
                 const shift = shiftMap.get(assignment.shiftId);
                 if (!shift) return null;
                 const team = teamById.get(shift.teamId);
+                const approvedCount = approvedCountByShift.get(shift.id) ?? 0;
+                const isUnderstaffed = approvedCount < shift.requiredCount;
                 return (
                   <tr
                     key={assignment.id}
@@ -137,7 +168,16 @@ export default function CompanyShiftRequestsPage() {
                       {shift.title}
                     </td>
                     <td className="px-4 py-3 text-ink-subtle">
-                      {shift.date} · {formatTime(shift.startTime)}
+                      <div className="flex items-center gap-2">
+                        <span>{shift.date} · {formatTime(shift.startTime)}</span>
+                        <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
+                          isUnderstaffed
+                            ? "border-warning/30 bg-surface-2 text-warning"
+                            : "border-hairline bg-surface-2 text-ink-muted"
+                        }`}>
+                          {approvedCount}/{shift.requiredCount} staffed
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -171,9 +211,20 @@ export default function CompanyShiftRequestsPage() {
                           </button>
                         </div>
                       ) : (
-                        <p className="text-right text-[11px] text-ink-faint">
-                          {assignment.approvedBy ?? "—"}
-                        </p>
+                        <div className="flex items-center justify-end gap-2">
+                          <p className="text-[11px] text-ink-faint">
+                            {assignment.approvedBy ?? "—"}
+                          </p>
+                          {assignment.status === "approved" && (
+                            <button
+                              type="button"
+                              onClick={() => handleUndo(assignment.id)}
+                              className="rounded-md border border-hairline bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-muted transition-colors hover:text-ink"
+                            >
+                              Undo
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -181,6 +232,7 @@ export default function CompanyShiftRequestsPage() {
               })}
             </tbody>
           </table>
+          <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         </div>
       )}
     </div>

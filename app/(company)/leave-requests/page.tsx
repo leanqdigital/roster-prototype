@@ -6,6 +6,9 @@ import type { LeaveStatus } from "@/lib/company-data";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
 import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import { CalendarOffIcon } from "@/components/ui/icons";
+import Pagination from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 10;
 
 const STATUS_FILTERS: { value: LeaveStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -28,6 +31,7 @@ export default function CompanyLeaveRequestsPage() {
   const { leaveRequests, people, teams } = useCompany();
   const [statusFilter, setStatusFilter] = useState<LeaveStatus | "all">("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
 
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
@@ -42,6 +46,13 @@ export default function CompanyLeaveRequestsPage() {
       })
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [leaveRequests, statusFilter, teamFilter, personById]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
 
   const pendingCount = leaveRequests.filter((l) => l.status === "pending").length;
 
@@ -59,7 +70,10 @@ export default function CompanyLeaveRequestsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={teamFilter}
-            onChange={(e) => setTeamFilter(e.target.value)}
+            onChange={(e) => {
+              setTeamFilter(e.target.value);
+              setPage(1);
+            }}
             className="h-8 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary"
           >
             <option value="all">All teams</option>
@@ -74,7 +88,10 @@ export default function CompanyLeaveRequestsPage() {
               <button
                 key={f.value}
                 type="button"
-                onClick={() => setStatusFilter(f.value)}
+                onClick={() => {
+                  setStatusFilter(f.value);
+                  setPage(1);
+                }}
                 className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
                   statusFilter === f.value
                     ? "bg-primary text-white"
@@ -114,7 +131,7 @@ export default function CompanyLeaveRequestsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((l) => {
+              {paged.map((l) => {
                 const person = personById.get(l.personId);
                 const personTeams = person
                   ? person.teamIds
@@ -157,6 +174,7 @@ export default function CompanyLeaveRequestsPage() {
               })}
             </tbody>
           </table>
+          <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         </div>
       )}
     </div>

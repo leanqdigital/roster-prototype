@@ -1,20 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCompany } from "@/lib/company-data";
 import type { PersonFormInput } from "@/components/people/PersonFormModal";
 import PersonFormModal from "@/components/people/PersonFormModal";
 import { PersonRoleBadge, PersonStatusBadge } from "@/components/people/PersonBadges";
-import { MailIcon, PlusIcon, UsersIcon } from "@/components/ui/icons";
+import { MailIcon, PlusIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
 import { initials } from "@/lib/format";
+import Pagination from "@/components/ui/Pagination";
 import { useTeamDetail } from "./team-detail-context";
+
+const PAGE_SIZE = 10;
 
 export default function ManagerTeamMembersPage() {
   const { locations, invitePerson, resendInvite } = useCompany();
   const { team, teamPeople } = useTeamDetail();
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return teamPeople;
+    return teamPeople.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q),
+    );
+  }, [teamPeople, search]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
 
   const handleInvite = async (
     input: PersonFormInput,
@@ -26,26 +46,40 @@ export default function ManagerTeamMembersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <div className="relative w-full max-w-xs">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-subtle" />
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search members…"
+            className="h-8 w-full rounded-lg border border-hairline bg-surface-2 pl-8 pr-3 text-xs text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none"
+          />
+        </div>
         <button
           type="button"
           onClick={() => setInviteOpen(true)}
-          className="flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
+          className="flex h-8 shrink-0 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
         >
           <PlusIcon className="size-3.5" />
           Invite employee
         </button>
       </div>
 
-      {teamPeople.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-hairline bg-surface-2 px-6 py-16 text-center">
           <UsersIcon className="size-8 text-ink-faint" />
-          <p className="text-sm font-medium text-ink">Nobody is on this team yet.</p>
+          <p className="text-sm font-medium text-ink">
+            {teamPeople.length === 0 ? "Nobody is on this team yet." : "No members match your search."}
+          </p>
         </div>
       ) : (
         <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
           <ul className="divide-y divide-hairline">
-            {teamPeople.map((person) => (
+            {paged.map((person) => (
               <li
                 key={person.id}
                 className="group flex items-center gap-3 px-4 py-3"
@@ -85,6 +119,7 @@ export default function ManagerTeamMembersPage() {
               </li>
             ))}
           </ul>
+          <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         </div>
       )}
 

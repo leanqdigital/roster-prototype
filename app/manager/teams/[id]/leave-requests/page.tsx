@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import { useManager } from "@/lib/manager-team";
-import type { LeaveRequest } from "@/lib/company-data";
+import type { LeaveRequest, Shift } from "@/lib/company-data";
 import Modal from "@/components/ui/Modal";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
 import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
+import { AlertTriangleIcon } from "@/components/ui/icons";
 import { useTeamDetail } from "../team-detail-context";
 
 function formatShortDate(dateStr: string): string {
@@ -20,7 +21,7 @@ function typeLabel(type: string): string {
 
 export default function ManagerTeamLeaveRequestsPage() {
   const { team, teamPeople } = useTeamDetail();
-  const { leaveRequests, approveLeave, denyLeave } = useCompany();
+  const { leaveRequests, approveLeave, denyLeave, revertLeaveApproval, shifts, shiftAssignments } = useCompany();
   const { myPerson } = useManager();
   const [denyTarget, setDenyTarget] = useState<LeaveRequest | null>(null);
   const [denyComment, setDenyComment] = useState("");
@@ -37,6 +38,22 @@ export default function ManagerTeamLeaveRequestsPage() {
     [teamPeople],
   );
 
+  const conflictsByLeaveId = useMemo(() => {
+    const map = new Map<string, Shift[]>();
+    for (const l of teamLeave) {
+      const personShiftIds = new Set(
+        shiftAssignments
+          .filter((a) => a.personId === l.personId && (a.status === "approved" || a.status === "pending"))
+          .map((a) => a.shiftId),
+      );
+      const conflicts = shifts.filter(
+        (s) => personShiftIds.has(s.id) && s.date >= l.startDate && s.date <= l.endDate,
+      );
+      if (conflicts.length > 0) map.set(l.id, conflicts);
+    }
+    return map;
+  }, [teamLeave, shiftAssignments, shifts]);
+
   const pendingCount = teamLeave.filter((l) => l.status === "pending").length;
 
   const handleApprove = (request: LeaveRequest) => {
@@ -48,6 +65,10 @@ export default function ManagerTeamLeaveRequestsPage() {
     denyLeave(denyTarget.id, myPerson?.name ?? "Manager", denyComment);
     setDenyTarget(null);
     setDenyComment("");
+  };
+
+  const handleUndo = (id: string) => {
+    revertLeaveApproval(id, myPerson?.name ?? "Manager");
   };
 
   return (
@@ -95,8 +116,26 @@ export default function ManagerTeamLeaveRequestsPage() {
                       {typeLabel(l.type)}
                     </td>
                     <td className="px-4 py-3 text-ink-subtle">
-                      {formatShortDate(l.startDate)} –{" "}
-                      {formatShortDate(l.endDate)}
+                      <div className="flex items-center gap-1.5">
+                        <span>
+                          {formatShortDate(l.startDate)} –{" "}
+                          {formatShortDate(l.endDate)}
+                        </span>
+                        {conflictsByLeaveId.has(l.id) && (
+                          <span className="group/tip relative shrink-0">
+                            <span className="flex items-center text-warning">
+                              <AlertTriangleIcon className="size-3.5" />
+                            </span>
+                            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden w-max max-w-[220px] -translate-x-1/2 rounded-md border border-hairline bg-surface-1 px-2 py-1.5 text-[11px] leading-snug text-ink shadow-md group-hover/tip:block">
+                              Shift conflict:{" "}
+                              {conflictsByLeaveId
+                                .get(l.id)!
+                                .map((s) => `${s.title} (${s.date})`)
+                                .join(", ")}
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="max-w-48 px-4 py-3">
                       <p className="truncate text-ink-muted">{l.reason ?? "—"}</p>
@@ -131,9 +170,20 @@ export default function ManagerTeamLeaveRequestsPage() {
                           </button>
                         </div>
                       ) : (
-                        <p className="text-right text-[11px] text-ink-faint">
-                          {l.reviewedBy ? `by ${l.reviewedBy}` : ""}
-                        </p>
+                        <div className="flex items-center justify-end gap-2">
+                          <p className="text-[11px] text-ink-faint">
+                            {l.reviewedBy ? `by ${l.reviewedBy}` : ""}
+                          </p>
+                          {l.status === "approved" && (
+                            <button
+                              type="button"
+                              onClick={() => handleUndo(l.id)}
+                              className="rounded-md border border-hairline bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-muted transition-colors hover:text-ink"
+                            >
+                              Undo
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

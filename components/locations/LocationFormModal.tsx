@@ -43,7 +43,7 @@ export default function LocationFormModal({
     };
 
     const result = await onSave(input);
-    if (!result.ok) setError(result.error ?? "Something went wrong.");
+    if (!result.ok) setError(result.error ?? "Couldn't save — try again.");
   };
 
   return (

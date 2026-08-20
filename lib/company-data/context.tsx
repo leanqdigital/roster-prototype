@@ -723,6 +723,37 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     [reviewLeave],
   );
 
+  const revertLeaveApproval = useCallback(
+    async (id: string, revertedBy: string) => {
+      const request = state.leaveRequests.find((l) => l.id === id);
+      if (!request || request.status !== "approved") return;
+      await updateLeaveRequestRow(id, { status: "pending" });
+      dispatch({
+        type: "reviewLeaveRequest",
+        id,
+        status: "pending",
+        reviewerComment: undefined,
+        reviewedBy: undefined,
+        reviewedAt: undefined,
+      });
+      const person = state.people.find((p) => p.id === request.personId);
+      await logActivity(
+        request.personId,
+        "notified",
+        `Your approved ${request.type} leave (${request.startDate} – ${request.endDate}) was reverted to pending by ${revertedBy}`,
+      );
+      await logAudit({
+        action: "time_off.reverted",
+        tone: "warning",
+        resource: "LeaveRequest",
+        resourceId: request.id,
+        teamId: person?.teamIds[0] ?? undefined,
+        message: `${revertedBy} reverted approval for ${person?.name ?? "someone"}'s ${request.type} leave (${request.startDate} – ${request.endDate})`,
+      });
+    },
+    [state.leaveRequests, state.people, logActivity, logAudit],
+  );
+
   // ---------------------------------------------------------------------
   // activity
   // ---------------------------------------------------------------------
@@ -1192,6 +1223,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       });
       const shift = state.shifts.find((s) => s.id === assignment.shiftId);
       const person = state.people.find((p) => p.id === assignment.personId);
+      await logActivity(
+        assignment.personId,
+        "notified",
+        `Your request for "${shift?.title ?? "shift"}" on ${shift?.date ?? ""} was approved`,
+      );
       await logAudit({
         action: "shift.request.approved",
         tone: "success",
@@ -1201,7 +1237,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         message: `${person?.name ?? "Someone"}'s request for "${shift?.title ?? "shift"}" on ${shift?.date ?? ""} approved by ${reviewedBy}`,
       });
     },
-    [state.shiftAssignments, state.shifts, state.people, logAudit],
+    [state.shiftAssignments, state.shifts, state.people, logActivity, logAudit],
   );
 
   const denyShiftRequest = useCallback(
@@ -1212,6 +1248,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "reviewAssignment", id: assignmentId, status: "rejected" });
       const shift = state.shifts.find((s) => s.id === assignment.shiftId);
       const person = state.people.find((p) => p.id === assignment.personId);
+      await logActivity(
+        assignment.personId,
+        "notified",
+        `Your request for "${shift?.title ?? "shift"}" on ${shift?.date ?? ""} was denied`,
+      );
       await logAudit({
         action: "shift.request.denied",
         tone: "warning",
@@ -1221,7 +1262,37 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         message: `${person?.name ?? "Someone"}'s request for "${shift?.title ?? "shift"}" on ${shift?.date ?? ""} denied by ${reviewedBy}`,
       });
     },
-    [state.shiftAssignments, state.shifts, state.people, logAudit],
+    [state.shiftAssignments, state.shifts, state.people, logActivity, logAudit],
+  );
+
+  const revertShiftApproval = useCallback(
+    async (assignmentId: string, revertedBy: string) => {
+      const assignment = state.shiftAssignments.find((a) => a.id === assignmentId);
+      if (!assignment || assignment.status !== "approved") return;
+      await updateAssignmentRow(assignmentId, { status: "pending" });
+      dispatch({
+        type: "reviewAssignment",
+        id: assignmentId,
+        status: "pending",
+        approvedAt: undefined,
+        approvedBy: undefined,
+      });
+      const shift = state.shifts.find((s) => s.id === assignment.shiftId);
+      await logActivity(
+        assignment.personId,
+        "notified",
+        `Your approved request for "${shift?.title ?? "shift"}" on ${shift?.date ?? ""} was reverted to pending by ${revertedBy}`,
+      );
+      await logAudit({
+        action: "shift.request.reverted",
+        tone: "warning",
+        resource: "ShiftAssignment",
+        resourceId: assignmentId,
+        teamId: shift?.teamId,
+        message: `${revertedBy} reverted approval for "${shift?.title ?? "shift"}" on ${shift?.date ?? ""}`,
+      });
+    },
+    [state.shiftAssignments, state.shifts, logActivity, logAudit],
   );
 
   const requestShift = useCallback(
@@ -1386,6 +1457,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       cancelLeaveRequest,
       approveLeave,
       denyLeave,
+      revertLeaveApproval,
       markActivityRead,
       markAllActivityRead,
       createShiftTemplate,
@@ -1407,6 +1479,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       cancelSelfAssignment,
       approveShiftRequest,
       denyShiftRequest,
+      revertShiftApproval,
       getAvailableShiftsForPerson,
     }),
     [
@@ -1434,6 +1507,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       cancelLeaveRequest,
       approveLeave,
       denyLeave,
+      revertLeaveApproval,
       markActivityRead,
       markAllActivityRead,
       createShiftTemplate,
@@ -1455,6 +1529,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       cancelSelfAssignment,
       approveShiftRequest,
       denyShiftRequest,
+      revertShiftApproval,
       getAvailableShiftsForPerson,
     ],
   );

@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import type { AuditEntry, AuditTone } from "@/lib/company-data";
 import { formatDateTime } from "@/lib/format";
 import { ListIcon, SearchIcon } from "@/components/ui/icons";
+import Pagination from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 10;
 
 type ToneFilter = "all" | AuditTone;
 
@@ -29,6 +32,7 @@ interface TeamAuditListProps {
 export default function TeamAuditList({ entries }: TeamAuditListProps) {
   const [query, setQuery] = useState("");
   const [tone, setTone] = useState<ToneFilter>("all");
+  const [page, setPage] = useState(1);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -39,6 +43,13 @@ export default function TeamAuditList({ entries }: TeamAuditListProps) {
     });
   }, [entries, query, tone]);
 
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = useMemo(
+    () => rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [rows, currentPage],
+  );
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
@@ -46,14 +57,20 @@ export default function TeamAuditList({ entries }: TeamAuditListProps) {
           <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search activity…"
             className="h-8 w-full rounded-lg border border-hairline bg-surface-2 pl-8.5 pr-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none"
           />
         </div>
         <select
           value={tone}
-          onChange={(e) => setTone(e.target.value as ToneFilter)}
+          onChange={(e) => {
+            setTone(e.target.value as ToneFilter);
+            setPage(1);
+          }}
           className="h-8 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] text-ink transition-colors focus:border-primary/60 focus:outline-none"
         >
           {TONE_OPTIONS.map((opt) => (
@@ -73,8 +90,9 @@ export default function TeamAuditList({ entries }: TeamAuditListProps) {
           <p className="text-sm font-medium text-ink">No activity yet for this team.</p>
         </div>
       ) : (
-        <div className="mt-4 divide-y divide-hairline/60 overflow-hidden rounded-xl border border-hairline bg-surface-2">
-          {rows.map((entry) => (
+        <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
+        <div className="divide-y divide-hairline/60">
+          {paged.map((entry) => (
             <div
               key={entry.id}
               className="flex items-center justify-between gap-4 px-4 py-3"
@@ -88,6 +106,8 @@ export default function TeamAuditList({ entries }: TeamAuditListProps) {
               </span>
             </div>
           ))}
+        </div>
+          <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         </div>
       )}
     </div>

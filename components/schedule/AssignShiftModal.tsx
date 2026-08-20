@@ -49,6 +49,16 @@ export default function AssignShiftModal({
     message: string;
   } | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{
+    assignmentId: string;
+    personName: string;
+  } | null>(null);
+
+  const handleConfirmRemove = () => {
+    if (!removeTarget) return;
+    onRemove(removeTarget.assignmentId);
+    setRemoveTarget(null);
+  };
 
   const handleAssignClick = async (person: Person) => {
     setAssignError(null);
@@ -149,6 +159,34 @@ export default function AssignShiftModal({
           </div>
         )}
 
+        {removeTarget && (
+          <div className="space-y-2.5 rounded-lg border border-danger/30 bg-danger-weak p-3">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-danger" />
+              <p className="text-[12px] leading-5 text-danger">
+                Remove <span className="font-medium">{removeTarget.personName}</span> from
+                this shift?
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRemoveTarget(null)}
+                className="h-7 rounded-md border border-hairline bg-surface-2 px-2.5 text-[12px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRemove}
+                className="h-7 rounded-md bg-danger px-2.5 text-[12px] font-medium text-white transition-colors hover:bg-danger-hover"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        )}
+
         {assignedPersonIds.length > 0 && (
           <div>
             <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">
@@ -184,7 +222,12 @@ export default function AssignShiftModal({
                       </div>
                       <button
                         type="button"
-                        onClick={() => onRemove(assignment.id)}
+                        onClick={() =>
+                          setRemoveTarget({
+                            assignmentId: assignment.id,
+                            personName: person?.name ?? "this person",
+                          })
+                        }
                         className="rounded-md p-1.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-danger"
                         title="Remove assignment"
                       >
