@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { useCompany } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import type { LeaveType } from "@/lib/company-data";
 
 export const LEAVE_TYPES: { value: LeaveType; label: string }[] = [
@@ -25,24 +26,33 @@ export default function RequestLeaveModal({
   onClose,
 }: RequestLeaveModalProps) {
   const { requestLeave } = useCompany();
+  const { pushToast } = useToast();
   const [type, setType] = useState<LeaveType>("vacation");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    const result = await requestLeave(personId, { type, startDate, endDate, reason });
-    if (!result.ok) {
-      setError(result.error ?? "Couldn't submit the request.");
-      return;
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await requestLeave(personId, { type, startDate, endDate, reason });
+      if (!result.ok) {
+        setError(result.error ?? "Couldn't submit the request.");
+        return;
+      }
+      setType("vacation");
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+      setError(null);
+      pushToast({ tone: "success", message: "Leave request submitted" });
+      onClose();
+    } finally {
+      setSubmitting(false);
     }
-    setType("vacation");
-    setStartDate("");
-    setEndDate("");
-    setReason("");
-    setError(null);
-    onClose();
   };
 
   return (
@@ -51,6 +61,7 @@ export default function RequestLeaveModal({
       title="Request leave"
       description="Submit a leave request for approval by your manager."
       confirmLabel="Submit request"
+      confirmLoading={submitting}
       onConfirm={handleSubmit}
       onClose={onClose}
     >

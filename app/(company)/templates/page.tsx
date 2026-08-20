@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import type { ShiftTemplate } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import type { ShiftTemplateFormInput } from "@/components/shift-templates/ShiftTemplateFormModal";
 import Modal from "@/components/ui/Modal";
 import StatCard from "@/components/ui/StatCard";
@@ -21,6 +22,7 @@ export default function ShiftTemplatesPage() {
     deleteShiftTemplate,
     applyTemplateToShifts,
   } = useCompany();
+  const { pushToast } = useToast();
 
   const allTemplates = useMemo(() => shiftTemplates ?? [], [shiftTemplates]);
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -196,6 +198,7 @@ export default function ShiftTemplatesPage() {
             deleteShiftTemplate(confirmDelete.id);
             setConfirmDelete(null);
             flashSaved();
+            pushToast({ tone: "success", message: "Template deleted" });
           }}
         />
       )}

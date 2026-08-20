@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { homeForRole, useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
+import { useToast } from "@/lib/toast";
 import LogoMark from "@/components/ui/Logo";
 import {
   ArrowLeftIcon,
@@ -70,6 +71,7 @@ export default function AcceptInviteForm() {
   const router = useRouter();
   const { user, ready } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { pushToast } = useToast();
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -99,6 +101,7 @@ export default function AcceptInviteForm() {
       setError(updateError.message);
       return;
     }
+    pushToast({ tone: "success", message: "Invite accepted" });
     router.replace(homeForRole(user?.role));
   };
 

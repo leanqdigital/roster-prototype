@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { localDateStr } from "@/lib/format";
+import { useToast } from "@/lib/toast";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -44,6 +45,8 @@ export default function BulkCreateShiftModal({
   const [end, setEnd] = useState(defaultStartDate ?? today);
   const [weekdays, setWeekdays] = useState<boolean[]>([true, true, true, true, true, false, false]);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { pushToast } = useToast();
 
   const durationTotal =
     parseInt(durationHours || "0", 10) * 60 + parseInt(durationMinutes || "0", 10);
@@ -58,6 +61,7 @@ export default function BulkCreateShiftModal({
   }, [start, end, weekdays]);
 
   const handleSubmit = async () => {
+    if (submitting) return;
     setError(null);
     if (!title.trim()) {
       setError("Title is required.");
@@ -80,15 +84,22 @@ export default function BulkCreateShiftModal({
       setError("No dates match — check weekdays or widen the range.");
       return;
     }
-    const result = await onCreate({
-      title: title.trim(),
-      startTime,
-      durationMinutes: durationTotal,
-      requiredCount: count,
-      dates,
-    });
-    if (!result.ok) {
-      setError(result.error ?? "Failed to create shifts.");
+    setSubmitting(true);
+    try {
+      const result = await onCreate({
+        title: title.trim(),
+        startTime,
+        durationMinutes: durationTotal,
+        requiredCount: count,
+        dates,
+      });
+      if (!result.ok) {
+        setError(result.error ?? "Failed to create shifts.");
+      } else {
+        pushToast({ tone: "success", message: "Shifts created" });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -98,6 +109,7 @@ export default function BulkCreateShiftModal({
       title="Bulk add shifts"
       description="Create the same shift across many dates at once."
       confirmLabel={`Create ${dates.length > 0 ? dates.length : ""} shift${dates.length === 1 ? "" : "s"}`}
+      confirmLoading={submitting}
       size="lg"
       onClose={onClose}
       onConfirm={handleSubmit}

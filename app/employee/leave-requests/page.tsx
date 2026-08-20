@@ -7,6 +7,7 @@ import RequestLeaveModal from "@/components/leave/RequestLeaveModal";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
 import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import { CalendarOffIcon, PlusIcon } from "@/components/ui/icons";
+import { useToast } from "@/lib/toast";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -20,6 +21,7 @@ function typeLabel(type: string): string {
 export default function EmployeeLeaveRequestsPage() {
   const { user } = useAuth();
   const { people, leaveRequests, cancelLeaveRequest } = useCompany();
+  const { pushToast } = useToast();
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
 
   const myPerson = useMemo(
@@ -117,7 +119,10 @@ export default function EmployeeLeaveRequestsPage() {
                   {l.status === "pending" && (
                     <button
                       type="button"
-                      onClick={() => cancelLeaveRequest(l.id)}
+                      onClick={() => {
+                        cancelLeaveRequest(l.id);
+                        pushToast({ tone: "success", message: "Leave request cancelled" });
+                      }}
                       className="rounded-md border border-hairline bg-surface-3 px-2 py-1 text-[11px] font-medium text-ink-muted transition-colors hover:bg-surface-4 hover:text-ink"
                     >
                       Cancel

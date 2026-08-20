@@ -4,7 +4,9 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
 import { CheckIcon, EyeIcon, EyeOffIcon, ShieldIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 pr-9 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -55,6 +57,7 @@ function PasswordField({
 export default function ChangePasswordCard() {
   const router = useRouter();
   const { changePassword, signOut } = useAuth();
+  const { pushToast } = useToast();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -63,9 +66,11 @@ export default function ChangePasswordCard() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
     setError(null);
     setSaved(false);
 
@@ -86,16 +91,20 @@ export default function ChangePasswordCard() {
       return;
     }
 
+    setSubmitting(true);
     const result = await changePassword(current, next);
     if (!result.ok) {
       setError(result.error ?? "Couldn't change password.");
+      setSubmitting(false);
       return;
     }
     setSaved(true);
+    pushToast({ tone: "success", message: "Password changed" });
     window.setTimeout(async () => {
       await signOut();
       router.replace("/login");
     }, 600);
+    // submitting stays true through redirect — component unmounts
   };
 
   return (
@@ -156,9 +165,14 @@ export default function ChangePasswordCard() {
         <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
           <button
             type="submit"
-            className="flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
+            disabled={submitting}
+            className="flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <ShieldIcon className="size-3.5" />
+            {submitting ? (
+              <Spinner className="size-3.5" />
+            ) : (
+              <ShieldIcon className="size-3.5" />
+            )}
             Update password
           </button>
         </div>

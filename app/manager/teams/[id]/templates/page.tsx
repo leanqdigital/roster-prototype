@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import type { ShiftTemplate } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import type { ShiftTemplateFormInput } from "@/components/shift-templates/ShiftTemplateFormModal";
 import Modal from "@/components/ui/Modal";
 import ShiftTemplateFormModal from "@/components/shift-templates/ShiftTemplateFormModal";
@@ -15,6 +16,7 @@ import { useTeamDetail } from "../team-detail-context";
 export default function ManagerTeamTemplatesPage() {
   const { createShiftTemplate, updateShiftTemplate, deleteShiftTemplate } = useCompany();
   const { team, teamTemplates } = useTeamDetail();
+  const { pushToast } = useToast();
 
   const [modalTemplate, setModalTemplate] = useState<ShiftTemplate | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState<ShiftTemplate | null>(null);
@@ -80,6 +82,7 @@ export default function ManagerTeamTemplatesPage() {
           onConfirm={() => {
             deleteShiftTemplate(confirmDelete.id);
             setConfirmDelete(null);
+            pushToast({ tone: "success", message: "Template deleted" });
           }}
         />
       )}

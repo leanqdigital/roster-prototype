@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import type { Person, Shift, ShiftAssignment } from "@/lib/company-data";
 import { AlertTriangleIcon, PlusIcon, TrashIcon, UsersIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/lib/toast";
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -53,6 +55,9 @@ export default function AssignShiftModal({
     assignmentId: string;
     personName: string;
   } | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [overriding, setOverriding] = useState(false);
+  const { pushToast } = useToast();
 
   const handleConfirmRemove = () => {
     if (!removeTarget) return;
@@ -61,24 +66,39 @@ export default function AssignShiftModal({
   };
 
   const handleAssignClick = async (person: Person) => {
+    if (assigningId) return;
     setAssignError(null);
-    const result = await onAssign(person.id);
-    if (result.ok) return;
-    if (result.conflict) {
-      setConflict({
-        personId: person.id,
-        personName: person.name,
-        message: result.error ?? "Scheduling conflict detected.",
-      });
-    } else {
-      setAssignError(result.error ?? "Could not assign this person.");
+    setAssigningId(person.id);
+    try {
+      const result = await onAssign(person.id);
+      if (result.ok) {
+        pushToast({ tone: "success", message: `${person.name} assigned` });
+        return;
+      }
+      if (result.conflict) {
+        setConflict({
+          personId: person.id,
+          personName: person.name,
+          message: result.error ?? "Scheduling conflict detected.",
+        });
+      } else {
+        setAssignError(result.error ?? "Could not assign this person.");
+      }
+    } finally {
+      setAssigningId(null);
     }
   };
 
   const handleOverride = async () => {
-    if (!conflict) return;
-    await onAssign(conflict.personId, true);
-    setConflict(null);
+    if (!conflict || overriding) return;
+    setOverriding(true);
+    try {
+      await onAssign(conflict.personId, true);
+      pushToast({ tone: "success", message: `${conflict.personName} assigned` });
+      setConflict(null);
+    } finally {
+      setOverriding(false);
+    }
   };
 
   const personMap = useMemo(() => {
@@ -151,8 +171,10 @@ export default function AssignShiftModal({
               <button
                 type="button"
                 onClick={handleOverride}
-                className="h-7 rounded-md bg-warning px-2.5 text-[12px] font-medium text-white transition-colors hover:bg-warning/85"
+                disabled={overriding}
+                className="flex h-7 items-center justify-center gap-1.5 rounded-md bg-warning px-2.5 text-[12px] font-medium text-white transition-colors hover:bg-warning/85 disabled:cursor-not-allowed disabled:opacity-60"
               >
+                {overriding && <Spinner className="size-3.5" />}
                 Override &amp; assign
               </button>
             </div>
@@ -251,7 +273,8 @@ export default function AssignShiftModal({
                   key={person.id}
                   type="button"
                   onClick={() => handleAssignClick(person)}
-                  className="flex w-full items-center justify-between rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-surface-3"
+                  disabled={assigningId !== null}
+                  className="flex w-full items-center justify-between rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
@@ -271,7 +294,11 @@ export default function AssignShiftModal({
                       </p>
                     </div>
                   </div>
-                  <PlusIcon className="size-3.5 text-ink-subtle" />
+                  {assigningId === person.id ? (
+                    <Spinner className="size-3.5 text-ink-subtle" />
+                  ) : (
+                    <PlusIcon className="size-3.5 text-ink-subtle" />
+                  )}
                 </button>
               ))}
             </div>

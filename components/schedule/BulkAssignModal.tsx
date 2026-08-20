@@ -10,6 +10,7 @@ import type {
   ShiftTemplate,
 } from "@/lib/company-data";
 import { CalendarIcon, UsersIcon } from "@/components/ui/icons";
+import { useToast } from "@/lib/toast";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -76,6 +77,8 @@ export default function BulkAssignModal({
   const [range, setRange] = useState(() => defaultRange(teamShifts));
   const [force, setForce] = useState(false);
   const [result, setResult] = useState<BulkAssignResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { pushToast } = useToast();
 
   const people = useMemo(
     () =>
@@ -109,16 +112,22 @@ export default function BulkAssignModal({
     !!personId && range.start !== "" && range.end !== "" && range.start <= range.end;
 
   const handleConfirm = async () => {
-    if (!valid || !personId) return;
-    const res = await onBulkAssign({
-      teamId,
-      personId,
-      templateId: templateId || undefined,
-      start: range.start,
-      end: range.end,
-      force,
-    });
-    setResult(res);
+    if (!valid || !personId || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await onBulkAssign({
+        teamId,
+        personId,
+        templateId: templateId || undefined,
+        start: range.start,
+        end: range.end,
+        force,
+      });
+      setResult(res);
+      pushToast({ tone: "success", message: `${res.assigned.length} assigned` });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const person = people.find((p) => p.id === personId);
@@ -151,6 +160,7 @@ export default function BulkAssignModal({
           : "Assign one person to every eligible shift in a date range."
       }
       confirmLabel={result ? "Done" : "Assign"}
+      confirmLoading={!result && submitting}
       size="lg"
       onClose={onClose}
       onConfirm={result ? onClose : handleConfirm}

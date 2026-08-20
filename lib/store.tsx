@@ -18,26 +18,16 @@ import {
   deleteCompany as deleteCompanyAction,
 } from "@/lib/supabase/admin-actions";
 
-export interface Toast {
-  id: string;
-  tone: "success" | "danger" | "neutral";
-  message: string;
-  detail?: string;
-}
-
 interface AdminState {
   companies: Company[];
   audit: AuditEntry[];
-  toasts: Toast[];
 }
 
 type AdminAction =
   | { type: "hydrate"; companies: Company[]; audit: AuditEntry[] }
   | { type: "patchCompanyStatus"; id: string; status: CompanyStatus; updatedAt: string }
   | { type: "removeCompany"; id: string }
-  | { type: "addAudit"; entry: AuditEntry }
-  | { type: "addToast"; toast: Toast }
-  | { type: "dismissToast"; id: string };
+  | { type: "addAudit"; entry: AuditEntry };
 
 const reducer = (state: AdminState, action: AdminAction): AdminState => {
   switch (action.type) {
@@ -59,13 +49,6 @@ const reducer = (state: AdminState, action: AdminAction): AdminState => {
       };
     case "addAudit":
       return { ...state, audit: [action.entry, ...state.audit] };
-    case "addToast":
-      return { ...state, toasts: [...state.toasts, action.toast] };
-    case "dismissToast":
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.id),
-      };
   }
 };
 
@@ -73,15 +56,9 @@ interface AdminContextValue extends AdminState {
   loading: boolean;
   setCompanyStatus: (id: string, status: CompanyStatus) => Promise<{ ok: boolean; error?: string }>;
   deleteCompany: (id: string) => Promise<{ ok: boolean; error?: string }>;
-  pushToast: (toast: { tone: Toast["tone"]; message: string; detail?: string }) => void;
-  dismissToast: (id: string) => void;
 }
 
 const AdminContext = createContext<AdminContextValue | null>(null);
-
-let seq = 0;
-const nextId = (prefix: string) =>
-  `${prefix}_${Date.now().toString(36)}_${(seq += 1).toString(36)}`;
 
 interface CompanyRow {
   id: string;
@@ -179,7 +156,7 @@ async function fetchAdminData(): Promise<{ companies: Company[]; audit: AuditEnt
 }
 
 export function AdminProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { companies: [], audit: [], toasts: [] });
+  const [state, dispatch] = useReducer(reducer, { companies: [], audit: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -225,35 +202,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const dismissToast = useCallback(
-    (id: string) => dispatch({ type: "dismissToast", id }),
-    [],
-  );
-
-  const pushToast = useCallback(
-    (t: { message: string; tone?: Toast["tone"]; detail?: string }) =>
-      dispatch({
-        type: "addToast",
-        toast: {
-          id: nextId("tt"),
-          tone: t.tone ?? "neutral",
-          message: t.message,
-          detail: t.detail,
-        },
-      }),
-    [],
-  );
-
   const value = useMemo<AdminContextValue>(
     () => ({
       ...state,
       loading,
       setCompanyStatus,
       deleteCompany,
-      pushToast,
-      dismissToast,
     }),
-    [state, loading, setCompanyStatus, deleteCompany, pushToast, dismissToast],
+    [state, loading, setCompanyStatus, deleteCompany],
   );
 
   return (

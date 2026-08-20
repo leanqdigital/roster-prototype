@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import type { Shift } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import { localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
@@ -74,6 +75,7 @@ export default function EmployeeSchedulePage() {
     teams,
     cancelSelfAssignment,
   } = useCompany();
+  const { pushToast } = useToast();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [view, setView] = useState<"week" | "month">("week");
   const [monthCursor, setMonthCursor] = useState(() => {
@@ -460,11 +462,12 @@ export default function EmployeeSchedulePage() {
         description="Are you sure you want to cancel this shift request? This action cannot be undone."
         confirmLabel="Cancel request"
         tone="danger"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (cancelConfirm) {
             const assignment = myAssignmentMap.get(cancelConfirm.id);
             if (assignment) {
-              cancelSelfAssignment(assignment.id);
+              await cancelSelfAssignment(assignment.id);
+              pushToast({ tone: "success", message: "Request cancelled" });
             }
           }
           setCancelConfirm(null);

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import { formatDate, formatDateTime, initials, timeAgo } from "@/lib/format";
 import { PersonStatusBadge } from "@/components/people/PersonBadges";
 import {
@@ -25,6 +26,7 @@ const activityLabel: Record<string, string> = {
 export default function ManagerTeamMemberDetailPage() {
   const params = useParams<{ id: string; personId: string }>();
   const { locations, activity, clockEntries, resendInvite } = useCompany();
+  const { pushToast } = useToast();
   const { team, teamPeople } = useTeamDetail();
   const [resendError, setResendError] = useState<string | null>(null);
 
@@ -36,6 +38,8 @@ export default function ManagerTeamMemberDetailPage() {
     if (!result.ok) {
       setResendError(result.error ?? "Couldn't resend invite.");
       window.setTimeout(() => setResendError(null), 4000);
+    } else {
+      pushToast({ tone: "success", message: "Invite resent" });
     }
   };
 

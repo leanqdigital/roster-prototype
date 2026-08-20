@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
+import { useToast } from "@/lib/toast";
 import LogoMark from "@/components/ui/Logo";
 import { MoonIcon, SunIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
 
 // Deliberately requires an explicit button click before calling verifyOtp().
 // If we auto-verified on page load (GET), email security scanners that
@@ -18,6 +20,7 @@ export default function ConfirmInviteForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
+  const { pushToast } = useToast();
 
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
@@ -42,6 +45,7 @@ export default function ConfirmInviteForm() {
       setError(verifyError.message);
       return;
     }
+    pushToast({ tone: "success", message: "Invite confirmed" });
     router.replace(next);
   };
 
@@ -84,8 +88,9 @@ export default function ConfirmInviteForm() {
             type="button"
             onClick={onConfirm}
             disabled={!valid || submitting}
-            className="h-9 w-full rounded-lg bg-primary text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
+            {submitting && <Spinner className="size-3.5" />}
             {submitting ? "Confirming…" : "Confirm invite"}
           </button>
         </div>

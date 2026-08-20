@@ -1,10 +1,10 @@
 "use client";
 
 import { CheckIcon, XIcon } from "./icons";
-import { useAdmin } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 
 export default function Toasts() {
-  const { toasts, dismissToast } = useAdmin();
+  const { toasts, dismissToast } = useToast();
 
   return (
     <div className="pointer-events-none fixed bottom-5 right-5 z-[60] flex w-80 flex-col gap-2">

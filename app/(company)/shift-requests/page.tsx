@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import type { AssignmentStatus } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import { CalendarIcon } from "@/components/ui/icons";
 import Pagination from "@/components/ui/Pagination";
 
@@ -24,6 +25,7 @@ function formatTime(time: string): string {
 
 export default function CompanyShiftRequestsPage() {
   const { shiftAssignments, shifts, people, teams, approveShiftRequest, denyShiftRequest, revertShiftApproval } = useCompany();
+  const { pushToast } = useToast();
   const [statusFilter, setStatusFilter] = useState<AssignmentStatus | "all">("pending");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
@@ -60,16 +62,19 @@ export default function CompanyShiftRequestsPage() {
     return map;
   }, [shiftAssignments]);
 
-  const handleApprove = (assignmentId: string) => {
-    approveShiftRequest(assignmentId, "Company Admin");
+  const handleApprove = async (assignmentId: string) => {
+    await approveShiftRequest(assignmentId, "Company Admin");
+    pushToast({ tone: "success", message: "Request approved" });
   };
 
-  const handleDeny = (assignmentId: string) => {
-    denyShiftRequest(assignmentId, "Company Admin");
+  const handleDeny = async (assignmentId: string) => {
+    await denyShiftRequest(assignmentId, "Company Admin");
+    pushToast({ tone: "success", message: "Request denied" });
   };
 
-  const handleUndo = (assignmentId: string) => {
-    revertShiftApproval(assignmentId, "Company Admin");
+  const handleUndo = async (assignmentId: string) => {
+    await revertShiftApproval(assignmentId, "Company Admin");
+    pushToast({ tone: "success", message: "Approval reverted" });
   };
 
   return (

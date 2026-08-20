@@ -184,6 +184,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       return { ok: false, error: error.message };
     }
+    // Supabase returns no error and no session for an email that already
+    // exists (anti-enumeration behavior) — the giveaway is an empty
+    // identities array, since no new identity was created.
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      return {
+        ok: false,
+        error: "An account with this email already exists. Try signing in instead.",
+      };
+    }
     if (!data.session) {
       // Email confirmation is required by the project's Auth settings —
       // no session yet, so we can't auto-sign-in.

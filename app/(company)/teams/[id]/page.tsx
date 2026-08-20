@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import { formatDate, initials } from "@/lib/format";
+import { useToast } from "@/lib/toast";
 import Modal from "@/components/ui/Modal";
 import StatCard from "@/components/ui/StatCard";
 import {
@@ -34,6 +35,7 @@ export default function TeamDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { teams, people, locations, updateTeam, deleteTeam } = useCompany();
+  const { pushToast } = useToast();
 
   const team = teams.find((t) => t.id === params.id);
 
@@ -405,6 +407,7 @@ export default function TeamDetailPage() {
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
           deleteTeam(team.id);
+          pushToast({ tone: "success", message: "Team deleted" });
           router.push("/teams");
         }}
       />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import type { Person } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import Modal from "@/components/ui/Modal";
 import { PlusIcon } from "@/components/ui/icons";
 import PeopleList from "@/components/people/PeopleList";
@@ -15,6 +16,7 @@ export default function PeoplePage() {
   const { teams, people, locations, invitePerson, updatePerson, resendInvite, deletePerson } =
     useCompany();
   const { registerEmployee } = useAuth();
+  const { pushToast } = useToast();
   const [editing, setEditing] = useState<Person | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Person | null>(null);
@@ -35,6 +37,8 @@ export default function PeoplePage() {
     const result = await resendInvite(person.id);
     if (!result.ok) {
       flashResendError(result.error ?? `Couldn't resend invite to ${person.name}.`);
+    } else {
+      pushToast({ tone: "success", message: "Invite resent" });
     }
   };
 
@@ -156,6 +160,7 @@ export default function PeoplePage() {
             deletePerson(confirmDelete.id);
             setConfirmDelete(null);
             flashSaved();
+            pushToast({ tone: "success", message: "Person deleted" });
           }}
         />
       )}

@@ -10,6 +10,7 @@ import TeamsEmpty from "@/components/teams/TeamsEmpty";
 import TeamTable from "@/components/teams/TeamTable";
 import TeamFormModal from "@/components/teams/TeamFormModal";
 import type { TeamFormInput } from "@/components/teams/TeamFormModal";
+import { useToast } from "@/lib/toast";
 
 export default function TeamsPage() {
   const { teams, people, locations, createTeam, updateTeam, deleteTeam } =
@@ -17,6 +18,7 @@ export default function TeamsPage() {
   const [modalTeam, setModalTeam] = useState<Team | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState<Team | null>(null);
   const [saved, setSaved] = useState(false);
+  const { pushToast } = useToast();
 
   const locationName = useMemo(() => {
     const map = new Map<string, string>();
@@ -129,6 +131,7 @@ export default function TeamsPage() {
             deleteTeam(confirmDelete.id);
             setConfirmDelete(null);
             flashSaved();
+            pushToast({ tone: "success", message: "Team deleted" });
           }}
         />
       )}

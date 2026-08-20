@@ -7,7 +7,9 @@ import type { BreakType } from "@/lib/company-data";
 import { DEFAULT_BREAK_POLICY } from "@/lib/company";
 import { formatDateTime, localDateStr } from "@/lib/format";
 import { AlertTriangleIcon, ClockIcon, UsersIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
+import { useToast } from "@/lib/toast";
 
 function formatElapsed(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -41,6 +43,11 @@ export default function EmployeeClockPage() {
   const [completed, setCompleted] = useState<CompletedEntry | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [breakError, setBreakError] = useState<string | null>(null);
+  const [clockingIn, setClockingIn] = useState(false);
+  const [clockingOut, setClockingOut] = useState(false);
+  const [pendingBreakType, setPendingBreakType] = useState<BreakType | null>(null);
+  const [endingBreak, setEndingBreak] = useState(false);
+  const { pushToast } = useToast();
 
   const myPerson = useMemo(
     () =>
@@ -110,37 +117,67 @@ export default function EmployeeClockPage() {
   const restCapped = restCount >= policy.maxRestBreaksPerShift;
 
   const handleClockIn = async () => {
-    if (!myPerson) return;
+    if (!myPerson || clockingIn) return;
     setError(null);
     setCompleted(null);
     if (!hasShiftToday) {
       setError("No shift assigned today — contact your manager.");
       return;
     }
-    await addClockEntry(myPerson.id, "in");
+    setClockingIn(true);
+    try {
+      await addClockEntry(myPerson.id, "in");
+      pushToast({ tone: "success", message: "Clocked in" });
+    } finally {
+      setClockingIn(false);
+    }
   };
 
   const handleClockOut = async () => {
-    if (!myPerson || !latestEntry) return;
-    const durationMs = Date.now() - new Date(latestEntry.at).getTime();
-    await addClockEntry(myPerson.id, "out", note || undefined);
-    setCompleted({ durationMs, note: note || undefined });
-    setNote("");
-    setShowNote(false);
+    if (!myPerson || !latestEntry || clockingOut) return;
+    setClockingOut(true);
+    try {
+      const durationMs = Date.now() - new Date(latestEntry.at).getTime();
+      await addClockEntry(myPerson.id, "out", note || undefined);
+      setCompleted({ durationMs, note: note || undefined });
+      pushToast({ tone: "success", message: "Clocked out" });
+      setNote("");
+      setShowNote(false);
+    } finally {
+      setClockingOut(false);
+    }
   };
 
   const handleStartBreak = async (type: BreakType) => {
-    if (!myPerson) return;
+    if (!myPerson || pendingBreakType) return;
     setBreakError(null);
-    const result = await startBreak(myPerson.id, type);
-    if (!result.ok) setBreakError(result.error ?? "Could not start break.");
+    setPendingBreakType(type);
+    try {
+      const result = await startBreak(myPerson.id, type);
+      if (!result.ok) {
+        setBreakError(result.error ?? "Could not start break.");
+      } else {
+        pushToast({ tone: "success", message: `${type} break started` });
+      }
+    } finally {
+      setPendingBreakType(null);
+    }
   };
 
   const handleEndBreak = async () => {
-    if (!activeBreak) return;
+    if (!activeBreak || endingBreak) return;
     setBreakError(null);
-    const result = await endBreak(activeBreak.id);
-    if (!result.ok) setBreakError(result.error ?? "Could not end break.");
+    setEndingBreak(true);
+    try {
+      const result = await endBreak(activeBreak.id);
+      if (!result.ok) {
+        setBreakError(result.error ?? "Could not end break.");
+      } else {
+        pushToast({ tone: "success", message: "Break ended" });
+      }
+    } finally {
+      setEndingBreak(false);
+    }
   };
 
   if (!myPerson) {
@@ -215,8 +252,10 @@ export default function EmployeeClockPage() {
                   <button
                     type="button"
                     onClick={handleEndBreak}
-                    className="mt-3 h-8 w-full rounded-lg border border-hairline bg-surface-2 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4"
+                    disabled={endingBreak}
+                    className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-hairline bg-surface-2 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
                   >
+                    {endingBreak && <Spinner className="size-3.5" />}
                     End break
                   </button>
                 </>
@@ -229,17 +268,19 @@ export default function EmployeeClockPage() {
                     <button
                       type="button"
                       onClick={() => handleStartBreak("meal")}
-                      disabled={mealCapped}
-                      className="flex min-h-8 flex-1 items-center justify-center rounded-lg border border-hairline bg-surface-2 px-2 py-1.5 text-center text-[13px] font-medium leading-tight text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={mealCapped || pendingBreakType !== null}
+                      className="flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-hairline bg-surface-2 px-2 py-1.5 text-center text-[13px] font-medium leading-tight text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
                     >
+                      {pendingBreakType === "meal" && <Spinner className="size-3.5" />}
                       Start meal break{mealCapped ? " (limit reached)" : ""}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleStartBreak("rest")}
-                      disabled={restCapped}
-                      className="flex min-h-8 flex-1 items-center justify-center rounded-lg border border-hairline bg-surface-2 px-2 py-1.5 text-center text-[13px] font-medium leading-tight text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={restCapped || pendingBreakType !== null}
+                      className="flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-hairline bg-surface-2 px-2 py-1.5 text-center text-[13px] font-medium leading-tight text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
                     >
+                      {pendingBreakType === "rest" && <Spinner className="size-3.5" />}
                       Start rest break{restCapped ? " (limit reached)" : ""}
                     </button>
                   </div>
@@ -282,8 +323,10 @@ export default function EmployeeClockPage() {
                 <button
                   type="button"
                   onClick={handleClockOut}
-                  className="mt-3 h-9 w-full rounded-lg bg-danger text-[13px] font-medium text-white transition-colors hover:bg-danger-hover"
+                  disabled={clockingOut}
+                  className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-danger text-[13px] font-medium text-white transition-colors hover:bg-danger-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
+                  {clockingOut && <Spinner className="size-3.5" />}
                   Save entry
                 </button>
               </div>
@@ -310,8 +353,10 @@ export default function EmployeeClockPage() {
             <button
               type="button"
               onClick={handleClockIn}
-              className="mt-5 h-9 rounded-lg bg-primary px-5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
+              disabled={clockingIn}
+              className="mt-5 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
+              {clockingIn && <Spinner className="size-3.5" />}
               Clock in
             </button>
           </>

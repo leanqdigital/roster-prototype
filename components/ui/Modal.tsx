@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangleIcon, XIcon } from "./icons";
+import { Spinner } from "./Spinner";
 
 interface ModalProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface ModalProps {
   onClose: () => void;
   children?: ReactNode;
   hideFooter?: boolean;
+  confirmLoading?: boolean;
 }
 
 const sizeClasses: Record<string, string> = {
@@ -34,6 +36,7 @@ export default function Modal({
   onClose,
   children,
   hideFooter = false,
+  confirmLoading = false,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -92,18 +95,21 @@ export default function Modal({
           <div className="flex shrink-0 justify-end gap-2 border-t border-hairline p-4">
             <button
               onClick={onClose}
-              className="h-8 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4"
+              disabled={confirmLoading}
+              className="h-8 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Cancel
             </button>
             <button
               onClick={onConfirm}
-              className={`h-8 rounded-lg px-3.5 text-[13px] font-medium text-white transition-colors ${
+              disabled={confirmLoading}
+              className={`flex h-8 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[13px] font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                 danger
                   ? "bg-danger hover:bg-danger-hover"
                   : "bg-primary hover:bg-primary-hover"
               }`}
             >
+              {confirmLoading && <Spinner className="size-3.5" />}
               {confirmLabel}
             </button>
           </div>

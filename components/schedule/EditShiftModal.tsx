@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import type { Shift } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -25,11 +26,14 @@ export default function EditShiftModal({
   const [durationMinutes, setDurationMinutes] = useState(String(shift.durationMinutes % 60));
   const [requiredCount, setRequiredCount] = useState(String(shift.requiredCount));
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { pushToast } = useToast();
 
   const durationTotal =
     parseInt(durationHours || "0", 10) * 60 + parseInt(durationMinutes || "0", 10);
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (!title.trim()) {
       setError("Title is required.");
       return;
@@ -48,16 +52,23 @@ export default function EditShiftModal({
       return;
     }
 
-    const result = await onUpdate(shift.id, {
-      title: title.trim(),
-      date,
-      startTime,
-      durationMinutes: durationTotal,
-      requiredCount: count,
-    });
+    setSubmitting(true);
+    try {
+      const result = await onUpdate(shift.id, {
+        title: title.trim(),
+        date,
+        startTime,
+        durationMinutes: durationTotal,
+        requiredCount: count,
+      });
 
-    if (!result.ok) {
-      setError(result.error ?? "Failed to update shift.");
+      if (!result.ok) {
+        setError(result.error ?? "Failed to update shift.");
+      } else {
+        pushToast({ tone: "success", message: "Shift updated" });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -70,6 +81,7 @@ export default function EditShiftModal({
       title="Edit shift"
       description={dateLabel}
       confirmLabel="Save changes"
+      confirmLoading={submitting}
       size="lg"
       onClose={onClose}
       onConfirm={handleSubmit}

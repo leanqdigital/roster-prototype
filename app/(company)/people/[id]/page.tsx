@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { Person, PersonRole } from "@/lib/company-data";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/company";
+import { useToast } from "@/lib/toast";
 import { formatDate, formatDateTime, initials, timeAgo } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import StatCard from "@/components/ui/StatCard";
@@ -71,6 +72,7 @@ export default function PersonDetailPage() {
     resendInvite,
     deletePerson,
   } = useCompany();
+  const { pushToast } = useToast();
 
   const person = people.find((p) => p.id === params.id);
 
@@ -160,6 +162,8 @@ export default function PersonDetailPage() {
     if (!result.ok) {
       setResendError(result.error ?? "Couldn't resend invite.");
       window.setTimeout(() => setResendError(null), 4000);
+    } else {
+      pushToast({ tone: "success", message: "Invite resent" });
     }
   };
 
@@ -598,6 +602,7 @@ export default function PersonDetailPage() {
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
           deletePerson(person.id);
+          pushToast({ tone: "success", message: "Person deleted" });
           router.push("/people");
         }}
       />

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAdmin } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 import { formatCount, formatDate } from "@/lib/format";
 import { CompanyAvatar, StatusBadge } from "@/components/ui/badges";
 import Menu from "@/components/ui/Menu";
@@ -34,7 +35,8 @@ const SORT_OPTIONS = [
 ];
 
 export default function CompaniesPage() {
-  const { companies, loading, pushToast } = useAdmin();
+  const { companies, loading } = useAdmin();
+  const { pushToast } = useToast();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("created");

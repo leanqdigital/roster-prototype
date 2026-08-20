@@ -17,6 +17,7 @@ import CreateShiftModal from "@/components/schedule/CreateShiftModal";
 import EditShiftModal from "@/components/schedule/EditShiftModal";
 import DeleteShiftDialog from "@/components/schedule/DeleteShiftDialog";
 import ShiftDetailsPanel from "@/components/schedule/ShiftDetailsPanel";
+import { useToast } from "@/lib/toast";
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -114,6 +115,7 @@ export default function SchedulePage() {
     deleteShifts,
     createShifts,
   } = useCompany();
+  const { pushToast } = useToast();
 
   const team = teams.find((t) => t.id === params.id);
   const teamPeople = useMemo(
@@ -287,6 +289,7 @@ export default function SchedulePage() {
     setPublishResult({ count: newShifts.length });
     setPublishPreview(null);
     setExcludedIds(new Set());
+    pushToast({ tone: "success", message: "Shifts published" });
   };
 
   const handleCreateShift = async (shiftData: {
@@ -321,6 +324,7 @@ export default function SchedulePage() {
   const handleDeleteShift = async (id: string) => {
     await deleteShift(id);
     setModal({ type: null });
+    pushToast({ tone: "success", message: "Shift deleted" });
   };
 
   const handleAssign = async (personId: string, override?: boolean) => {
@@ -357,6 +361,7 @@ export default function SchedulePage() {
     setSelectMode(false);
     setSelectedIds(new Set());
     setModal({ type: null });
+    pushToast({ tone: "success", message: "Shifts deleted" });
   };
 
   if (!team) {

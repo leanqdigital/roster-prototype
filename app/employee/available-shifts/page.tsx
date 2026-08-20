@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import type { Shift } from "@/lib/company-data";
 import { useEmployeeTeam } from "@/lib/employee-team";
+import { useToast } from "@/lib/toast";
 import { localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
@@ -80,6 +81,7 @@ export default function AvailableShiftsPage() {
     getAvailableShiftsForPerson,
   } = useCompany();
   const { myPerson, myTeams, selectedTeam, selectTeam } = useEmployeeTeam();
+  const { pushToast } = useToast();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [view, setView] = useState<"week" | "month">("week");
   const [monthCursor, setMonthCursor] = useState(() => {
@@ -192,6 +194,7 @@ export default function AvailableShiftsPage() {
     const result = await requestShift(selectedShift.id, myPerson.id);
     if (result.ok) {
       setRequestSuccess(true);
+      pushToast({ tone: "success", message: "Shift requested" });
       setTimeout(() => {
         setSelectedShift(null);
         setRequestSuccess(false);

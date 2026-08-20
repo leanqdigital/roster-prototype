@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { useToast } from "@/lib/toast";
 import LogoMark from "@/components/ui/Logo";
 import {
   ArrowLeftIcon,
@@ -14,6 +15,7 @@ import {
   MoonIcon,
   SunIcon,
 } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
 
 function PasswordField({
   id,
@@ -66,6 +68,7 @@ export default function RegisterForm() {
   const router = useRouter();
   const { registerAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { pushToast } = useToast();
 
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
@@ -108,6 +111,7 @@ export default function RegisterForm() {
     setSubmitting(false);
 
     if (result.ok) {
+      pushToast({ tone: "success", message: "Account created" });
       router.replace("/company/setup");
       return;
     }
@@ -239,8 +243,9 @@ export default function RegisterForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-5 h-9 w-full rounded-lg bg-primary text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-5 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
+            {submitting && <Spinner className="size-3.5" />}
             {submitting ? "Creating account…" : "Create Account"}
           </button>
 

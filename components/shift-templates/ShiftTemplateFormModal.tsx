@@ -6,7 +6,9 @@ import Modal from "@/components/ui/Modal";
 import type { ShiftTemplate } from "@/lib/company-data";
 import { DEFAULT_BREAK_POLICY, getBreakPolicy } from "@/lib/company";
 import type { BreakPolicy } from "@/lib/company";
+import { Spinner } from "@/components/ui/Spinner";
 import RecurrenceRuleInput from "./RecurrenceRuleInput";
+import { useToast } from "@/lib/toast";
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -82,6 +84,8 @@ export default function ShiftTemplateFormModal({
   const [applyStart, setApplyStart] = useState("");
   const [applyEnd, setApplyEnd] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { pushToast } = useToast();
 
   const computedEndTime = (() => {
     const [h, m] = startTime.split(":").map(Number);
@@ -93,24 +97,32 @@ export default function ShiftTemplateFormModal({
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
     setError(null);
-    const result = await onSave({
-      teamId: teamId || undefined,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      durationMinutes,
-      startTime,
-      requiredCount,
-      maxCount: maxCount ? parseInt(maxCount) : undefined,
-      isActive,
-      recurrenceRule: recurrenceRule || undefined,
-      breakPolicyOverride: overrideBreakPolicy ? breakPolicyFields : undefined,
-      applyToExisting,
-      applyStart: applyToExisting ? applyStart || undefined : undefined,
-      applyEnd: applyToExisting ? applyEnd || undefined : undefined,
-    });
-    if (!result.ok) {
-      setError(result.error ?? "Couldn't save — try again.");
+    setSubmitting(true);
+    try {
+      const result = await onSave({
+        teamId: teamId || undefined,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        durationMinutes,
+        startTime,
+        requiredCount,
+        maxCount: maxCount ? parseInt(maxCount) : undefined,
+        isActive,
+        recurrenceRule: recurrenceRule || undefined,
+        breakPolicyOverride: overrideBreakPolicy ? breakPolicyFields : undefined,
+        applyToExisting,
+        applyStart: applyToExisting ? applyStart || undefined : undefined,
+        applyEnd: applyToExisting ? applyEnd || undefined : undefined,
+      });
+      if (!result.ok) {
+        setError(result.error ?? "Couldn't save — try again.");
+      } else {
+        pushToast({ tone: "success", message: "Template saved" });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -482,14 +494,17 @@ export default function ShiftTemplateFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4"
+            disabled={submitting}
+            className="h-8 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="h-8 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
+            disabled={submitting}
+            className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
+            {submitting && <Spinner className="size-3.5" />}
             {isEdit ? "Save changes" : "Create template"}
           </button>
         </div>

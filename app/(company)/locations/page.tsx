@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import type { Location, LocationInput } from "@/lib/company-data";
+import { useToast } from "@/lib/toast";
 import Modal from "@/components/ui/Modal";
 import { MapPinIcon, PlusIcon } from "@/components/ui/icons";
 import LocationStats from "@/components/locations/LocationStats";
@@ -18,6 +19,7 @@ type LocationModalState =
 export default function LocationsPage() {
   const { locations, teams, people, createLocation, updateLocation, deleteLocation } =
     useCompany();
+  const { pushToast } = useToast();
   const [modal, setModal] = useState<LocationModalState>(null);
   const [confirmDelete, setConfirmDelete] = useState<Location | null>(null);
   const [saved, setSaved] = useState(false);
@@ -129,6 +131,7 @@ export default function LocationsPage() {
             deleteLocation(confirmDelete.id);
             setConfirmDelete(null);
             flashSaved();
+            pushToast({ tone: "success", message: "Location deleted" });
           }}
         />
       )}

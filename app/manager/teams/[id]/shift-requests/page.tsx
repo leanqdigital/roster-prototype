@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useCompany } from "@/lib/company-data";
 import { useManager } from "@/lib/manager-team";
+import { useToast } from "@/lib/toast";
 import { useTeamDetail } from "../team-detail-context";
 import { CalendarIcon } from "@/components/ui/icons";
 
@@ -17,6 +18,7 @@ export default function ManagerShiftRequestsPage() {
   const { team, teamPeople } = useTeamDetail();
   const { shiftAssignments, shifts, approveShiftRequest, denyShiftRequest } = useCompany();
   const { myPerson } = useManager();
+  const { pushToast } = useToast();
 
   const personById = useMemo(
     () => new Map(teamPeople.map((p) => [p.id, p])),
@@ -39,12 +41,14 @@ export default function ManagerShiftRequestsPage() {
     [shifts],
   );
 
-  const handleApprove = (assignmentId: string) => {
-    approveShiftRequest(assignmentId, myPerson?.name ?? "Manager");
+  const handleApprove = async (assignmentId: string) => {
+    await approveShiftRequest(assignmentId, myPerson?.name ?? "Manager");
+    pushToast({ tone: "success", message: "Request approved" });
   };
 
-  const handleDeny = (assignmentId: string) => {
-    denyShiftRequest(assignmentId, myPerson?.name ?? "Manager");
+  const handleDeny = async (assignmentId: string) => {
+    await denyShiftRequest(assignmentId, myPerson?.name ?? "Manager");
+    pushToast({ tone: "success", message: "Request denied" });
   };
 
   return (

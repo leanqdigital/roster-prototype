@@ -11,7 +11,9 @@ import type {
 } from "@/lib/company-data";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/company";
 import { ChevronDownIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
 import TeamMultiSelect from "./TeamMultiSelect";
+import { useToast } from "@/lib/toast";
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -57,22 +59,35 @@ export default function PersonFormModal({
     person?.timezone ?? DEFAULT_TIMEZONE,
   );
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { pushToast } = useToast();
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
     setError(null);
 
-    const result = await onSave({
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim() || undefined,
-      role,
-      teamIds,
-      locationId,
-      timezone,
-    });
-    if (!result.ok) {
-      setError(result.error ?? "Couldn't save — try again.");
+    setSubmitting(true);
+    try {
+      const result = await onSave({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        role,
+        teamIds,
+        locationId,
+        timezone,
+      });
+      if (!result.ok) {
+        setError(result.error ?? "Couldn't save — try again.");
+      } else {
+        pushToast({
+          tone: "success",
+          message: isEdit ? "Person saved" : "Invite sent",
+        });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -247,14 +262,17 @@ export default function PersonFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4"
+            disabled={submitting}
+            className="h-8 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="h-8 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
+            disabled={submitting}
+            className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
+            {submitting && <Spinner className="size-3.5" />}
             {isEdit ? "Save changes" : "Send invite"}
           </button>
         </div>

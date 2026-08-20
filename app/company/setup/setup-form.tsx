@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { DEFAULT_TIMEZONE, TIMEZONES, completeCompanySetup } from "@/lib/company";
+import { useToast } from "@/lib/toast";
 import LogoMark from "@/components/ui/Logo";
 import {
   ArrowLeftIcon,
@@ -13,11 +14,13 @@ import {
   MoonIcon,
   SunIcon,
 } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function SetupForm() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { pushToast } = useToast();
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -42,6 +45,7 @@ export default function SetupForm() {
       setError("Couldn't save setup — try again.");
       return;
     }
+    pushToast({ tone: "success", message: "Company set up" });
     router.replace("/dashboard");
   };
 
@@ -117,8 +121,9 @@ export default function SetupForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-5 h-9 w-full rounded-lg bg-primary text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-5 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
+            {submitting && <Spinner className="size-3.5" />}
             {submitting ? "Saving…" : "Continue to Dashboard"}
           </button>
         </form>

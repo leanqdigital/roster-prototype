@@ -9,6 +9,7 @@ import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
 import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import { AlertTriangleIcon } from "@/components/ui/icons";
 import { useTeamDetail } from "../team-detail-context";
+import { useToast } from "@/lib/toast";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -23,6 +24,7 @@ export default function ManagerTeamLeaveRequestsPage() {
   const { team, teamPeople } = useTeamDetail();
   const { leaveRequests, approveLeave, denyLeave, revertLeaveApproval, shifts, shiftAssignments } = useCompany();
   const { myPerson } = useManager();
+  const { pushToast } = useToast();
   const [denyTarget, setDenyTarget] = useState<LeaveRequest | null>(null);
   const [denyComment, setDenyComment] = useState("");
 
@@ -58,6 +60,7 @@ export default function ManagerTeamLeaveRequestsPage() {
 
   const handleApprove = (request: LeaveRequest) => {
     approveLeave(request.id, myPerson?.name ?? "Manager");
+    pushToast({ tone: "success", message: "Leave approved" });
   };
 
   const handleDeny = () => {
@@ -65,10 +68,12 @@ export default function ManagerTeamLeaveRequestsPage() {
     denyLeave(denyTarget.id, myPerson?.name ?? "Manager", denyComment);
     setDenyTarget(null);
     setDenyComment("");
+    pushToast({ tone: "success", message: "Leave denied" });
   };
 
   const handleUndo = (id: string) => {
     revertLeaveApproval(id, myPerson?.name ?? "Manager");
+    pushToast({ tone: "success", message: "Approval reverted" });
   };
 
   return (

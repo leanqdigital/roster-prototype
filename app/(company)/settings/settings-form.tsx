@@ -16,6 +16,7 @@ import {
 } from "@/lib/company";
 import type { BreakPolicy, CompanySettings } from "@/lib/company";
 import { COMPANY_COLORS } from "@/lib/data";
+import { useToast } from "@/lib/toast";
 import ChangePasswordCard from "@/components/settings/ChangePasswordCard";
 import {
   BuildingIcon,
@@ -28,6 +29,7 @@ import {
   SaveIcon,
   TrashIcon,
 } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -40,6 +42,7 @@ const LOGO_TYPES = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
 
 export default function SettingsForm() {
   const { user } = useAuth();
+  const { pushToast } = useToast();
   const [setup, setSetup] = useState<CompanySettings | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -51,6 +54,7 @@ export default function SettingsForm() {
   const [breakPolicy, setBreakPolicy] = useState<BreakPolicy>(DEFAULT_BREAK_POLICY);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -106,6 +110,7 @@ export default function SettingsForm() {
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
     setError(null);
 
     if (!name.trim()) {
@@ -113,21 +118,27 @@ export default function SettingsForm() {
       return;
     }
 
-    const result = await saveCompanySettings({
-      name: name.trim(),
-      timezone,
-      locale,
-      brandingColor: branding,
-      logoUrl: logoUrl || null,
-      breakPolicy,
-    });
-    if (!result) {
-      setError("Couldn't save changes.");
-      return;
+    setSubmitting(true);
+    try {
+      const result = await saveCompanySettings({
+        name: name.trim(),
+        timezone,
+        locale,
+        brandingColor: branding,
+        logoUrl: logoUrl || null,
+        breakPolicy,
+      });
+      if (!result) {
+        setError("Couldn't save changes.");
+        return;
+      }
+      setSetup(result);
+      setSaved(true);
+      pushToast({ tone: "success", message: "Settings saved" });
+      window.setTimeout(() => setSaved(false), 2600);
+    } finally {
+      setSubmitting(false);
     }
-    setSetup(result);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2600);
   };
 
   return (
@@ -152,10 +163,14 @@ export default function SettingsForm() {
           )}
           <button
             type="submit"
-            disabled={!dirty}
+            disabled={!dirty || submitting}
             className="flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <SaveIcon className="size-3.5" />
+            {submitting ? (
+              <Spinner className="size-3.5" />
+            ) : (
+              <SaveIcon className="size-3.5" />
+            )}
             Save changes
           </button>
         </div>

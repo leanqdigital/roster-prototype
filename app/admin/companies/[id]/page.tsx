@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAdmin } from "@/lib/store";
+import { useToast } from "@/lib/toast";
 import { formatCount, formatDate, formatDateTime, timeAgo } from "@/lib/format";
 import { CompanyAvatar, StatusBadge } from "@/components/ui/badges";
 import Modal from "@/components/ui/Modal";
@@ -36,7 +37,8 @@ const actionTone: Record<string, string> = {
 
 export default function CompanyDetailPage() {
   const params = useParams<{ id: string }>();
-  const { companies, audit, setCompanyStatus, deleteCompany, pushToast } = useAdmin();
+  const { companies, audit, setCompanyStatus, deleteCompany } = useAdmin();
+  const { pushToast } = useToast();
 
   const company = companies.find((c) => c.id === params.id);
   const [confirm, setConfirm] = useState<null | "suspend" | "activate" | "delete">(null);
