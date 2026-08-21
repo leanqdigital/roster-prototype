@@ -178,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: input.password,
       options: {
         data: { intended_role: "company_admin", company_name: company },
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
 
