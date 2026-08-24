@@ -49,6 +49,10 @@ export default function CreateShiftModal({
       setError("Date is required.");
       return;
     }
+    if (date < today) {
+      setError("Cannot create shift for a past date.");
+      return;
+    }
     if (durationTotal <= 0) {
       setError("Duration must be greater than 0.");
       return;
@@ -119,8 +123,9 @@ export default function CreateShiftModal({
           </label>
           <input
             type="date"
+            min={today}
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => { setDate(e.target.value); setError(null); }}
             className="h-9 w-full rounded-lg border border-hairline bg-surface-1 px-3 text-[13px] text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import EmployeeNav from "@/components/employee/EmployeeNav";
 import { CompanyProvider } from "@/lib/company-data";
+import CompanyLoadingGate from "@/components/company/CompanyLoadingGate";
 
 export default function EmployeeLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,7 +11,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
         <div className="flex min-h-screen bg-canvas">
           <EmployeeNav />
           <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-16 pt-8">
-            {children}
+            <CompanyLoadingGate>{children}</CompanyLoadingGate>
           </main>
         </div>
       </CompanyProvider>

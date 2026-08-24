@@ -2,6 +2,7 @@
 import { AdminProvider } from "@/lib/store";
 import AdminNav from "@/components/admin/AdminNav";
 import AuthGuard from "@/components/AuthGuard";
+import AdminLoadingGate from "@/components/admin/AdminLoadingGate";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,7 +11,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <div className="flex min-h-screen flex-col bg-canvas">
           <AdminNav />
           <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-16 pt-8">
-            {children}
+            <AdminLoadingGate>{children}</AdminLoadingGate>
           </main>
         </div>
       </AuthGuard>

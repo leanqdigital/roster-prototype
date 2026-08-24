@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { RRule } from "rrule";
+import { localDateStr } from "@/lib/format";
 import type { BreakPolicy } from "@/lib/company";
 import {
   evaluateBreakCompliance,
@@ -998,6 +999,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const trimmed = input.title.trim();
       if (!trimmed) return { ok: false, error: "Title is required." };
       if (!input.date) return { ok: false, error: "Date is required." };
+      if (input.date < localDateStr(new Date())) return { ok: false, error: "Cannot create shift for a past date." };
       if (input.durationMinutes <= 0) return { ok: false, error: "Duration must be greater than 0." };
       if (input.requiredCount < 1) return { ok: false, error: "Staff required must be at least 1." };
       try {
