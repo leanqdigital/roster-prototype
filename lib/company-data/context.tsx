@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { RRule } from "rrule";
-import { localDateStr } from "@/lib/format";
+import { formatDurationMinutes, localDateStr } from "@/lib/format";
 import type { BreakPolicy } from "@/lib/company";
 import {
   evaluateBreakCompliance,
@@ -433,7 +433,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           resource: "BreakEntry",
           resourceId: openBreak.id,
           teamId: person?.teamIds[0] ?? undefined,
-          message: `${person?.name ?? "Someone"}'s ${openBreak.type} break auto-closed on clock out (${durationMinutes}m)`,
+          message: `${person?.name ?? "Someone"}'s ${openBreak.type} break auto-closed on clock out (${formatDurationMinutes(durationMinutes)})`,
         });
         sessionBreaks = sessionBreaks.map((b) =>
           b.id === openBreak.id ? { ...b, breakOutAt: at, durationMinutes } : b,
@@ -570,7 +570,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           resource: "BreakEntry",
           resourceId: breakId,
           teamId: person?.teamIds[0] ?? undefined,
-          message: `${person?.name ?? "Someone"} ended a ${existing.type} break (${durationMinutes}m)${tooShort ? " — under minimum" : ""}`,
+          message: `${person?.name ?? "Someone"} ended a ${existing.type} break (${formatDurationMinutes(durationMinutes)})${tooShort ? " — under minimum" : ""}`,
         });
 
         return { ok: true };

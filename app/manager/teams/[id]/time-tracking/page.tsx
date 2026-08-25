@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { BreakEntry, ComplianceViolation } from "@/lib/company-data";
-import { formatDateTime, initials, localDateStr } from "@/lib/format";
+import { formatDateTime, formatDurationMinutes, initials, localDateStr } from "@/lib/format";
 import { ClockIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
 import ComplianceViolationBadge from "@/components/breaks/ComplianceViolationBadge";
@@ -234,7 +234,7 @@ function ManagerTeamTimeTrackingContent() {
                                   <BreakTypeBadge type={b.type} />
                                   <span className="text-[11px] text-ink-subtle">
                                     {b.durationMinutes !== undefined
-                                      ? `${b.durationMinutes}m`
+                                      ? formatDurationMinutes(b.durationMinutes)
                                       : "in progress"}
                                   </span>
                                 </span>

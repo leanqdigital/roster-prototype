@@ -4,6 +4,7 @@
 // settings from Supabase).
 
 import { getBreakPolicy } from "@/lib/company";
+import { formatDurationMinutes } from "@/lib/format";
 import type { BreakPolicy } from "@/lib/company";
 import type {
   BreakEntry,
@@ -130,7 +131,7 @@ export function evaluateBreakCompliance(
       violations.push({
         type: "meal_break_too_short",
         severity: "warning",
-        description: `Meal break(s) taken but none reached the ${policy.mealBreakMinMinutes}-minute minimum.`,
+        description: `Meal break(s) taken but none reached the ${formatDurationMinutes(policy.mealBreakMinMinutes)} minimum.`,
       });
     }
   }
@@ -147,7 +148,7 @@ export function evaluateBreakCompliance(
       violations.push({
         type: "rest_break_too_short",
         severity: "warning",
-        description: `Rest break(s) taken but none reached the ${policy.restBreakMinMinutes}-minute minimum.`,
+        description: `Rest break(s) taken but none reached the ${formatDurationMinutes(policy.restBreakMinMinutes)} minimum.`,
       });
     }
   }

@@ -16,6 +16,7 @@ import {
 } from "@/lib/company";
 import type { BreakPolicy, CompanySettings } from "@/lib/company";
 import { COMPANY_COLORS } from "@/lib/data";
+import { formatDurationMinutes } from "@/lib/format";
 import { useToast } from "@/lib/toast";
 import ChangePasswordCard from "@/components/settings/ChangePasswordCard";
 import {
@@ -39,6 +40,14 @@ const selectClass =
 
 const LOGO_MAX_BYTES = 1024 * 1024; // 1MB
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
+
+function minutesToHours(minutes: number): number {
+  return Math.round((minutes / 60) * 100) / 100;
+}
+
+function hoursToMinutes(hours: number): number {
+  return Math.round(hours * 60);
+}
 
 export default function SettingsForm() {
   const { user } = useAuth();
@@ -424,17 +433,18 @@ export default function SettingsForm() {
               <p className="text-xs font-semibold text-ink-muted">Meal breaks</p>
               <div>
                 <label className="block text-xs font-medium text-ink-muted">
-                  Trigger after (minutes)
+                  Trigger after (hours)
                 </label>
                 <input
                   type="number"
                   min={0}
+                  step={0.5}
                   disabled={!breakPolicy.enabled}
-                  value={breakPolicy.mealBreakThresholdMinutes}
+                  value={minutesToHours(breakPolicy.mealBreakThresholdMinutes)}
                   onChange={(e) =>
                     setBreakPolicy((p) => ({
                       ...p,
-                      mealBreakThresholdMinutes: Number(e.target.value) || 0,
+                      mealBreakThresholdMinutes: hoursToMinutes(Number(e.target.value) || 0),
                     }))
                   }
                   className={inputClass}
@@ -444,19 +454,24 @@ export default function SettingsForm() {
                 <label className="block text-xs font-medium text-ink-muted">
                   Minimum duration (minutes)
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  disabled={!breakPolicy.enabled}
-                  value={breakPolicy.mealBreakMinMinutes}
-                  onChange={(e) =>
-                    setBreakPolicy((p) => ({
-                      ...p,
-                      mealBreakMinMinutes: Number(e.target.value) || 0,
-                    }))
-                  }
-                  className={inputClass}
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={0}
+                    disabled={!breakPolicy.enabled}
+                    value={breakPolicy.mealBreakMinMinutes}
+                    onChange={(e) =>
+                      setBreakPolicy((p) => ({
+                        ...p,
+                        mealBreakMinMinutes: Number(e.target.value) || 0,
+                      }))
+                    }
+                    className={`${inputClass} pr-14`}
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-subtle">
+                    {formatDurationMinutes(breakPolicy.mealBreakMinMinutes)}
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-ink-muted">
@@ -482,17 +497,18 @@ export default function SettingsForm() {
               <p className="text-xs font-semibold text-ink-muted">Rest breaks</p>
               <div>
                 <label className="block text-xs font-medium text-ink-muted">
-                  Trigger after (minutes)
+                  Trigger after (hours)
                 </label>
                 <input
                   type="number"
                   min={0}
+                  step={0.5}
                   disabled={!breakPolicy.enabled}
-                  value={breakPolicy.restBreakThresholdMinutes}
+                  value={minutesToHours(breakPolicy.restBreakThresholdMinutes)}
                   onChange={(e) =>
                     setBreakPolicy((p) => ({
                       ...p,
-                      restBreakThresholdMinutes: Number(e.target.value) || 0,
+                      restBreakThresholdMinutes: hoursToMinutes(Number(e.target.value) || 0),
                     }))
                   }
                   className={inputClass}
@@ -502,19 +518,24 @@ export default function SettingsForm() {
                 <label className="block text-xs font-medium text-ink-muted">
                   Minimum duration (minutes)
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  disabled={!breakPolicy.enabled}
-                  value={breakPolicy.restBreakMinMinutes}
-                  onChange={(e) =>
-                    setBreakPolicy((p) => ({
-                      ...p,
-                      restBreakMinMinutes: Number(e.target.value) || 0,
-                    }))
-                  }
-                  className={inputClass}
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={0}
+                    disabled={!breakPolicy.enabled}
+                    value={breakPolicy.restBreakMinMinutes}
+                    onChange={(e) =>
+                      setBreakPolicy((p) => ({
+                        ...p,
+                        restBreakMinMinutes: Number(e.target.value) || 0,
+                      }))
+                    }
+                    className={`${inputClass} pr-14`}
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-subtle">
+                    {formatDurationMinutes(breakPolicy.restBreakMinMinutes)}
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-ink-muted">

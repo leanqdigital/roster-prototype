@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import type { BreakType } from "@/lib/company-data";
 import { DEFAULT_BREAK_POLICY } from "@/lib/company";
-import { formatDateTime, localDateStr } from "@/lib/format";
+import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
 import { AlertTriangleIcon, ClockIcon, UsersIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
@@ -298,7 +298,7 @@ export default function EmployeeClockPage() {
                       <BreakTypeBadge type={b.type} />
                       <span className="text-ink-subtle">
                         {b.durationMinutes !== undefined
-                          ? `${b.durationMinutes}m`
+                          ? formatDurationMinutes(b.durationMinutes)
                           : "in progress"}
                       </span>
                     </li>
