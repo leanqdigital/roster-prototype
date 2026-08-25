@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAdmin } from "@/lib/store";
 import { useToast } from "@/lib/toast";
 import { formatCount, formatDate } from "@/lib/format";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import { CompanyAvatar, StatusBadge } from "@/components/ui/badges";
 import Menu from "@/components/ui/Menu";
 import StatCard from "@/components/ui/StatCard";
@@ -83,13 +84,24 @@ export default function CompaniesPage() {
           </p>
         </div>
         <button
-          onClick={() =>
+          onClick={() => {
+            const csv = toCsv(filtered, [
+              { header: "Name", accessor: (c) => c.name },
+              { header: "Slug", accessor: (c) => c.slug },
+              { header: "Status", accessor: (c) => c.status },
+              { header: "Members", accessor: (c) => c.members },
+              { header: "Teams", accessor: (c) => c.teams },
+              { header: "Shifts / week", accessor: (c) => c.shifts },
+              { header: "Plan", accessor: (c) => c.plan },
+              { header: "Added", accessor: (c) => c.createdAt },
+            ]);
+            downloadCsv("company-registry.csv", csv);
             pushToast({
               tone: "neutral",
-              message: "Export started",
-              detail: "company-registry.csv will download shortly",
-            })
-          }
+              message: "Export complete",
+              detail: "company-registry.csv downloaded",
+            });
+          }}
           className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
         >
           <DownloadIcon className="size-3.5" />

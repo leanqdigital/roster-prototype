@@ -10,6 +10,8 @@ import ShiftCalendar from "@/components/schedule/ShiftCalendar";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
 import PublishPreviewModal from "@/components/schedule/PublishPreviewModal";
 import AssignShiftModal from "@/components/schedule/AssignShiftModal";
+import BulkAssignModal from "@/components/schedule/BulkAssignModal";
+import BulkCreateShiftModal from "@/components/schedule/BulkCreateShiftModal";
 import CreateShiftModal from "@/components/schedule/CreateShiftModal";
 import EditShiftModal from "@/components/schedule/EditShiftModal";
 import DeleteShiftDialog from "@/components/schedule/DeleteShiftDialog";
@@ -17,12 +19,14 @@ import ShiftDetailsPanel from "@/components/schedule/ShiftDetailsPanel";
 import {
   ArrowLeftIcon,
   CalendarIcon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
   PencilIcon,
   PlusIcon,
   TrashIcon,
+  UsersIcon,
 } from "@/components/ui/icons";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -50,6 +54,9 @@ function formatDateRange(start: Date): string {
 type ModalMode =
   | { type: null }
   | { type: "assign"; shift: Shift }
+  | { type: "bulk" }
+  | { type: "bulk-create" }
+  | { type: "bulk-delete" }
   | { type: "create"; defaultDate?: string }
   | { type: "edit"; shift: Shift }
   | { type: "delete"; shift: Shift }
@@ -77,10 +84,13 @@ export default function TeamScheduleView({
     previewShifts,
     publishShifts,
     createShift,
+    createShifts,
     updateShift,
     deleteShift,
+    deleteShifts,
     assignPerson,
     removeAssignment,
+    bulkAssign,
   } = useCompany();
 
   const teamPeople = useMemo(
@@ -95,6 +105,8 @@ export default function TeamScheduleView({
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [modal, setModal] = useState<ModalMode>({ type: null });
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [publishPreview, setPublishPreview] = useState<{
     planned: Shift[];
     skippedCount: number;
@@ -257,6 +269,28 @@ export default function TeamScheduleView({
     return visibleAssignments.filter((a) => a.shiftId === shiftId).length;
   };
 
+  const toggleSelect = (shift: Shift) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(shift.id)) next.delete(shift.id);
+      else next.add(shift.id);
+      return next;
+    });
+  };
+
+  const handleSelectMode = () => {
+    setSelectedIds(new Set());
+    setSelectMode(!selectMode);
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedIds.size === 0) return;
+    await deleteShifts([...selectedIds]);
+    setSelectMode(false);
+    setSelectedIds(new Set());
+    setModal({ type: null });
+  };
+
   return (
     <div>
       {showHeader && (
@@ -342,11 +376,56 @@ export default function TeamScheduleView({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
+            onClick={() => setModal({ type: "bulk-create" })}
+            className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+          >
+            <PlusIcon className="size-3.5" />
+            Bulk add
+          </button>
+          {view === "week" && selectMode ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setModal({ type: "bulk-delete" })}
+                disabled={selectedIds.size === 0}
+                className="flex h-8 items-center gap-2 rounded-lg border border-danger/30 bg-danger-weak px-3.5 text-[13px] font-medium text-danger transition-colors hover:bg-danger-weak/80 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <TrashIcon className="size-3.5" />
+                Delete selected ({selectedIds.size})
+              </button>
+              <button
+                type="button"
+                onClick={handleSelectMode}
+                className="h-8 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                Cancel
+              </button>
+            </>
+          ) : view === "week" ? (
+            <button
+              type="button"
+              onClick={handleSelectMode}
+              className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+            >
+              <CheckIcon className="size-3.5" />
+              Select
+            </button>
+          ) : null}
+          <button
+            type="button"
             onClick={() => setModal({ type: "create" })}
             className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
           >
             <PlusIcon className="size-3.5" />
             Add shift
+          </button>
+          <button
+            type="button"
+            onClick={() => setModal({ type: "bulk" })}
+            className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+          >
+            <UsersIcon className="size-3.5" />
+            Bulk assign
           </button>
           {activeTemplates.length > 0 && (
             <button
@@ -410,6 +489,9 @@ export default function TeamScheduleView({
               assignments={visibleAssignments}
               people={people}
               onClickShift={(shift) => setModal({ type: "assign", shift })}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
             />
           )}
         </div>
@@ -525,11 +607,50 @@ export default function TeamScheduleView({
         />
       )}
 
+      {modal.type === "bulk" && (
+        <BulkAssignModal
+          teamId={team.id}
+          teamPeople={teamPeople}
+          teamShifts={shifts.filter((s) => s.teamId === team.id)}
+          templates={activeTemplates}
+          onBulkAssign={bulkAssign}
+          onClose={() => setModal({ type: null })}
+        />
+      )}
+
       {modal.type === "create" && (
         <CreateShiftModal
           defaultDate={modal.defaultDate}
           onCreate={handleCreateShift}
           onClose={() => setModal({ type: null })}
+        />
+      )}
+
+      {modal.type === "bulk-create" && (
+        <BulkCreateShiftModal
+          defaultStartDate={
+            shifts.filter((s) => s.teamId === team.id).length > 0
+              ? shifts.filter((s) => s.teamId === team.id)[0].date
+              : undefined
+          }
+          onCreate={async (input) => {
+            const result = await createShifts({ teamId: team.id, ...input });
+            if (result.ok) setModal({ type: null });
+            return result;
+          }}
+          onClose={() => setModal({ type: null })}
+        />
+      )}
+
+      {modal.type === "bulk-delete" && (
+        <Modal
+          open
+          title={`Delete ${selectedIds.size} selected ${selectedIds.size === 1 ? "shift" : "shifts"}?`}
+          description="The shifts and their assignments will be permanently removed. This can't be undone."
+          tone="danger"
+          confirmLabel="Delete"
+          onClose={() => setModal({ type: null })}
+          onConfirm={handleBulkDeleteConfirm}
         />
       )}
 
