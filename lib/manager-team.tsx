@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type { ReactNode } from "react";
 import { useAuth } from "./auth";
 import { useCompany } from "./company-data";
 import type { Person, Team } from "./company-data";
@@ -25,7 +33,16 @@ function persistSelectedTeamId(id: string | null) {
   }
 }
 
-export function useManager() {
+interface ManagerContextValue {
+  myPerson: Person | null;
+  managedTeams: Team[];
+  selectedTeam: Team | null;
+  selectTeam: (id: string) => void;
+}
+
+const ManagerContext = createContext<ManagerContextValue | null>(null);
+
+export function ManagerProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { teams, people } = useCompany();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(
@@ -71,5 +88,16 @@ export function useManager() {
     [managedTeams, effectiveTeamId],
   );
 
-  return { myPerson, managedTeams, selectedTeam, selectTeam };
+  const value = useMemo(
+    () => ({ myPerson, managedTeams, selectedTeam, selectTeam }),
+    [myPerson, managedTeams, selectedTeam, selectTeam],
+  );
+
+  return <ManagerContext.Provider value={value}>{children}</ManagerContext.Provider>;
+}
+
+export function useManager(): ManagerContextValue {
+  const ctx = useContext(ManagerContext);
+  if (!ctx) throw new Error("useManager must be used within <ManagerProvider>");
+  return ctx;
 }
