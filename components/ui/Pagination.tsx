@@ -21,7 +21,7 @@ export default function Pagination({ page, pageCount, onPageChange }: Pagination
           type="button"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="flex h-7 items-center gap-1 rounded-lg border border-hairline bg-surface-3 px-2.5 text-xs font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-9 items-center gap-1 rounded-lg border border-hairline bg-surface-3 px-2.5 text-xs font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40 md:h-7"
         >
           <ArrowLeftIcon className="size-3.5" />
           Prev
@@ -30,7 +30,7 @@ export default function Pagination({ page, pageCount, onPageChange }: Pagination
           type="button"
           disabled={page >= pageCount}
           onClick={() => onPageChange(page + 1)}
-          className="flex h-7 items-center gap-1 rounded-lg border border-hairline bg-surface-3 px-2.5 text-xs font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-9 items-center gap-1 rounded-lg border border-hairline bg-surface-3 px-2.5 text-xs font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40 md:h-7"
         >
           Next
           <ArrowRightIcon className="size-3.5" />

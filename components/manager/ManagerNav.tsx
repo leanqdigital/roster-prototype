@@ -7,6 +7,9 @@ import { useAuth } from "@/lib/auth";
 import { useManager } from "@/lib/manager-team";
 import { useTheme } from "@/lib/theme";
 import LogoMark from "@/components/ui/Logo";
+import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
+import BottomTabBar from "@/components/ui/BottomTabBar";
+import Modal from "@/components/ui/Modal";
 import {
   ActivityIcon,
   BellIcon,
@@ -15,9 +18,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
-  MoonIcon,
   SettingsIcon,
-  SunIcon,
   UsersIcon,
 } from "@/components/ui/icons";
 
@@ -30,6 +31,7 @@ export default function ManagerNav() {
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [teamMenuOpen, setTeamMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const teamMenuRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +48,62 @@ export default function ManagerNav() {
         { href: `/manager/teams/${selectedTeam.id}/audit`, label: "Audit", icon: ActivityIcon },
       ]
     : [];
+
+  const teamTab = (label: string) => teamTabs.find((t) => t.label === label);
+  const mobileTabs = [
+    { href: "/manager/dashboard", label: "Dashboard", icon: ActivityIcon },
+    {
+      href: teamTab("Schedule")?.href ?? "#",
+      label: "Schedule",
+      icon: CalendarIcon,
+      disabled: !selectedTeam,
+    },
+    {
+      href: teamTab("Members")?.href ?? "#",
+      label: "Members",
+      icon: UsersIcon,
+      disabled: !selectedTeam,
+    },
+    {
+      href: teamTab("Time Tracking")?.href ?? "#",
+      label: "Time Tracking",
+      icon: ClockIcon,
+      disabled: !selectedTeam,
+    },
+  ];
+  const mobileMoreItems = [
+    {
+      href: teamTab("Templates")?.href ?? "#",
+      label: "Templates",
+      icon: ClockIcon,
+      disabled: !selectedTeam,
+    },
+    {
+      href: teamTab("Live")?.href ?? "#",
+      label: "Live",
+      icon: ActivityIcon,
+      disabled: !selectedTeam,
+    },
+    {
+      href: teamTab("Shift Requests")?.href ?? "#",
+      label: "Shift Requests",
+      icon: BellIcon,
+      disabled: !selectedTeam,
+    },
+    {
+      href: teamTab("Leave Requests")?.href ?? "#",
+      label: "Leave Requests",
+      icon: CalendarOffIcon,
+      disabled: !selectedTeam,
+    },
+    {
+      href: teamTab("Audit")?.href ?? "#",
+      label: "Audit",
+      icon: ActivityIcon,
+      disabled: !selectedTeam,
+    },
+    { href: "/manager/settings", label: "Settings", icon: SettingsIcon, disabled: false },
+  ];
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -90,17 +148,20 @@ export default function ManagerNav() {
   const switchTeam = (id: string) => {
     selectTeam(id);
     setTeamMenuOpen(false);
+    setMoreOpen(false);
     router.push("/manager/dashboard");
   };
 
   const handleSignOut = () => {
     setMenuOpen(false);
+    setMoreOpen(false);
     signOut();
     router.push("/");
   };
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2">
+    <>
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2 md:flex">
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-hairline px-5">
         <Link href="/manager/dashboard" className="flex min-w-0 items-center gap-2.5">
           <LogoMark className="size-7 shrink-0" />
@@ -255,43 +316,108 @@ export default function ManagerNav() {
               role="menu"
               className="absolute bottom-full left-0 z-50 mb-2 w-52 overflow-hidden rounded-lg border border-hairline bg-surface-2 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
             >
-              <div className="px-3 py-2.5">
-                <p className="truncate text-[13px] font-medium text-ink">
-                  {user?.name ?? "Team manager"}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-ink-muted">
-                  {user?.email ?? ""}
-                </p>
-              </div>
-              <div className="border-t border-hairline" />
-              <div className="p-1">
-                <button
-                  role="menuitem"
-                  onClick={toggleTheme}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-                >
-                  {theme === "dark" ? (
-                    <SunIcon className="size-4" />
-                  ) : (
-                    <MoonIcon className="size-4" />
-                  )}
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
-                </button>
-              </div>
-              <div className="border-t border-hairline" />
-              <div className="p-1">
-                <button
-                  role="menuitem"
-                  onClick={handleSignOut}
-                  className="w-full rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-danger transition-colors hover:bg-surface-3"
-                >
-                  Sign out
-                </button>
-              </div>
+              <NavUserMenuContent
+                name={user?.name ?? "Team manager"}
+                email={user?.email}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                onSignOut={handleSignOut}
+              />
             </div>
           )}
         </div>
       </div>
     </aside>
+
+    <BottomTabBar
+      items={mobileTabs}
+      isActive={(href) => {
+        if (href === "/manager/dashboard") return pathname === href;
+        if (selectedTeam && href === `/manager/teams/${selectedTeam.id}`) {
+          return pathname === href || pathname.startsWith(`${href}/people/`);
+        }
+        return pathname.startsWith(href);
+      }}
+      moreActive={moreOpen}
+      onMoreClick={() => setMoreOpen(true)}
+    />
+
+    <Modal
+      open={moreOpen}
+      title="More"
+      hideFooter
+      confirmLabel=""
+      onConfirm={() => setMoreOpen(false)}
+      onClose={() => setMoreOpen(false)}
+    >
+      <div>
+        <p className="px-1 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-subtle">
+          Team
+        </p>
+        {managedTeams.length === 0 ? (
+          <p className="px-1 py-2 text-xs text-ink-muted">No teams assigned yet</p>
+        ) : (
+          <div className="space-y-1">
+            {managedTeams.map((team) => {
+              const active = team.id === selectedTeam?.id;
+              return (
+                <button
+                  key={team.id}
+                  onClick={() => switchTeam(team.id)}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors hover:bg-surface-3 ${
+                    active ? "bg-primary-weak text-primary" : "text-ink"
+                  }`}
+                >
+                  <UsersIcon className="size-4 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{team.name}</span>
+                  {active && <CheckIcon className="size-4 shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <nav className="mt-4 space-y-1 border-t border-hairline pt-3">
+        {mobileMoreItems.map((item) =>
+          item.disabled ? (
+            <span
+              key={item.label}
+              title={`${item.label} — select a team first`}
+              className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium text-ink-subtle opacity-60"
+            >
+              <item.icon className="size-4" />
+              {item.label}
+            </span>
+          ) : (
+            <Link
+              key={item.label}
+              href={item.href}
+              onClick={() => setMoreOpen(false)}
+              aria-current={pathname.startsWith(item.href) ? "page" : undefined}
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                pathname.startsWith(item.href)
+                  ? "bg-primary-weak text-primary"
+                  : "text-ink-muted hover:bg-surface-3 hover:text-ink"
+              }`}
+            >
+              <item.icon className="size-4" />
+              {item.label}
+            </Link>
+          ),
+        )}
+      </nav>
+
+      <div className="mt-4 -mx-6 border-t border-hairline pt-1">
+        <NavUserMenuContent
+          name={user?.name ?? "Team manager"}
+          email={user?.email}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onSignOut={handleSignOut}
+        />
+      </div>
+    </Modal>
+    </>
   );
 }

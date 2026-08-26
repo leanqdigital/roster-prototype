@@ -79,7 +79,72 @@ export default function LocationTable({
         </div>
       ) : (
         <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
-          <div className="overflow-x-auto">
+          <ul className="divide-y divide-hairline md:hidden">
+            {paged.map((location) => (
+              <li key={location.id} className="space-y-2 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary-weak text-primary">
+                      <MapPinIcon className="size-3.5" />
+                    </span>
+                    <span className="truncate">{location.name}</span>
+                  </span>
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(location)}
+                      aria-label={`Edit ${location.name}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-ink"
+                    >
+                      <PencilIcon className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(location)}
+                      aria-label={`Delete ${location.name}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-danger"
+                    >
+                      <TrashIcon className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-ink-subtle">Description</dt>
+                  <dd className="text-right text-ink-muted">
+                    {location.description || "—"}
+                  </dd>
+                  <dt className="text-ink-subtle">Teams</dt>
+                  <dd className="text-right text-ink-muted">
+                    {teamCount.get(location.id) ?? 0}
+                  </dd>
+                  <dt className="text-ink-subtle">Peoples</dt>
+                  <dd className="text-right text-ink-muted">
+                    {peopleCount.get(location.id) ?? 0}
+                  </dd>
+                  <dt className="text-ink-subtle">Address</dt>
+                  <dd className="text-right text-ink-muted">
+                    {locationSummary(location) || "—"}
+                  </dd>
+                  <dt className="text-ink-subtle">Status</dt>
+                  <dd className="text-right">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium ${
+                        location.active
+                          ? "border-success/25 bg-success-weak text-success"
+                          : "border-hairline bg-surface-3 text-ink-subtle"
+                      }`}
+                    >
+                      <span
+                        className={`size-1.5 rounded-full ${location.active ? "bg-success" : "bg-ink-subtle"}`}
+                      />
+                      {location.active ? "Active" : "Inactive"}
+                    </span>
+                  </dd>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-hairline">

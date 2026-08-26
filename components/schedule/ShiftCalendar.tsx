@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Person, Shift, ShiftAssignment } from "@/lib/company-data";
 import { localDateStr } from "@/lib/format";
-import { AlertTriangleIcon } from "@/components/ui/icons";
+import {
+  AlertTriangleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@/components/ui/icons";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const FULL_DAY_NAMES = [
@@ -94,6 +98,10 @@ export default function ShiftCalendar({
 }: ShiftCalendarProps) {
   const days = useMemo(() => getWeekDays(weekStart), [weekStart]);
   const today = localDateStr(new Date());
+  const [activeDayIndex, setActiveDayIndex] = useState(() => {
+    const idx = days.findIndex((d) => dateKey(d) === today);
+    return idx >= 0 ? idx : 0;
+  });
 
   const personMap = useMemo(() => {
     const map = new Map<string, Person>();
@@ -157,9 +165,81 @@ export default function ShiftCalendar({
     return conflicts;
   }, [assignments, shifts]);
 
+  const renderShift = (shift: Shift) => {
+    const count = assignmentCountByShift.get(shift.id) ?? 0;
+    const assignedIds = assignedPersonIdsByShift.get(shift.id) ?? [];
+    const assignedNames = assignedIds
+      .map((id) => personMap.get(id)?.name)
+      .filter(Boolean)
+      .slice(0, 3);
+    const overflow = assignedIds.length - 3;
+    const isUnderstaffed = count < shift.requiredCount;
+    const hasConflict = conflictShiftIds.has(shift.id);
+    const isSelected = selectMode && selectedIds?.has(shift.id);
+
+    return (
+      <button
+        key={shift.id}
+        type="button"
+        onClick={() =>
+          selectMode ? onToggleSelect?.(shift) : onClickShift(shift)
+        }
+        className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+          isSelected
+            ? "border-primary bg-primary-weak hover:bg-primary-weak/80"
+            : isUnderstaffed
+              ? "border-warning/80 bg-warning-weak hover:bg-warning-weak/80"
+              : "border-hairline bg-surface-1 hover:bg-surface-3"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium text-ink">
+              {shift.title}
+            </p>
+            <p className="text-[11px] text-ink-subtle">
+              {shift.startTime} –{" "}
+              {getEndTime(shift.startTime, shift.durationMinutes)}
+              {" · "}
+              {formatDuration(shift.durationMinutes)}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {hasConflict && (
+              <span className="flex items-center gap-1 rounded-md border border-danger/30 bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-danger">
+                <AlertTriangleIcon className="size-3" />
+                Conflict
+              </span>
+            )}
+          </div>
+          <span
+            className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
+              isSelected
+                ? "border-primary/40 bg-surface-2 text-primary"
+                : isUnderstaffed
+                  ? "border-warning/30 bg-surface-2 text-warning"
+                  : "border-hairline bg-surface-2 text-ink-muted"
+            }`}
+          >
+            {selectMode ? (isSelected ? "✓" : "") : `${count}/${shift.requiredCount}`}
+          </span>
+        </div>
+        {assignedNames.length > 0 && !selectMode && (
+          <p className="mt-1 truncate text-[11px] text-ink-subtle">
+            {assignedNames.join(", ")}
+            {overflow > 0 && ` +${overflow}`}
+          </p>
+        )}
+      </button>
+    );
+  };
+
+  const activeDay = days[activeDayIndex] ?? days[0];
+  const activeDayShifts = shiftsByDate.get(dateKey(activeDay)) ?? [];
+
   return (
     <div className="overflow-hidden rounded-xl border border-hairline bg-surface-2">
-      <div className="overflow-x-auto">
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[700px] border-collapse">
           <thead>
             <tr className="border-b border-hairline">
@@ -215,90 +295,7 @@ export default function ShiftCalendar({
                       </p>
                     ) : (
                       <div className="space-y-1.5 py-1">
-                        {dayShifts.map((shift) => {
-                          const count =
-                            assignmentCountByShift.get(shift.id) ?? 0;
-                          const assignedIds =
-                            assignedPersonIdsByShift.get(shift.id) ?? [];
-                          const assignedNames = assignedIds
-                            .map((id) => personMap.get(id)?.name)
-                            .filter(Boolean)
-                            .slice(0, 3);
-                          const overflow = assignedIds.length - 3;
-                          const isUnderstaffed = count < shift.requiredCount;
-                          const hasConflict = conflictShiftIds.has(shift.id);
-                          const isSelected =
-                            selectMode && selectedIds?.has(shift.id);
-
-                          return (
-                            <button
-                              key={shift.id}
-                              type="button"
-                              className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
-                                isSelected
-                                  ? "border-primary bg-primary-weak hover:bg-primary-weak/80"
-                                  : isUnderstaffed
-                                    ? "border-warning/80 bg-warning-weak hover:bg-warning-weak/80"
-                                    : "border-hairline bg-surface-1 hover:bg-surface-3"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="truncate text-[13px] font-medium text-ink">
-                                    {shift.title}
-                                  </p>
-                                  <p className="text-[11px] text-ink-subtle">
-                                    {shift.startTime} –{" "}
-                                    {getEndTime(
-                                      shift.startTime,
-                                      shift.durationMinutes,
-                                    )}
-                                    {" · "}
-                                    {formatDuration(shift.durationMinutes)}
-                                  </p>
-                                </div>
-                                <div className="flex shrink-0 items-center gap-1">
-                                  {hasConflict && (
-                                    <span className="flex items-center gap-1 rounded-md border border-danger/30 bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-danger">
-                                      <AlertTriangleIcon className="size-3" />
-                                      Conflict
-                                    </span>
-                                  )}
-                                  <span
-                                    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
-                                      isUnderstaffed
-                                        ? "border-warning/30 bg-surface-2 text-warning"
-                                        : "border-hairline bg-surface-2 text-ink-muted"
-                                    }`}
-                                  >
-                                    {count}/{shift.requiredCount}
-                                  </span>
-                                </div>
-                                <span
-                                  className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
-                                    isSelected
-                                      ? "border-primary/40 bg-surface-2 text-primary"
-                                      : isUnderstaffed
-                                        ? "border-warning/30 bg-surface-2 text-warning"
-                                        : "border-hairline bg-surface-2 text-ink-muted"
-                                  }`}
-                                >
-                                  {selectMode
-                                    ? isSelected
-                                      ? "✓"
-                                      : ""
-                                    : `${count}/${shift.requiredCount}`}
-                                </span>
-                              </div>
-                              {assignedNames.length > 0 && !selectMode && (
-                                <p className="mt-1 truncate text-[11px] text-ink-subtle">
-                                  {assignedNames.join(", ")}
-                                  {overflow > 0 && ` +${overflow}`}
-                                </p>
-                              )}
-                            </button>
-                          );
-                        })}
+                        {dayShifts.map((shift) => renderShift(shift))}
                       </div>
                     )}
                   </td>
@@ -307,6 +304,71 @@ export default function ShiftCalendar({
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden">
+        <div className="flex items-center gap-1 border-b border-hairline px-2 py-2">
+          <button
+            type="button"
+            onClick={() => setActiveDayIndex((i) => Math.max(0, i - 1))}
+            disabled={activeDayIndex === 0}
+            aria-label="Previous day"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-ink-subtle transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronLeftIcon className="size-4" />
+          </button>
+          <div className="flex flex-1 gap-1 overflow-x-auto">
+            {days.map((day, i) => {
+              const key = dateKey(day);
+              const isToday = key === today;
+              const isActive = i === activeDayIndex;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveDayIndex(i)}
+                  className={`flex min-w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 ${
+                    isActive
+                      ? "bg-primary text-white"
+                      : isToday
+                        ? "bg-primary-weak text-primary"
+                        : "text-ink-muted hover:bg-surface-3"
+                  }`}
+                >
+                  <span className="text-[10px] font-medium uppercase tracking-wide">
+                    {DAY_NAMES[i]}
+                  </span>
+                  <span className="text-[13px] font-semibold">
+                    {day.getDate()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveDayIndex((i) => Math.min(6, i + 1))}
+            disabled={activeDayIndex === 6}
+            aria-label="Next day"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-ink-subtle transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronRightIcon className="size-4" />
+          </button>
+        </div>
+        <div className="px-3 py-2">
+          <p className="pb-1.5 text-[11px] font-medium text-ink-subtle">
+            {FULL_DAY_NAMES[activeDayIndex]}
+          </p>
+          {activeDayShifts.length === 0 ? (
+            <p className="py-6 text-center text-[11px] text-ink-faint">
+              No shifts
+            </p>
+          ) : (
+            <div className="space-y-1.5 pb-1">
+              {activeDayShifts.map((shift) => renderShift(shift))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

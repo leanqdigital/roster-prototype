@@ -6,11 +6,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import LogoMark from "@/components/ui/Logo";
-import { BellIcon, ChevronDownIcon, MoonIcon, SunIcon } from "@/components/ui/icons";
+import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
+import BottomTabBar from "@/components/ui/BottomTabBar";
+import Modal from "@/components/ui/Modal";
+import { BellIcon, ChevronDownIcon, ListIcon, ShieldIcon } from "@/components/ui/icons";
 
 const TABS = [
   { href: "/admin", label: "Companies" },
   { href: "/admin/audit-log", label: "Audit log" },
+];
+
+const MOBILE_TABS = [
+  { href: "/admin", label: "Companies", icon: ListIcon },
+  { href: "/admin/audit-log", label: "Audit log", icon: ShieldIcon },
 ];
 
 export default function AdminNav() {
@@ -19,6 +27,7 @@ export default function AdminNav() {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,11 +53,13 @@ export default function AdminNav() {
 
   const handleSignOut = () => {
     setMenuOpen(false);
+    setMoreOpen(false);
     signOut();
     router.push("/");
   };
 
   return (
+    <>
     <header className="sticky top-0 z-40 border-b border-hairline bg-canvas/85 backdrop-blur">
       <div className="flex h-13 items-center gap-6 px-6">
         <Link href="/admin" className="flex items-center gap-2.5">
@@ -58,7 +69,7 @@ export default function AdminNav() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1">
+        <nav className="hidden items-center gap-1 md:flex">
           {TABS.map((tab) => (
             <Link
               key={tab.href}
@@ -107,52 +118,57 @@ export default function AdminNav() {
                 role="menu"
                 className="absolute right-0 mt-2 w-60 overflow-hidden rounded-lg border border-hairline bg-surface-2 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
               >
-                <div className="px-3 py-2.5">
-                  <p className="truncate text-[13px] font-medium text-ink">
-                    {user?.name ?? "Super admin"}
-                  </p>
-                  <p className="mt-0.5 truncate text-xs text-ink-muted">
-                    {user?.email ?? "superadmin@gmail.com"}
-                  </p>
-                  {user?.company && (
-                    <p className="mt-0.5 truncate text-xs text-ink-subtle">
-                      {user.company}
-                    </p>
-                  )}
-                  <span className="mt-1.5 inline-block rounded-md border border-primary/30 bg-primary-weak px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
-                    {user?.role === "super_admin" ? "super admin" : "company admin"}
-                  </span>
-                </div>
-                <div className="border-t border-hairline" />
-                <div className="p-1">
-                  <button
-                    role="menuitem"
-                    onClick={toggleTheme}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-                  >
-                    {theme === "dark" ? (
-                      <SunIcon className="size-4" />
-                    ) : (
-                      <MoonIcon className="size-4" />
-                    )}
-                    {theme === "dark" ? "Light mode" : "Dark mode"}
-                  </button>
-                </div>
-                <div className="border-t border-hairline" />
-                <div className="p-1">
-                  <button
-                    role="menuitem"
-                    onClick={handleSignOut}
-                    className="w-full rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-danger transition-colors hover:bg-surface-3"
-                  >
-                    Sign out
-                  </button>
-                </div>
+                <NavUserMenuContent
+                  name={user?.name ?? "Super admin"}
+                  email={user?.email ?? "superadmin@gmail.com"}
+                  subtitle={user?.company}
+                  extra={
+                    <span className="mt-1.5 inline-block rounded-md border border-primary/30 bg-primary-weak px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                      {user?.role === "super_admin" ? "super admin" : "company admin"}
+                    </span>
+                  }
+                  theme={theme}
+                  onToggleTheme={toggleTheme}
+                  onSignOut={handleSignOut}
+                />
               </div>
             )}
           </div>
         </div>
       </div>
     </header>
+
+    <BottomTabBar
+      items={MOBILE_TABS}
+      isActive={isActive}
+      moreActive={moreOpen}
+      onMoreClick={() => setMoreOpen(true)}
+    />
+
+    <Modal
+      open={moreOpen}
+      title="More"
+      hideFooter
+      confirmLabel=""
+      onConfirm={() => setMoreOpen(false)}
+      onClose={() => setMoreOpen(false)}
+    >
+      <div className="mt-4 -mx-6 border-t border-hairline pt-1">
+        <NavUserMenuContent
+          name={user?.name ?? "Super admin"}
+          email={user?.email ?? "superadmin@gmail.com"}
+          subtitle={user?.company}
+          extra={
+            <span className="mt-1.5 inline-block rounded-md border border-primary/30 bg-primary-weak px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+              {user?.role === "super_admin" ? "super admin" : "company admin"}
+            </span>
+          }
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onSignOut={handleSignOut}
+        />
+      </div>
+    </Modal>
+    </>
   );
 }

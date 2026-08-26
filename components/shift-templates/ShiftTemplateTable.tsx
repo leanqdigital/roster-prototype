@@ -100,7 +100,91 @@ export default function ShiftTemplateTable({
         </div>
       ) : (
         <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
-          <div className="overflow-x-auto">
+          <ul className="divide-y divide-hairline md:hidden">
+            {paged.map((template) => (
+              <li key={template.id} className="space-y-2 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary-weak text-primary">
+                      <ClockIcon className="size-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium text-ink">
+                        {template.title}
+                      </p>
+                      {template.description && (
+                        <p className="truncate text-[11px] text-ink-subtle">
+                          {template.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onPreview(template)}
+                      aria-label={`Preview ${template.title}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-ink"
+                    >
+                      <EyeIcon className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onEdit(template)}
+                      aria-label={`Edit ${template.title}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-ink"
+                    >
+                      <PencilIcon className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(template)}
+                      aria-label={`Delete ${template.title}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-danger"
+                    >
+                      <TrashIcon className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  {showTeam && (
+                    <>
+                      <dt className="text-ink-subtle">Team</dt>
+                      <dd className="text-right text-ink-muted">
+                        {teamNameMap?.[template.teamId] ?? "—"}
+                      </dd>
+                    </>
+                  )}
+                  <dt className="text-ink-subtle">Time</dt>
+                  <dd className="text-right text-ink-muted">{template.startTime}</dd>
+                  <dt className="text-ink-subtle">Duration</dt>
+                  <dd className="text-right text-ink-muted">
+                    {formatDuration(template.durationMinutes)}
+                  </dd>
+                  <dt className="text-ink-subtle">Staff</dt>
+                  <dd className="text-right text-ink-muted">
+                    {template.requiredCount}
+                    {template.maxCount ? ` / ${template.maxCount}` : ""}
+                  </dd>
+                  <dt className="text-ink-subtle">Recurrence</dt>
+                  <dd className="truncate text-right text-ink-muted">
+                    {template.recurrenceRule
+                      ? describeRecurrence(template.recurrenceRule)
+                      : "—"}
+                  </dd>
+                  <dt className="text-ink-subtle">Active</dt>
+                  <dd className="text-right">
+                    <span
+                      className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${activeStyles[String(template.isActive)]}`}
+                    >
+                      {template.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </dd>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-hairline">

@@ -71,6 +71,54 @@ export default function ManagerShiftRequestsPage() {
         </div>
       ) : (
         <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
+          <ul className="divide-y divide-hairline md:hidden">
+            {pendingRequests.map((assignment) => {
+              const person = personById.get(assignment.personId);
+              const shift = shiftMap.get(assignment.shiftId);
+              if (!shift) return null;
+              return (
+                <li key={assignment.id} className="space-y-2 p-4">
+                  <p className="truncate text-[13px] font-medium text-ink">
+                    {person?.name ?? "Unknown"}
+                  </p>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-ink-subtle">Shift</dt>
+                    <dd className="text-ink-muted">{shift.title}</dd>
+                    <dt className="text-ink-subtle">Date & Time</dt>
+                    <dd className="text-ink-muted">
+                      {shift.date} · {formatTime(shift.startTime)}
+                    </dd>
+                    <dt className="text-ink-subtle">Requested</dt>
+                    <dd className="text-ink-muted">
+                      {new Date(assignment.requestedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </dd>
+                  </dl>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleApprove(assignment.id)}
+                      className="flex-1 rounded-md border border-success/25 bg-success-weak px-2.5 py-2 text-[12px] font-medium text-success transition-colors hover:bg-success/15"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeny(assignment.id)}
+                      className="flex-1 rounded-md border border-danger/25 bg-danger-weak px-2.5 py-2 text-[12px] font-medium text-danger transition-colors hover:bg-danger/15"
+                    >
+                      Deny
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-[13px]">
             <thead>
               <tr className="border-b border-hairline text-[11px] uppercase tracking-wide text-ink-subtle">
@@ -131,6 +179,7 @@ export default function ManagerShiftRequestsPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

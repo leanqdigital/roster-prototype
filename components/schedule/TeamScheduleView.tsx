@@ -351,7 +351,7 @@ export default function TeamScheduleView({
               ? formatDateRange(weekStart)
               : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
           </span>
-          <div className="ml-3 flex items-center rounded-lg border border-hairline bg-surface-2 p-0.5">
+          <div className="ml-3 hidden items-center rounded-lg border border-hairline bg-surface-2 p-0.5 md:flex">
             <button
               type="button"
               onClick={() => setView("week")}

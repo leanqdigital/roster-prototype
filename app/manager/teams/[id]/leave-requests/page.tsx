@@ -95,6 +95,89 @@ export default function ManagerTeamLeaveRequestsPage() {
         </div>
       ) : (
         <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
+          <ul className="divide-y divide-hairline md:hidden">
+            {teamLeave.map((l) => {
+              const person = personById.get(l.personId);
+              return (
+                <li key={l.id} className="space-y-2 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-[13px] font-medium text-ink">
+                      {person?.name ?? "Unknown"}
+                    </p>
+                    <LeaveStatusBadge status={l.status} />
+                  </div>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-ink-subtle">Type</dt>
+                    <dd className="text-ink-muted">{typeLabel(l.type)}</dd>
+                    <dt className="text-ink-subtle">Dates</dt>
+                    <dd className="flex items-center gap-1 text-ink-muted">
+                      {formatShortDate(l.startDate)} – {formatShortDate(l.endDate)}
+                      {conflictsByLeaveId.has(l.id) && (
+                        <AlertTriangleIcon
+                          className="size-3.5 shrink-0 text-warning"
+                          aria-label={`Shift conflict: ${conflictsByLeaveId
+                            .get(l.id)!
+                            .map((s) => `${s.title} (${s.date})`)
+                            .join(", ")}`}
+                        />
+                      )}
+                    </dd>
+                    {l.reviewedBy && (
+                      <>
+                        <dt className="text-ink-subtle">Reviewed by</dt>
+                        <dd className="text-ink-muted">{l.reviewedBy}</dd>
+                      </>
+                    )}
+                  </dl>
+                  {l.reason && (
+                    <p className="text-xs text-ink-muted">
+                      <span className="text-ink-subtle">Reason: </span>
+                      {l.reason}
+                    </p>
+                  )}
+                  {l.status === "denied" && l.reviewerComment && (
+                    <p className="text-[11px] text-danger">
+                      Comment: {l.reviewerComment}
+                    </p>
+                  )}
+                  {l.status === "pending" ? (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(l)}
+                        className="flex-1 rounded-md border border-success/25 bg-success-weak px-2.5 py-2 text-[12px] font-medium text-success transition-colors hover:bg-success/15"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDenyTarget(l);
+                          setDenyComment("");
+                        }}
+                        className="flex-1 rounded-md border border-danger/25 bg-danger-weak px-2.5 py-2 text-[12px] font-medium text-danger transition-colors hover:bg-danger/15"
+                      >
+                        Deny
+                      </button>
+                    </div>
+                  ) : (
+                    l.status === "approved" && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleUndo(l.id)}
+                          className="rounded-md border border-hairline bg-surface-3 px-2.5 py-1.5 text-[11px] font-medium text-ink-muted transition-colors hover:text-ink"
+                        >
+                          Undo
+                        </button>
+                      </div>
+                    )
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-[13px]">
             <thead>
               <tr className="border-b border-hairline text-[11px] uppercase tracking-wide text-ink-subtle">
@@ -196,6 +279,7 @@ export default function ManagerTeamLeaveRequestsPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

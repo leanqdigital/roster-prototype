@@ -12,7 +12,7 @@ export default function ManagerLayout({ children }: { children: ReactNode }) {
         <ManagerProvider>
           <div className="flex min-h-screen bg-canvas">
             <ManagerNav />
-            <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-16 pt-8">
+            <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-6 md:px-6 md:pb-16 md:pt-8">
               <CompanyLoadingGate>{children}</CompanyLoadingGate>
             </main>
           </div>

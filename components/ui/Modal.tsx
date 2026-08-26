@@ -52,7 +52,7 @@ export default function Modal({
   const danger = tone === "danger";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
       <button
         aria-label="Close dialog"
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
@@ -61,7 +61,7 @@ export default function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative flex max-h-[85vh] w-full flex-col ${sizeClasses[size]} rounded-xl border border-hairline bg-surface-2 shadow-[0_24px_64px_rgba(0,0,0,0.5)]`}
+        className={`relative flex max-h-[85vh] w-full flex-col ${sizeClasses[size]} rounded-t-2xl border border-hairline bg-surface-2 shadow-[0_24px_64px_rgba(0,0,0,0.5)] sm:rounded-xl`}
       >
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
           <div className="flex items-start gap-3">
@@ -96,14 +96,14 @@ export default function Modal({
             <button
               onClick={onClose}
               disabled={confirmLoading}
-              className="h-8 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-10 rounded-lg border border-hairline bg-surface-3 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8"
             >
               Cancel
             </button>
             <button
               onClick={onConfirm}
               disabled={confirmLoading}
-              className={`flex h-8 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[13px] font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              className={`flex h-10 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[13px] font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:h-8 ${
                 danger
                   ? "bg-danger hover:bg-danger-hover"
                   : "bg-primary hover:bg-primary-hover"

@@ -142,7 +142,7 @@ export default function ShiftTemplatesPage() {
       </div>
 
       {teams.length > 1 && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <label htmlFor="team-filter" className="text-xs font-medium text-ink-muted">
             Filter by team:
           </label>
@@ -150,7 +150,7 @@ export default function ShiftTemplatesPage() {
             id="team-filter"
             value={teamFilter}
             onChange={(e) => setTeamFilter(e.target.value)}
-            className="h-8 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] text-ink transition-colors focus:border-primary/60 focus:outline-none"
+            className="h-9 flex-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] text-ink transition-colors focus:border-primary/60 focus:outline-none sm:h-8 sm:flex-none"
           >
             <option value="all">All teams</option>
             {teams.map((t) => (

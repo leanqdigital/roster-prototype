@@ -7,6 +7,9 @@ import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import { useTheme } from "@/lib/theme";
 import LogoMark from "@/components/ui/Logo";
+import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
+import BottomTabBar from "@/components/ui/BottomTabBar";
+import Modal from "@/components/ui/Modal";
 import {
   BellIcon,
   CalendarIcon,
@@ -14,9 +17,7 @@ import {
   ChevronDownIcon,
   ClockIcon,
   ListIcon,
-  MoonIcon,
   SettingsIcon,
-  SunIcon,
   UsersIcon,
 } from "@/components/ui/icons";
 
@@ -28,6 +29,7 @@ export default function EmployeeNav() {
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const myPerson = useMemo(
     () =>
@@ -53,6 +55,10 @@ export default function EmployeeNav() {
     { href: "/employee/notifications", label: "Notifications", icon: BellIcon, badge: unreadCount },
   ];
 
+  const mobileTabHrefs = ["/employee/dashboard", "/employee/schedule", "/employee/clock", "/employee/available-shifts"];
+  const mobileTabs = navItems.filter((item) => mobileTabHrefs.includes(item.href));
+  const mobileMoreItems = navItems.filter((item) => !mobileTabHrefs.includes(item.href));
+
   useEffect(() => {
     if (!menuOpen) return;
     const onPointer = (e: MouseEvent) => {
@@ -73,12 +79,14 @@ export default function EmployeeNav() {
 
   const handleSignOut = () => {
     setMenuOpen(false);
+    setMoreOpen(false);
     signOut();
     router.push("/");
   };
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2">
+    <>
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2 md:flex">
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-hairline px-5">
         <Link href="/employee/dashboard" className="flex min-w-0 items-center gap-2.5">
           <LogoMark className="size-7 shrink-0" />
@@ -151,43 +159,71 @@ export default function EmployeeNav() {
               role="menu"
               className="absolute bottom-full left-0 z-50 mb-2 w-52 overflow-hidden rounded-lg border border-hairline bg-surface-2 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
             >
-              <div className="px-3 py-2.5">
-                <p className="truncate text-[13px] font-medium text-ink">
-                  {user?.name ?? "Employee"}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-ink-muted">
-                  {user?.email ?? ""}
-                </p>
-              </div>
-              <div className="border-t border-hairline" />
-              <div className="p-1">
-                <button
-                  role="menuitem"
-                  onClick={toggleTheme}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-                >
-                  {theme === "dark" ? (
-                    <SunIcon className="size-4" />
-                  ) : (
-                    <MoonIcon className="size-4" />
-                  )}
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
-                </button>
-              </div>
-              <div className="border-t border-hairline" />
-              <div className="p-1">
-                <button
-                  role="menuitem"
-                  onClick={handleSignOut}
-                  className="w-full rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-danger transition-colors hover:bg-surface-3"
-                >
-                  Sign out
-                </button>
-              </div>
+              <NavUserMenuContent
+                name={user?.name ?? "Employee"}
+                email={user?.email}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                onSignOut={handleSignOut}
+              />
             </div>
           )}
         </div>
       </div>
     </aside>
+
+    <BottomTabBar
+      items={mobileTabs}
+      isActive={(href) => pathname.startsWith(href)}
+      moreActive={moreOpen}
+      moreBadge={mobileMoreItems.some((item) => !!item.badge)}
+      onMoreClick={() => setMoreOpen(true)}
+    />
+
+    <Modal
+      open={moreOpen}
+      title="More"
+      hideFooter
+      confirmLabel=""
+      onConfirm={() => setMoreOpen(false)}
+      onClose={() => setMoreOpen(false)}
+    >
+      <nav className="mt-4 space-y-1">
+        {mobileMoreItems.map((item) => {
+          const active = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMoreOpen(false)}
+              aria-current={active ? "page" : undefined}
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                active
+                  ? "bg-primary-weak text-primary"
+                  : "text-ink-muted hover:bg-surface-3 hover:text-ink"
+              }`}
+            >
+              <item.icon className="size-4" />
+              <span className="flex-1">{item.label}</span>
+              {!!item.badge && (
+                <span className="flex min-w-4.5 shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-4 -mx-6 border-t border-hairline pt-1">
+        <NavUserMenuContent
+          name={user?.name ?? "Employee"}
+          email={user?.email}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onSignOut={handleSignOut}
+        />
+      </div>
+    </Modal>
+    </>
   );
 }

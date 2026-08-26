@@ -67,14 +67,14 @@ export default function CompanyLeaveRequestsPage() {
             {pendingCount} pending across the company
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <select
             value={teamFilter}
             onChange={(e) => {
               setTeamFilter(e.target.value);
               setPage(1);
             }}
-            className="h-8 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary"
+            className="h-9 flex-1 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary sm:h-8 sm:flex-none"
           >
             <option value="all">All teams</option>
             {teams.map((t) => (
@@ -92,7 +92,7 @@ export default function CompanyLeaveRequestsPage() {
                   setStatusFilter(f.value);
                   setPage(1);
                 }}
-                className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
+                className={`rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors sm:py-1 ${
                   statusFilter === f.value
                     ? "bg-primary text-white"
                     : "text-ink-muted hover:text-ink"
@@ -118,6 +118,50 @@ export default function CompanyLeaveRequestsPage() {
         </div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-hairline bg-surface-2">
+          <ul className="divide-y divide-hairline md:hidden">
+            {paged.map((l) => {
+              const person = personById.get(l.personId);
+              const personTeams = person
+                ? person.teamIds.map((id) => teamById.get(id)?.name).filter(Boolean)
+                : [];
+              return (
+                <li key={l.id} className="space-y-2 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-[13px] font-medium text-ink">
+                      {person?.name ?? "Unknown"}
+                    </p>
+                    <LeaveStatusBadge status={l.status} />
+                  </div>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-ink-subtle">Team</dt>
+                    <dd className="text-ink-muted">
+                      {personTeams.length > 0 ? personTeams.join(", ") : "—"}
+                    </dd>
+                    <dt className="text-ink-subtle">Type</dt>
+                    <dd className="text-ink-muted">{typeLabel(l.type)}</dd>
+                    <dt className="text-ink-subtle">Dates</dt>
+                    <dd className="text-ink-muted">
+                      {formatShortDate(l.startDate)} – {formatShortDate(l.endDate)}
+                    </dd>
+                    <dt className="text-ink-subtle">Reviewed by</dt>
+                    <dd className="text-ink-muted">{l.reviewedBy ?? "—"}</dd>
+                  </dl>
+                  {l.reason && (
+                    <p className="text-xs text-ink-muted">
+                      <span className="text-ink-subtle">Reason: </span>
+                      {l.reason}
+                    </p>
+                  )}
+                  {l.status === "denied" && l.reviewerComment && (
+                    <p className="text-[11px] text-danger">
+                      Comment: {l.reviewerComment}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-[13px]">
             <thead>
               <tr className="border-b border-hairline text-[11px] uppercase tracking-wide text-ink-subtle">
@@ -174,6 +218,7 @@ export default function CompanyLeaveRequestsPage() {
               })}
             </tbody>
           </table>
+          </div>
           <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Location, Person, Team } from "@/lib/company-data";
 import { initials } from "@/lib/format";
@@ -83,7 +83,7 @@ export default function PeopleList({
 
   return (
     <>
-      <div className="mt-6 flex items-center justify-between gap-3">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-ink-muted">
           {filtered.length} {filtered.length === 1 ? "person" : "people"}
           {teamFilter !== "all" && teamFilter !== "unassigned"
@@ -93,7 +93,7 @@ export default function PeopleList({
               : " in the company"}
         </p>
         <div className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-subtle" />
             <input
               value={search}
@@ -102,10 +102,10 @@ export default function PeopleList({
                 setPage(1);
               }}
               placeholder="Search people…"
-              className="h-8 w-48 rounded-lg border border-hairline bg-surface-2 pl-8 pr-3 text-xs text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none"
+              className="h-9 w-full rounded-lg border border-hairline bg-surface-2 pl-8 pr-3 text-xs text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none sm:h-8 sm:w-48"
             />
           </div>
-          <div className="relative">
+          <div className="relative shrink-0">
             <select
               value={teamFilter}
               onChange={(e) => {
@@ -113,7 +113,7 @@ export default function PeopleList({
                 setPage(1);
               }}
               aria-label="Filter by team"
-              className={selectClass}
+              className={`${selectClass} h-9 sm:h-auto`}
             >
               <option value="all">All teams</option>
               <option value="unassigned">Unassigned</option>
@@ -152,9 +152,83 @@ export default function PeopleList({
         <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
           <ul className="divide-y divide-hairline">
             {paged.map((person) => (
+              <Fragment key={person.id}>
+              <li className="space-y-2 p-4 md:hidden">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
+                    {initials(person.name) || "?"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/people/${person.id}`}
+                        className="truncate text-[13px] font-medium text-ink hover:text-primary"
+                      >
+                        {person.name}
+                      </Link>
+                      <PersonRoleBadge role={person.role} />
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-ink-muted">
+                      {person.email}
+                      {person.phone ? ` · ${person.phone}` : ""}
+                    </p>
+                  </div>
+                  <PersonStatusBadge status={person.status} />
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-ink-subtle">Team</dt>
+                  <dd className="text-right text-ink-muted">
+                    {person.teamIds.length > 0
+                      ? person.teamIds.map((id) => teamName.get(id) ?? "—").join(", ")
+                      : "Unassigned"}
+                  </dd>
+                  {person.locationId && (
+                    <>
+                      <dt className="text-ink-subtle">Location</dt>
+                      <dd className="text-right text-ink-muted">
+                        {locationName.get(person.locationId) ?? "—"}
+                      </dd>
+                    </>
+                  )}
+                  <dt className="text-ink-subtle">Timezone</dt>
+                  <dd className="text-right text-ink-muted">
+                    {person.timezone.replace(/_/g, " ")}
+                  </dd>
+                </dl>
+                <div className="flex justify-end gap-1">
+                  {person.status === "invited" && (
+                    <button
+                      type="button"
+                      onClick={() => onResend(person)}
+                      title="Resend invite"
+                      aria-label={`Resend invite to ${person.name}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-ink"
+                    >
+                      <MailIcon className="size-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onEdit(person)}
+                    title="Edit person"
+                    aria-label={`Edit ${person.name}`}
+                    className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-ink"
+                  >
+                    <PencilIcon className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(person)}
+                    title="Remove person"
+                    aria-label={`Remove ${person.name}`}
+                    className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-danger"
+                  >
+                    <TrashIcon className="size-3.5" />
+                  </button>
+                </div>
+              </li>
               <li
-                key={person.id}
-                className="group flex items-center gap-3 px-4 py-3"
+                className="group hidden items-center gap-3 px-4 py-3 md:flex"
               >
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
                   {initials(person.name) || "?"}
@@ -221,6 +295,7 @@ export default function PeopleList({
                   </button>
                 </div>
               </li>
+              </Fragment>
             ))}
           </ul>
           <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />

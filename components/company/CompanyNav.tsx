@@ -7,6 +7,9 @@ import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { DEFAULT_BRANDING, getCompanySettings } from "@/lib/company";
 import LogoMark from "@/components/ui/Logo";
+import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
+import BottomTabBar from "@/components/ui/BottomTabBar";
+import Modal from "@/components/ui/Modal";
 import {
   ActivityIcon,
   BellIcon,
@@ -16,9 +19,7 @@ import {
   ClockIcon,
   ListIcon,
   MapPinIcon,
-  MoonIcon,
   SettingsIcon,
-  SunIcon,
   UsersIcon,
 } from "@/components/ui/icons";
 
@@ -35,6 +36,10 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings", icon: SettingsIcon, soon: false },
 ];
 
+const MOBILE_TAB_HREFS = ["/dashboard", "/me/schedule", "/teams", "/people"];
+const MOBILE_TABS = NAV_ITEMS.filter((item) => MOBILE_TAB_HREFS.includes(item.href));
+const MOBILE_MORE_ITEMS = NAV_ITEMS.filter((item) => !MOBILE_TAB_HREFS.includes(item.href));
+
 export default function CompanyNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -43,6 +48,7 @@ export default function CompanyNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [brandingColor, setBrandingColor] = useState(DEFAULT_BRANDING);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +89,7 @@ export default function CompanyNav() {
 
   const handleSignOut = async () => {
     setMenuOpen(false);
+    setMoreOpen(false);
     await signOut();
     router.push("/");
   };
@@ -91,7 +98,8 @@ export default function CompanyNav() {
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2">
+    <>
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2 md:flex">
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-hairline px-5">
         <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5">
           <LogoMark className="size-7 shrink-0" />
@@ -181,48 +189,67 @@ export default function CompanyNav() {
               role="menu"
               className="absolute bottom-full left-0 z-50 mb-2 w-52 overflow-hidden rounded-lg border border-hairline bg-surface-2 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
             >
-              <div className="px-3 py-2.5">
-                <p className="truncate text-[13px] font-medium text-ink">
-                  {user?.name ?? "Company admin"}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-ink-muted">
-                  {user?.email ?? ""}
-                </p>
-                {user?.company && (
-                  <p className="mt-0.5 truncate text-xs text-ink-subtle">
-                    {user.company}
-                  </p>
-                )}
-              </div>
-              <div className="border-t border-hairline" />
-              <div className="p-1">
-                <button
-                  role="menuitem"
-                  onClick={toggleTheme}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-                >
-                  {theme === "dark" ? (
-                    <SunIcon className="size-4" />
-                  ) : (
-                    <MoonIcon className="size-4" />
-                  )}
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
-                </button>
-              </div>
-              <div className="border-t border-hairline" />
-              <div className="p-1">
-                <button
-                  role="menuitem"
-                  onClick={handleSignOut}
-                  className="w-full rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-danger transition-colors hover:bg-surface-3"
-                >
-                  Sign out
-                </button>
-              </div>
+              <NavUserMenuContent
+                name={user?.name ?? "Company admin"}
+                email={user?.email}
+                subtitle={user?.company}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                onSignOut={handleSignOut}
+              />
             </div>
           )}
         </div>
       </div>
     </aside>
+
+    <BottomTabBar
+      items={MOBILE_TABS}
+      isActive={isActive}
+      moreActive={moreOpen}
+      onMoreClick={() => setMoreOpen(true)}
+    />
+
+    <Modal
+      open={moreOpen}
+      title="More"
+      hideFooter
+      confirmLabel=""
+      onConfirm={() => setMoreOpen(false)}
+      onClose={() => setMoreOpen(false)}
+    >
+      <nav className="mt-4 space-y-1">
+        {MOBILE_MORE_ITEMS.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMoreOpen(false)}
+              aria-current={active ? "page" : undefined}
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                active
+                  ? "bg-primary-weak text-primary"
+                  : "text-ink-muted hover:bg-surface-3 hover:text-ink"
+              }`}
+            >
+              <item.icon className="size-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-4 -mx-6 border-t border-hairline pt-1">
+        <NavUserMenuContent
+          name={user?.name ?? "Company admin"}
+          email={user?.email}
+          subtitle={user?.company}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onSignOut={handleSignOut}
+        />
+      </div>
+    </Modal>
+    </>
   );
 }
