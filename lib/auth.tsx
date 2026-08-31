@@ -38,6 +38,7 @@ export type RegisterInput = {
   email: string;
   password: string;
   company: string;
+  name: string;
 };
 
 export type RegisterEmployeeInput = {
@@ -164,8 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerAdmin = useCallback(async (input: RegisterInput): Promise<SignInResult> => {
     const email = input.email.trim().toLowerCase();
     const company = input.company.trim();
+    const name = input.name.trim();
 
-    if (!email || !company || !input.password) {
+    if (!email || !company || !name || !input.password) {
       return { ok: false, error: "Please fill out every field." };
     }
     if (input.password.length < 8) {
@@ -177,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password: input.password,
       options: {
-        data: { intended_role: "company_admin", company_name: company },
+        data: { intended_role: "company_admin", company_name: company, name },
         emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });

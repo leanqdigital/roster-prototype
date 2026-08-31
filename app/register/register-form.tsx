@@ -72,6 +72,7 @@ export default function RegisterForm() {
 
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [password, setPassword] = useState("");
@@ -85,7 +86,7 @@ export default function RegisterForm() {
     e.preventDefault();
     setAccountError(null);
 
-    if (!email.trim() || !company.trim() || !password) {
+    if (!name.trim() || !email.trim() || !company.trim() || !password) {
       setAccountError("Please fill out every field.");
       return;
     }
@@ -107,6 +108,7 @@ export default function RegisterForm() {
       email: email.trim().toLowerCase(),
       password,
       company: company.trim(),
+      name: name.trim(),
     });
     setSubmitting(false);
 
@@ -182,6 +184,21 @@ export default function RegisterForm() {
           className="mt-6 rounded-xl border border-hairline bg-surface-2 p-6"
         >
           <div className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-xs font-medium text-ink-muted">
+                Your name
+              </label>
+              <input
+                id="name"
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Sarah Chen"
+                className="mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none"
+              />
+            </div>
+
             <div>
               <label htmlFor="company" className="block text-xs font-medium text-ink-muted">
                 Company name
