@@ -80,6 +80,7 @@ export default function TeamScheduleView({
     shifts,
     shiftAssignments,
     shiftTemplates,
+    leaveRequests,
     auditLog,
     previewShifts,
     publishShifts,
@@ -598,7 +599,9 @@ export default function TeamScheduleView({
       {modal.type === "assign" && (
         <AssignShiftModal
           shift={modal.shift}
+          shifts={shifts}
           assignments={shiftAssignments}
+          leaveRequests={leaveRequests}
           people={people}
           teamPeople={teamPeople}
           onAssign={handleAssign}

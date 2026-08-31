@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
-import type { Person, Shift, ShiftAssignment } from "@/lib/company-data";
+import type { LeaveRequest, Person, Shift, ShiftAssignment } from "@/lib/company-data";
+import { hasApprovedLeaveOn, shiftsOverlap } from "@/lib/company-data/business";
 import { AlertTriangleIcon, PlusIcon, TrashIcon, UsersIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/lib/toast";
@@ -25,7 +26,9 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 
 interface AssignShiftModalProps {
   shift: Shift;
+  shifts: Shift[];
   assignments: ShiftAssignment[];
+  leaveRequests: LeaveRequest[];
   people: Person[];
   teamPeople: Person[];
   onAssign: (
@@ -38,7 +41,9 @@ interface AssignShiftModalProps {
 
 export default function AssignShiftModal({
   shift,
+  shifts,
   assignments,
+  leaveRequests,
   people,
   teamPeople,
   onAssign,
@@ -114,9 +119,38 @@ export default function AssignShiftModal({
 
   const assignedSet = useMemo(() => new Set(assignedPersonIds), [assignedPersonIds]);
 
+  // People already booked on a shift that overlaps this one's date/time
+  // elsewhere — hidden here so a double-booking can't be created from the
+  // dropdown (backend still enforces this in assignPerson()).
+  const conflictedSet = useMemo(() => {
+    const shiftMap = new Map(shifts.map((s) => [s.id, s]));
+    const conflicted = new Set<string>();
+    for (const a of assignments) {
+      if (a.shiftId === shift.id) continue;
+      const other = shiftMap.get(a.shiftId);
+      if (other && shiftsOverlap(other, shift)) conflicted.add(a.personId);
+    }
+    return conflicted;
+  }, [assignments, shifts, shift]);
+
+  const onLeaveSet = useMemo(() => {
+    const onLeave = new Set<string>();
+    for (const p of teamPeople) {
+      if (hasApprovedLeaveOn(p.id, shift.date, leaveRequests)) onLeave.add(p.id);
+    }
+    return onLeave;
+  }, [teamPeople, shift.date, leaveRequests]);
+
   const availablePeople = useMemo(
-    () => teamPeople.filter((p) => !assignedSet.has(p.id) && (p.status === "active" || p.status === "invited")),
-    [teamPeople, assignedSet],
+    () =>
+      teamPeople.filter(
+        (p) =>
+          !assignedSet.has(p.id) &&
+          !conflictedSet.has(p.id) &&
+          !onLeaveSet.has(p.id) &&
+          (p.status === "active" || p.status === "invited"),
+      ),
+    [teamPeople, assignedSet, conflictedSet, onLeaveSet],
   );
 
   const shiftDate = new Date(shift.date + "T12:00:00");
