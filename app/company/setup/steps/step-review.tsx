@@ -8,11 +8,11 @@ import { useToast } from "@/lib/toast";
 import { Spinner } from "@/components/ui/Spinner";
 
 interface StepReviewProps {
-  timezone: string;
+  category: string;
   onBack: () => void;
 }
 
-export default function StepReview({ timezone, onBack }: StepReviewProps) {
+export default function StepReview({ category, onBack }: StepReviewProps) {
   const router = useRouter();
   const { locations, teams, people, shiftTemplates } = useCompany();
   const { pushToast } = useToast();
@@ -22,7 +22,7 @@ export default function StepReview({ timezone, onBack }: StepReviewProps) {
   const onFinish = async () => {
     setError(null);
     setSubmitting(true);
-    const result = await completeCompanySetup(timezone);
+    const result = await completeCompanySetup(category);
     setSubmitting(false);
     if (!result) {
       setError("Couldn't save setup — try again.");
@@ -41,8 +41,8 @@ export default function StepReview({ timezone, onBack }: StepReviewProps) {
 
       <ul className="mt-4 space-y-1.5">
         <li className="flex items-center justify-between rounded-lg border border-hairline bg-surface-3 px-3 py-2 text-[13px]">
-          <span className="text-ink-muted">Timezone</span>
-          <span className="font-medium text-ink">{timezone.replace(/_/g, " ")}</span>
+          <span className="text-ink-muted">Category</span>
+          <span className="font-medium text-ink">{category}</span>
         </li>
         <li className="flex items-center justify-between rounded-lg border border-hairline bg-surface-3 px-3 py-2 text-[13px]">
           <span className="text-ink-muted">Locations</span>

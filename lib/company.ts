@@ -52,6 +52,18 @@ export const LOCALES = [
   { value: "hi-IN", label: "हिन्दी (भारत)" },
 ];
 
+export const COMPANY_CATEGORIES = [
+  "Retail",
+  "Restaurant & Food Service",
+  "Healthcare",
+  "Hospitality & Hotels",
+  "Warehouse & Logistics",
+  "Construction",
+  "Professional Services",
+  "Education",
+  "Other",
+];
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -69,6 +81,7 @@ export interface CompanySettings {
   brandingColor: string;
   logoUrl: string | null;
   breakPolicy: BreakPolicy;
+  category: string | null;
   completedSetupAt: string | null;
 }
 
@@ -81,11 +94,12 @@ interface CompanyRow {
   branding_color: string | null;
   logo_url: string | null;
   break_policy: BreakPolicy;
+  category: string | null;
   completed_setup_at: string | null;
 }
 
 const COMPANY_COLUMNS =
-  "id, name, slug, timezone, locale, branding_color, logo_url, break_policy, completed_setup_at";
+  "id, name, slug, timezone, locale, branding_color, logo_url, break_policy, category, completed_setup_at";
 
 function fromRow(row: CompanyRow): CompanySettings {
   return {
@@ -97,6 +111,7 @@ function fromRow(row: CompanyRow): CompanySettings {
     brandingColor: row.branding_color ?? DEFAULT_BRANDING,
     logoUrl: row.logo_url,
     breakPolicy: row.break_policy ?? DEFAULT_BREAK_POLICY,
+    category: row.category,
     completedSetupAt: row.completed_setup_at,
   };
 }
@@ -130,6 +145,7 @@ export interface CompanySettingsPatch {
   brandingColor?: string;
   logoUrl?: string | null;
   breakPolicy?: BreakPolicy;
+  category?: string;
 }
 
 /**
@@ -150,6 +166,7 @@ export async function saveCompanySettings(
   if (patch.brandingColor !== undefined) update.branding_color = patch.brandingColor;
   if (patch.logoUrl !== undefined) update.logo_url = patch.logoUrl;
   if (patch.breakPolicy !== undefined) update.break_policy = patch.breakPolicy;
+  if (patch.category !== undefined) update.category = patch.category;
 
   const { data, error } = await supabase
     .from("companies")
@@ -167,9 +184,9 @@ export async function getBreakPolicy(): Promise<BreakPolicy> {
   return settings?.breakPolicy ?? DEFAULT_BREAK_POLICY;
 }
 
-/** Marks the company setup wizard complete and records the chosen timezone. */
+/** Marks the company setup wizard complete and records the chosen category. */
 export async function completeCompanySetup(
-  timezone: string,
+  category: string,
 ): Promise<CompanySettings | null> {
   const supabase = createClient();
   const id = await getOwnCompanyId(supabase);
@@ -177,7 +194,7 @@ export async function completeCompanySetup(
 
   const { data, error } = await supabase
     .from("companies")
-    .update({ timezone, completed_setup_at: new Date().toISOString() })
+    .update({ category, completed_setup_at: new Date().toISOString() })
     .eq("id", id)
     .select(COMPANY_COLUMNS)
     .single();

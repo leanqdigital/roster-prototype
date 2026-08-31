@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
-import { DEFAULT_TIMEZONE } from "@/lib/company";
+import { COMPANY_CATEGORIES } from "@/lib/company";
 import { CompanyProvider } from "@/lib/company-data";
 import CompanyLoadingGate from "@/components/company/CompanyLoadingGate";
 import LogoMark from "@/components/ui/Logo";
 import { ArrowLeftIcon, MoonIcon, SunIcon } from "@/components/ui/icons";
 import Stepper from "@/components/ui/Stepper";
-import StepTimezone from "./steps/step-timezone";
+import StepCategory from "./steps/step-category";
 import StepLocations from "./steps/step-locations";
 import StepTeams from "./steps/step-teams";
 import StepPeople from "./steps/step-people";
@@ -18,7 +18,7 @@ import StepTemplates from "./steps/step-templates";
 import StepReview from "./steps/step-review";
 
 const STEP_LABELS = [
-  "Timezone",
+  "Category",
   "Locations",
   "Teams",
   "People",
@@ -31,7 +31,7 @@ export default function SetupWizard() {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [step, setStep] = useState(1);
-  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
+  const [category, setCategory] = useState(COMPANY_CATEGORIES[0]);
 
   useEffect(() => {
     if (!user) router.replace("/login");
@@ -73,9 +73,9 @@ export default function SetupWizard() {
             <div className="mt-6">
               <CompanyLoadingGate>
                 {step === 1 && (
-                  <StepTimezone
-                    timezone={timezone}
-                    setTimezone={setTimezone}
+                  <StepCategory
+                    category={category}
+                    setCategory={setCategory}
                     onNext={() => setStep(2)}
                   />
                 )}
@@ -92,7 +92,7 @@ export default function SetupWizard() {
                   <StepTemplates onBack={() => setStep(4)} onNext={() => setStep(6)} />
                 )}
                 {step === 6 && (
-                  <StepReview timezone={timezone} onBack={() => setStep(5)} />
+                  <StepReview category={category} onBack={() => setStep(5)} />
                 )}
               </CompanyLoadingGate>
             </div>
