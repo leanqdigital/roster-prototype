@@ -424,10 +424,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <p className="mt-8 text-center text-[11px] text-ink-faint">
-        Static prototype · timezone {timezone.replace(/_/g, " ")} · data stored
-        in your browser
-      </p>
     </div>
   );
 }

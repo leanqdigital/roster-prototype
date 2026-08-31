@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { homeForRole, useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { useToast } from "@/lib/toast";
@@ -19,6 +19,7 @@ import { Spinner } from "@/components/ui/Spinner";
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, signIn } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { pushToast } = useToast();
@@ -28,8 +29,18 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Only follow same-origin relative paths — guards against open redirects
+  // via a crafted ?next= query param.
+  const nextParam = searchParams.get("next");
+  const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+    ? nextParam
+    : null;
+
+  const destination = (role: string | undefined) => safeNext ?? homeForRole(role);
+
   useEffect(() => {
-    if (user) router.replace(homeForRole(user.role));
+    if (user) router.replace(destination(user.role));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router]);
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -41,7 +52,7 @@ export default function LoginForm() {
       const result = await signIn(email, password);
       if (result.ok) {
         pushToast({ tone: "success", message: "Signed in" });
-        router.replace(homeForRole(result.user?.role));
+        router.replace(destination(result.user?.role));
       } else {
         setError(result.error ?? "Unable to sign in.");
       }

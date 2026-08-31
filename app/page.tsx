@@ -461,7 +461,7 @@ export default function HomePage() {
           </div>
           <div className="mt-12 flex flex-col gap-2 border-t border-hairline/60 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-ink-subtle">
-              © 2026 Roster. Static prototype — no data leaves your browser.
+              © 2026 Roster. All rights reserved.
             </p>
             <p className="font-mono text-[11px] text-ink-faint">
               roster-plan / prototype
