@@ -18,7 +18,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 const CATEGORY_ICONS: Record<string, IconComponent> = {
   Retail: ShoppingBagIcon,
-  "Restaurant & Food Service": UtensilsIcon,
+  Restaurant: UtensilsIcon,
   Healthcare: HeartPulseIcon,
   "Hospitality & Hotels": BedIcon,
   "Warehouse & Logistics": PackageIcon,
