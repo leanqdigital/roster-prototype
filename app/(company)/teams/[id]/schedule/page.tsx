@@ -9,7 +9,7 @@ import { formatDateTime, localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import ShiftCalendar from "@/components/schedule/ShiftCalendar";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
-import PublishPreviewModal from "@/components/schedule/PublishPreviewModal";
+import PublishShiftsModal from "@/components/schedule/PublishShiftsModal";
 import AssignShiftModal from "@/components/schedule/AssignShiftModal";
 import BulkAssignModal from "@/components/schedule/BulkAssignModal";
 import BulkCreateShiftModal from "@/components/schedule/BulkCreateShiftModal";
@@ -91,6 +91,7 @@ type ModalMode =
   | { type: "bulk" }
   | { type: "bulk-create" }
   | { type: "bulk-delete" }
+  | { type: "publish" }
   | { type: "create"; defaultDate?: string }
   | { type: "edit"; shift: Shift }
   | { type: "delete"; shift: Shift }
@@ -106,8 +107,6 @@ export default function SchedulePage() {
     shiftTemplates,
     leaveRequests,
     auditLog,
-    previewShifts,
-    publishShifts,
     createShift,
     updateShift,
     deleteShift,
@@ -139,13 +138,6 @@ export default function SchedulePage() {
   const [modal, setModal] = useState<ModalMode>({ type: null });
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [publishPreview, setPublishPreview] = useState<{
-    planned: Shift[];
-    skippedCount: number;
-    conflictIds: string[];
-    dateRange: string;
-  } | null>(null);
-  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [publishResult, setPublishResult] = useState<{ count: number } | null>(
     null,
   );
@@ -179,16 +171,6 @@ export default function SchedulePage() {
     end.setDate(last.getDate() + (endDay === 0 ? 0 : 7 - endDay));
     end.setHours(0, 0, 0, 0);
     return { start, end };
-  }, [view, weekStart, weekEnd, monthCursor]);
-
-  const publishRange = useMemo(() => {
-    if (view === "week") return { start: dstr(weekStart), end: dstr(weekEnd) };
-    const last = new Date(
-      monthCursor.getFullYear(),
-      monthCursor.getMonth() + 1,
-      0,
-    );
-    return { start: dstr(monthCursor), end: dstr(last) };
   }, [view, weekStart, weekEnd, monthCursor]);
 
   const visibleShifts = useMemo(() => {
@@ -255,48 +237,12 @@ export default function SchedulePage() {
     }
   };
 
-  const handlePublishClick = () => {
-    const result = previewShifts(
-      params.id,
-      publishRange.start,
-      publishRange.end,
-    );
-    setExcludedIds(new Set());
-    setPublishPreview({
-      ...result,
-      dateRange:
-        view === "week"
-          ? formatDateRange(weekStart)
-          : MONTH_NAMES[monthCursor.getMonth()] +
-            " " +
-            monthCursor.getFullYear(),
-    });
-  };
-
-  const handleToggleExclude = (id: string) => {
-    setExcludedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleConfirmPublish = async () => {
-    if (!publishPreview) return;
-    const toPublish = publishPreview.planned.filter(
-      (s) => !excludedIds.has(s.id),
-    );
-    const newShifts = await publishShifts(
-      params.id,
-      publishRange.start,
-      publishRange.end,
-      toPublish,
-    );
-    setPublishResult({ count: newShifts.length });
-    setPublishPreview(null);
-    setExcludedIds(new Set());
+  const handlePublishShifts = async (ids: string[]) => {
+    await Promise.all(ids.map((id) => updateShift(id, { status: "published" })));
+    setModal({ type: null });
+    setPublishResult({ count: ids.length });
     pushToast({ tone: "success", message: "Shifts published" });
+    return { count: ids.length };
   };
 
   const handleCreateShift = async (shiftData: {
@@ -548,10 +494,10 @@ export default function SchedulePage() {
             <UsersIcon className="size-3.5" />
             Bulk assign
           </button>
-          {activeTemplates.length > 0 && (
+          {teamShifts.some((s) => s.status === "draft") && (
             <button
               type="button"
-              onClick={() => handlePublishClick()}
+              onClick={() => setModal({ type: "publish" })}
               className="flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
             >
               <PlusIcon className="size-3.5" />
@@ -561,15 +507,14 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {activeTemplates.length === 0 && visibleShifts.length === 0 && (
+      {visibleShifts.length === 0 && (
         <div className="mt-8 rounded-xl border border-hairline bg-surface-2 p-10 text-center">
           <ClockIcon className="mx-auto size-11 text-ink-faint" />
           <h2 className="mt-3 text-[15px] font-semibold text-ink">
             No shifts this week
           </h2>
           <p className="mx-auto mt-1 max-w-sm text-xs text-ink-muted">
-            Create shift templates with recurrence rules, then publish them to
-            generate concrete shifts. Or add ad-hoc shifts manually.
+            Add a shift manually, bulk add across a date range, or apply a saved template.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
             <button
@@ -591,7 +536,7 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {(activeTemplates.length > 0 || visibleShifts.length > 0) && (
+      {visibleShifts.length > 0 && (
         <div className="mt-4">
           {view === "month" ? (
             <MonthCalendar
@@ -829,19 +774,13 @@ export default function SchedulePage() {
         />
       )}
 
-      {publishPreview && (
-        <PublishPreviewModal
-          planned={publishPreview.planned}
-          skippedCount={publishPreview.skippedCount}
-          conflictIds={publishPreview.conflictIds}
-          excludedIds={excludedIds}
-          onToggleExclude={handleToggleExclude}
-          dateRange={publishPreview.dateRange}
-          onPublish={handleConfirmPublish}
-          onClose={() => {
-            setPublishPreview(null);
-            setExcludedIds(new Set());
-          }}
+      {modal.type === "publish" && (
+        <PublishShiftsModal
+          shifts={teamShifts}
+          defaultStart={dstr(weekStart)}
+          defaultEnd={dstr(weekEnd)}
+          onPublish={handlePublishShifts}
+          onClose={() => setModal({ type: null })}
         />
       )}
 

@@ -8,7 +8,7 @@ import { formatDateTime, localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import ShiftCalendar from "@/components/schedule/ShiftCalendar";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
-import PublishPreviewModal from "@/components/schedule/PublishPreviewModal";
+import PublishShiftsModal from "@/components/schedule/PublishShiftsModal";
 import AssignShiftModal from "@/components/schedule/AssignShiftModal";
 import BulkAssignModal from "@/components/schedule/BulkAssignModal";
 import BulkCreateShiftModal from "@/components/schedule/BulkCreateShiftModal";
@@ -58,6 +58,7 @@ type ModalMode =
   | { type: "bulk" }
   | { type: "bulk-create" }
   | { type: "bulk-delete" }
+  | { type: "publish" }
   | { type: "create"; defaultDate?: string }
   | { type: "edit"; shift: Shift }
   | { type: "delete"; shift: Shift }
@@ -83,8 +84,6 @@ export default function TeamScheduleView({
     shiftTemplates,
     leaveRequests,
     auditLog,
-    previewShifts,
-    publishShifts,
     createShift,
     createShifts,
     updateShift,
@@ -109,13 +108,6 @@ export default function TeamScheduleView({
   const [modal, setModal] = useState<ModalMode>({ type: null });
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [publishPreview, setPublishPreview] = useState<{
-    planned: Shift[];
-    skippedCount: number;
-    conflictIds: string[];
-    dateRange: string;
-  } | null>(null);
-  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [publishResult, setPublishResult] = useState<{ count: number } | null>(null);
 
   const weekEnd = useMemo(() => {
@@ -201,32 +193,11 @@ export default function TeamScheduleView({
     }
   };
 
-  const handlePublishClick = () => {
-    const rangeStart = localDateStr(weekStart);
-    const rangeEnd = localDateStr(weekEnd);
-    const result = previewShifts(team.id, rangeStart, rangeEnd);
-    setExcludedIds(new Set());
-    setPublishPreview({ ...result, dateRange: formatDateRange(weekStart) });
-  };
-
-  const handleToggleExclude = (id: string) => {
-    setExcludedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleConfirmPublish = async () => {
-    if (!publishPreview) return;
-    const rangeStart = localDateStr(weekStart);
-    const rangeEnd = localDateStr(weekEnd);
-    const toPublish = publishPreview.planned.filter((s) => !excludedIds.has(s.id));
-    const newShifts = await publishShifts(team.id, rangeStart, rangeEnd, toPublish);
-    setPublishResult({ count: newShifts.length });
-    setPublishPreview(null);
-    setExcludedIds(new Set());
+  const handlePublishShifts = async (ids: string[]) => {
+    await Promise.all(ids.map((id) => updateShift(id, { status: "published" })));
+    setModal({ type: null });
+    setPublishResult({ count: ids.length });
+    return { count: ids.length };
   };
 
   const handleCreateShift = async (shiftData: {
@@ -457,10 +428,10 @@ export default function TeamScheduleView({
             <UsersIcon className="size-3.5" />
             Bulk assign
           </button>
-          {activeTemplates.length > 0 && (
+          {shifts.filter((s) => s.teamId === team.id).some((s) => s.status === "draft") && (
             <button
               type="button"
-              onClick={() => handlePublishClick()}
+              onClick={() => setModal({ type: "publish" })}
               className="flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
             >
               <PlusIcon className="size-3.5" />
@@ -470,13 +441,12 @@ export default function TeamScheduleView({
         </div>
       </div>
 
-      {activeTemplates.length === 0 && visibleShifts.length === 0 && (
+      {visibleShifts.length === 0 && (
         <div className="mt-8 rounded-xl border border-hairline bg-surface-2 p-10 text-center">
           <ClockIcon className="mx-auto size-11 text-ink-faint" />
           <h2 className="mt-3 text-[15px] font-semibold text-ink">No shifts this week</h2>
           <p className="mx-auto mt-1 max-w-sm text-xs text-ink-muted">
-            Create shift templates with recurrence rules, then publish them to generate concrete shifts.
-            Or add ad-hoc shifts manually.
+            Add a shift manually, bulk add across a date range, or apply a saved template.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
             <button
@@ -500,7 +470,7 @@ export default function TeamScheduleView({
         </div>
       )}
 
-      {(activeTemplates.length > 0 || visibleShifts.length > 0) && (
+      {visibleShifts.length > 0 && (
         <div className="mt-4">
           {view === "month" ? (
             <MonthCalendar
@@ -735,19 +705,13 @@ export default function TeamScheduleView({
         />
       )}
 
-      {publishPreview && (
-        <PublishPreviewModal
-          planned={publishPreview.planned}
-          skippedCount={publishPreview.skippedCount}
-          conflictIds={publishPreview.conflictIds}
-          excludedIds={excludedIds}
-          onToggleExclude={handleToggleExclude}
-          dateRange={publishPreview.dateRange}
-          onPublish={handleConfirmPublish}
-          onClose={() => {
-            setPublishPreview(null);
-            setExcludedIds(new Set());
-          }}
+      {modal.type === "publish" && (
+        <PublishShiftsModal
+          shifts={shifts.filter((s) => s.teamId === team.id)}
+          defaultStart={localDateStr(weekStart)}
+          defaultEnd={localDateStr(weekEnd)}
+          onPublish={handlePublishShifts}
+          onClose={() => setModal({ type: null })}
         />
       )}
 
