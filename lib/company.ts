@@ -54,7 +54,7 @@ export const LOCALES = [
 
 export const COMPANY_CATEGORIES = [
   "Retail",
-  "Restaurant & Food Service",
+  "Restaurant",
   "Healthcare",
   "Hospitality & Hotels",
   "Warehouse & Logistics",

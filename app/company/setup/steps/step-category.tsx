@@ -1,7 +1,32 @@
 "use client";
 
 import { COMPANY_CATEGORIES } from "@/lib/company";
-import { ChevronDownIcon } from "@/components/ui/icons";
+import {
+  ShoppingBagIcon,
+  UtensilsIcon,
+  HeartPulseIcon,
+  BedIcon,
+  PackageIcon,
+  HardHatIcon,
+  BriefcaseIcon,
+  GraduationCapIcon,
+  MoreIcon,
+} from "@/components/ui/icons";
+import type { ComponentType, SVGProps } from "react";
+
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+
+const CATEGORY_ICONS: Record<string, IconComponent> = {
+  Retail: ShoppingBagIcon,
+  "Restaurant & Food Service": UtensilsIcon,
+  Healthcare: HeartPulseIcon,
+  "Hospitality & Hotels": BedIcon,
+  "Warehouse & Logistics": PackageIcon,
+  Construction: HardHatIcon,
+  "Professional Services": BriefcaseIcon,
+  Education: GraduationCapIcon,
+  Other: MoreIcon,
+};
 
 interface StepCategoryProps {
   category: string;
@@ -13,23 +38,28 @@ export default function StepCategory({ category, setCategory, onNext }: StepCate
   return (
     <div>
       <div>
-        <label htmlFor="category" className="block text-xs font-medium text-ink-muted">
-          Company category
-        </label>
-        <div className="relative mt-1.5">
-          <select
-            id="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="h-9 w-full appearance-none rounded-lg border border-hairline bg-surface-3 px-3 pr-9 text-[13px] text-ink transition-colors focus:border-primary/60 focus:outline-none"
-          >
-            {COMPANY_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
+        <label className="block text-xs font-medium text-ink-muted">Company category</label>
+        <div className="mt-1.5 grid grid-cols-3 gap-2">
+          {COMPANY_CATEGORIES.map((c) => {
+            const Icon = CATEGORY_ICONS[c];
+            const selected = category === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(c)}
+                aria-pressed={selected}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 transition-colors ${
+                  selected
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-hairline bg-surface-3 text-ink-muted hover:bg-surface-4 hover:text-ink"
+                }`}
+              >
+                <Icon className="size-5" />
+                <span className="text-center text-[12px] font-medium">{c}</span>
+              </button>
+            );
+          })}
         </div>
         <p className="mt-1.5 text-[11px] text-ink-subtle">
           Helps us tailor defaults for your business.

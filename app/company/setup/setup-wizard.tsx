@@ -110,16 +110,26 @@ export default function SetupWizard() {
               <ArrowLeftIcon className="size-3.5" />
               Sign in with another account
             </button>
-            <button
-              type="button"
-              onClick={async () => {
-                await signOut();
-                router.push("/");
-              }}
-              className="shrink-0 text-xs text-ink-subtle transition-colors hover:text-ink-muted"
-            >
-              Cancel
-            </button>
+            {step === 1 ? (
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="shrink-0 text-xs text-ink-subtle transition-colors hover:text-ink-muted"
+              >
+                Skip
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut();
+                  router.push("/");
+                }}
+                className="shrink-0 text-xs text-ink-subtle transition-colors hover:text-ink-muted"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </div>
       </div>
