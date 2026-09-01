@@ -997,6 +997,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       startTime: string;
       durationMinutes: number;
       requiredCount: number;
+      templateId?: string;
     }): Promise<{ ok: boolean; error?: string; shift?: Shift }> => {
       const trimmed = input.title.trim();
       if (!trimmed) return { ok: false, error: "Title is required." };
@@ -1012,6 +1013,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           startTime: input.startTime,
           durationMinutes: input.durationMinutes,
           requiredCount: input.requiredCount,
+          templateId: input.templateId,
         });
         dispatch({ type: "createShift", shift });
         return { ok: true, shift };
@@ -1041,6 +1043,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       durationMinutes: number;
       requiredCount: number;
       dates: string[];
+      templateId?: string;
     }): Promise<{ ok: boolean; error?: string; count: number }> => {
       if (!input.title.trim()) return { ok: false, error: "Title is required.", count: 0 };
       if (input.dates.length === 0) return { ok: false, error: "Pick at least one date.", count: 0 };
@@ -1057,6 +1060,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             startTime: input.startTime,
             durationMinutes: input.durationMinutes,
             requiredCount: input.requiredCount,
+            templateId: input.templateId,
           })),
         );
         dispatch({ type: "addShifts", shifts: inserted });

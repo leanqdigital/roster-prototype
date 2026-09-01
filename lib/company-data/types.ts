@@ -367,6 +367,7 @@ export interface CompanyContextValue extends CompanyState {
     startTime: string;
     durationMinutes: number;
     requiredCount: number;
+    templateId?: string;
   }) => Promise<{ ok: boolean; error?: string; shift?: Shift }>;
   updateShift: (
     id: string,
@@ -386,6 +387,7 @@ export interface CompanyContextValue extends CompanyState {
     durationMinutes: number;
     requiredCount: number;
     dates: string[];
+    templateId?: string;
   }) => Promise<{ ok: boolean; error?: string; count: number }>;
   applyTemplateToShifts: (
     templateId: string,

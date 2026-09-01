@@ -212,6 +212,11 @@ export default function SchedulePage() {
     [shiftTemplates, params.id],
   );
 
+  const pickableTemplates = useMemo(
+    () => shiftTemplates.filter((t) => t.teamId === params.id && t.isActive),
+    [shiftTemplates, params.id],
+  );
+
   const teamAuditLog = useMemo(
     () => auditLog.filter((a) => a.teamId === params.id).slice(0, 8),
     [auditLog, params.id],
@@ -300,6 +305,7 @@ export default function SchedulePage() {
     startTime: string;
     durationMinutes: number;
     requiredCount: number;
+    templateId?: string;
   }) => {
     const result = await createShift({
       teamId: params.id,
@@ -308,6 +314,7 @@ export default function SchedulePage() {
       startTime: shiftData.startTime,
       durationMinutes: shiftData.durationMinutes,
       requiredCount: shiftData.requiredCount,
+      templateId: shiftData.templateId,
     });
     if (result.ok) {
       setModal({ type: null });
@@ -763,6 +770,7 @@ export default function SchedulePage() {
       {modal.type === "create" && (
         <CreateShiftModal
           defaultDate={modal.defaultDate}
+          templates={pickableTemplates}
           onCreate={handleCreateShift}
           onClose={() => setModal({ type: null })}
         />
@@ -773,6 +781,7 @@ export default function SchedulePage() {
           defaultStartDate={
             teamShifts.length > 0 ? teamShifts[0].date : undefined
           }
+          templates={pickableTemplates}
           onCreate={async (input) => {
             const result = await createShifts({ teamId: params.id, ...input });
             if (result.ok) setModal({ type: null });
