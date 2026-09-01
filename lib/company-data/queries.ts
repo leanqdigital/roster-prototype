@@ -54,6 +54,7 @@ import type {
   PersonStatus,
   Shift,
   ShiftAssignment,
+  ShiftStatus,
   ShiftTemplate,
   Team,
 } from "./types";
@@ -585,6 +586,7 @@ export interface InsertShiftInput {
   startTime: string;
   durationMinutes: number;
   requiredCount: number;
+  status?: ShiftStatus;
 }
 
 export async function insertShift(input: InsertShiftInput): Promise<Shift> {
@@ -600,6 +602,7 @@ export async function insertShift(input: InsertShiftInput): Promise<Shift> {
       start_time: input.startTime,
       duration_minutes: input.durationMinutes,
       required_count: input.requiredCount,
+      status: input.status ?? "draft",
     })
     .select(SHIFT_COLUMNS)
     .single();
@@ -622,6 +625,7 @@ export async function insertShiftsMany(inputs: InsertShiftInput[]): Promise<Shif
         start_time: input.startTime,
         duration_minutes: input.durationMinutes,
         required_count: input.requiredCount,
+        status: input.status ?? "draft",
       })),
     )
     .select(SHIFT_COLUMNS);
@@ -638,6 +642,7 @@ export async function updateShiftRow(id: string, patch: Partial<Shift>): Promise
   if (patch.startTime !== undefined) update.start_time = patch.startTime;
   if (patch.durationMinutes !== undefined) update.duration_minutes = patch.durationMinutes;
   if (patch.requiredCount !== undefined) update.required_count = patch.requiredCount;
+  if (patch.status !== undefined) update.status = patch.status;
   const { data, error } = await supabase
     .from("shifts")
     .update(update)

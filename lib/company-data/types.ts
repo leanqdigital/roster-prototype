@@ -126,6 +126,8 @@ export interface ShiftTemplate {
   updatedAt: string;
 }
 
+export type ShiftStatus = "draft" | "published";
+
 export interface Shift {
   id: string;
   teamId: string;
@@ -136,6 +138,7 @@ export interface Shift {
   startTime: string;
   durationMinutes: number;
   requiredCount: number;
+  status: ShiftStatus;
   createdAt: string;
 }
 

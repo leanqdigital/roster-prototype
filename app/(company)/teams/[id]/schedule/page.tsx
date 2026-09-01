@@ -26,6 +26,7 @@ import {
   ChevronRightIcon,
   ClockIcon,
   PencilIcon,
+  PlayIcon,
   PlusIcon,
   TrashIcon,
   UsersIcon,
@@ -365,6 +366,19 @@ export default function SchedulePage() {
     pushToast({ tone: "success", message: "Shifts deleted" });
   };
 
+  const selectedDraftIds = useMemo(
+    () => visibleShifts.filter((s) => selectedIds.has(s.id) && s.status === "draft").map((s) => s.id),
+    [visibleShifts, selectedIds],
+  );
+
+  const handleBulkPublish = async () => {
+    if (selectedDraftIds.length === 0) return;
+    await Promise.all(selectedDraftIds.map((id) => updateShift(id, { status: "published" })));
+    setSelectMode(false);
+    setSelectedIds(new Set());
+    pushToast({ tone: "success", message: "Shifts published" });
+  };
+
   if (!team) {
     return (
       <div className="flex flex-col items-center gap-3 py-24 text-center">
@@ -475,6 +489,15 @@ export default function SchedulePage() {
           </button>
           {view === "week" && selectMode ? (
             <>
+              <button
+                type="button"
+                onClick={handleBulkPublish}
+                disabled={selectedDraftIds.length === 0}
+                className="flex h-8 items-center gap-2 rounded-lg border border-success/30 bg-success-weak px-3.5 text-[13px] font-medium text-success transition-colors hover:bg-success-weak/80 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <PlayIcon className="size-3.5" />
+                Publish selected ({selectedDraftIds.length})
+              </button>
               <button
                 type="button"
                 onClick={() => setModal({ type: "bulk-delete" })}
@@ -605,15 +628,36 @@ export default function SchedulePage() {
                   className="flex items-center justify-between rounded-lg border border-hairline bg-surface-2 px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-ink">
-                      {shift.title}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-[13px] font-medium text-ink">
+                        {shift.title}
+                      </p>
+                      <span
+                        className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                          shift.status === "published"
+                            ? "border-success/25 bg-success-weak text-success"
+                            : "border-hairline bg-surface-3 text-ink-subtle"
+                        }`}
+                      >
+                        {shift.status}
+                      </span>
+                    </div>
                     <p className="text-[11px] text-ink-subtle">
                       {shift.date} {" \u00b7 "} {shift.startTime} {" \u00b7 "}{" "}
                       {count}/{shift.requiredCount} assigned
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
+                    {shift.status === "draft" && (
+                      <button
+                        type="button"
+                        onClick={() => updateShift(shift.id, { status: "published" })}
+                        className="rounded-md p-1.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-success"
+                        title="Publish shift — makes it visible to employees"
+                      >
+                        <PlayIcon className="size-3.5" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setModal({ type: "details", shift })}

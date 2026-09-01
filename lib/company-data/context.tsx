@@ -904,6 +904,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
               startTime: template.startTime,
               durationMinutes: template.durationMinutes,
               requiredCount: template.requiredCount,
+              status: "draft",
               createdAt: new Date().toISOString(),
             });
           }
@@ -952,6 +953,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           startTime: s.startTime,
           durationMinutes: s.durationMinutes,
           requiredCount: s.requiredCount,
+          status: "published",
         })),
       );
       dispatch({ type: "addShifts", shifts: inserted });
@@ -1370,7 +1372,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           .filter((a) => a.personId === personId && a.status !== "cancelled")
           .map((a) => a.shiftId),
       );
-      return state.shifts.filter((s) => s.teamId === teamId && !assignedShiftIds.has(s.id));
+      return state.shifts.filter(
+        (s) => s.teamId === teamId && s.status === "published" && !assignedShiftIds.has(s.id),
+      );
     },
     [state.shifts, state.shiftAssignments],
   );

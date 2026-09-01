@@ -64,9 +64,10 @@ function PasswordField({
   );
 }
 
-// Invitee lands here already authenticated — app/auth/callback/route.ts exchanges
-// the invite link's code for a session before redirecting here. This form only
-// needs to set the initial password.
+// Invitee lands here already authenticated — app/auth/confirm/confirm-form.tsx
+// verifies the invite's OTP token and hard-navigates here so the session is
+// already persisted by the time this form mounts. This form only needs to
+// set the initial password.
 export default function AcceptInviteForm() {
   const router = useRouter();
   const { user, ready } = useAuth();

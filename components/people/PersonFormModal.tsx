@@ -35,6 +35,8 @@ interface PersonFormModalProps {
   person: Person | null;
   teams: Team[];
   locations: Location[];
+  defaultTeamIds?: string[];
+  defaultLocationId?: string | null;
   onClose: () => void;
   onSave: (input: PersonFormInput) => Promise<{ ok: boolean; error?: string }>;
 }
@@ -43,6 +45,8 @@ export default function PersonFormModal({
   person,
   teams,
   locations,
+  defaultTeamIds,
+  defaultLocationId,
   onClose,
   onSave,
 }: PersonFormModalProps) {
@@ -51,9 +55,11 @@ export default function PersonFormModal({
   const [email, setEmail] = useState(person?.email ?? "");
   const [phone, setPhone] = useState(person?.phone ?? "");
   const [role, setRole] = useState<PersonRole>(person?.role ?? "employee");
-  const [teamIds, setTeamIds] = useState<string[]>(person?.teamIds ?? []);
+  const [teamIds, setTeamIds] = useState<string[]>(
+    person?.teamIds ?? defaultTeamIds ?? [],
+  );
   const [locationId, setLocationId] = useState<string | null>(
-    person?.locationId ?? null,
+    person?.locationId ?? defaultLocationId ?? null,
   );
   const [timezone, setTimezone] = useState(
     person?.timezone ?? DEFAULT_TIMEZONE,

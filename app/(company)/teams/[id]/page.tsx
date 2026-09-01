@@ -4,17 +4,21 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import { formatDate, initials } from "@/lib/format";
 import { useToast } from "@/lib/toast";
 import Modal from "@/components/ui/Modal";
 import StatCard from "@/components/ui/StatCard";
+import PersonFormModal from "@/components/people/PersonFormModal";
+import type { PersonFormInput } from "@/components/people/PersonFormModal";
 import {
   ArrowLeftIcon,
   CalendarIcon,
   ChevronDownIcon,
   ListIcon,
   PencilIcon,
+  PlusIcon,
   TrashIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -34,12 +38,15 @@ const statusStyles: Record<string, string> = {
 export default function TeamDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { teams, people, locations, updateTeam, deleteTeam } = useCompany();
+  const { teams, people, locations, updateTeam, deleteTeam, invitePerson } =
+    useCompany();
+  const { registerEmployee } = useAuth();
   const { pushToast } = useToast();
 
   const team = teams.find((t) => t.id === params.id);
 
   const [editing, setEditing] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -114,6 +121,36 @@ export default function TeamDetailPage() {
     setEditing(false);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2600);
+  };
+
+  const handleAddMember = async (
+    input: PersonFormInput,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const result = await invitePerson({
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      role: input.role,
+      teamIds: input.teamIds,
+      locationId: input.locationId,
+      timezone: input.timezone,
+    });
+    if (!result.ok || !result.personId) {
+      return { ok: false, error: result.error };
+    }
+    const account = await registerEmployee({
+      email: input.email.trim().toLowerCase(),
+      personId: result.personId,
+      name: input.name.trim(),
+      role: input.role,
+    });
+    if (!account.ok) {
+      return { ok: false, error: account.error };
+    }
+    setAddingMember(false);
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2600);
+    return { ok: true };
   };
 
   return (
@@ -235,9 +272,19 @@ export default function TeamDetailPage() {
         </div>
 
         <div className="overflow-hidden rounded-xl border border-hairline bg-surface-2">
-          <p className="border-b border-hairline px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-subtle">
-            Members
-          </p>
+          <div className="flex items-center justify-between gap-2 border-b border-hairline px-4 py-2.5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-subtle">
+              Members
+            </p>
+            <button
+              type="button"
+              onClick={() => setAddingMember(true)}
+              className="flex h-6.5 items-center gap-1 rounded-md border border-hairline bg-surface-3 px-2 text-[11px] font-medium text-ink transition-colors hover:bg-surface-4"
+            >
+              <PlusIcon className="size-3" />
+              Add member
+            </button>
+          </div>
           {members.length === 0 ? (
             <p className="px-4 py-10 text-center text-[13px] text-ink-muted">
               Nobody is on this team yet.
@@ -392,6 +439,18 @@ export default function TeamDetailPage() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {addingMember && (
+        <PersonFormModal
+          person={null}
+          teams={teams}
+          locations={locations}
+          defaultTeamIds={[team.id]}
+          defaultLocationId={team.locationId}
+          onClose={() => setAddingMember(false)}
+          onSave={handleAddMember}
+        />
       )}
 
       <Modal

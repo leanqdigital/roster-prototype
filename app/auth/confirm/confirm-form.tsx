@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "@/lib/theme";
 import { useToast } from "@/lib/toast";
@@ -17,7 +17,6 @@ import { Spinner } from "@/components/ui/Spinner";
 // the invitee ever opens it — scanners follow redirects but don't click
 // buttons or submit forms.
 export default function ConfirmInviteForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
   const { pushToast } = useToast();
@@ -46,7 +45,14 @@ export default function ConfirmInviteForm() {
       return;
     }
     pushToast({ tone: "success", message: "Invite confirmed" });
-    router.replace(next);
+    // Hard navigation, not router.replace(). verifyOtp() persists the session
+    // to cookies, but AuthProvider picks it up via an async onAuthStateChange
+    // -> loadAuthUser() chain (network round trip). A soft client-side nav
+    // lands on /accept-invite before that chain resolves, so it reads a
+    // stale user=null and shows "invite invalid or expired". A full reload
+    // forces AuthProvider to remount and read the already-persisted session
+    // cleanly, no race.
+    window.location.assign(next);
   };
 
   return (

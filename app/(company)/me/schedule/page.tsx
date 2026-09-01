@@ -128,7 +128,13 @@ export default function MySchedulePage() {
 
   const myShifts = useMemo(() => {
     return shifts
-      .filter((s) => myAssignmentShiftIds.has(s.id) && s.date >= viewStartStr && s.date <= viewEndStr)
+      .filter(
+        (s) =>
+          s.status === "published" &&
+          myAssignmentShiftIds.has(s.id) &&
+          s.date >= viewStartStr &&
+          s.date <= viewEndStr,
+      )
       .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
   }, [shifts, myAssignmentShiftIds, viewStartStr, viewEndStr]);
 

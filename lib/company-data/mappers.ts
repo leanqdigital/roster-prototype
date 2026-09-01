@@ -335,11 +335,12 @@ export interface ShiftRow {
   start_time: string;
   duration_minutes: number;
   required_count: number;
+  status: string;
   created_at: string;
 }
 
 export const SHIFT_COLUMNS =
-  "id, team_id, template_id, title, description, date, start_time, duration_minutes, required_count, created_at";
+  "id, team_id, template_id, title, description, date, start_time, duration_minutes, required_count, status, created_at";
 
 export function fromShiftRow(row: ShiftRow): Shift {
   return {
@@ -352,6 +353,7 @@ export function fromShiftRow(row: ShiftRow): Shift {
     startTime: row.start_time,
     durationMinutes: row.duration_minutes,
     requiredCount: row.required_count,
+    status: row.status === "published" ? "published" : "draft",
     createdAt: row.created_at,
   };
 }
