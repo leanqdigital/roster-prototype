@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
-import { COMPANY_CATEGORIES } from "@/lib/company";
+import { COMPANY_CATEGORIES, completeCompanySetup } from "@/lib/company";
 import { CompanyProvider } from "@/lib/company-data";
 import CompanyLoadingGate from "@/components/company/CompanyLoadingGate";
 import LogoMark from "@/components/ui/Logo";
@@ -113,7 +113,10 @@ export default function SetupWizard() {
             {step === 1 ? (
               <button
                 type="button"
-                onClick={() => router.push("/dashboard")}
+                onClick={async () => {
+                  await completeCompanySetup(category);
+                  router.push("/dashboard");
+                }}
                 className="shrink-0 text-xs text-ink-subtle transition-colors hover:text-ink-muted"
               >
                 Skip

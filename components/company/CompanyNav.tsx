@@ -48,12 +48,16 @@ export default function CompanyNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [brandingColor, setBrandingColor] = useState(DEFAULT_BRANDING);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     getCompanySettings().then((result) => {
-      if (!cancelled && result) setBrandingColor(result.brandingColor);
+      if (!cancelled && result) {
+        setBrandingColor(result.brandingColor);
+        setLogoUrl(result.logoUrl);
+      }
     });
     return () => {
       cancelled = true;
@@ -102,7 +106,16 @@ export default function CompanyNav() {
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2 md:flex">
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-hairline px-5">
         <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5">
-          <LogoMark className="size-7 shrink-0" />
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt=""
+              className="size-7 shrink-0 rounded-md object-contain"
+            />
+          ) : (
+            <LogoMark className="size-7 shrink-0" />
+          )}
           <span className="truncate text-[15px] font-semibold tracking-tight text-ink">
             Roster
             <span className="text-ink-subtle">

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import {
+  COMPANY_CATEGORIES,
   DEFAULT_BRANDING,
   DEFAULT_BREAK_POLICY,
   DEFAULT_LOCALE,
@@ -56,6 +57,7 @@ export default function SettingsForm() {
   const [loaded, setLoaded] = useState(false);
 
   const [name, setName] = useState(user?.company ?? "");
+  const [category, setCategory] = useState(COMPANY_CATEGORIES[0]);
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const [locale, setLocale] = useState(DEFAULT_LOCALE);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
@@ -74,6 +76,7 @@ export default function SettingsForm() {
       setLoaded(true);
       if (result) {
         setName(result.name);
+        setCategory(result.category ?? COMPANY_CATEGORIES[0]);
         setTimezone(result.timezone);
         setLocale(result.locale);
         setBranding(result.brandingColor);
@@ -89,6 +92,7 @@ export default function SettingsForm() {
   const dirty =
     loaded &&
     (name.trim() !== (setup?.name ?? "") ||
+      category !== (setup?.category ?? COMPANY_CATEGORIES[0]) ||
       timezone !== (setup?.timezone ?? DEFAULT_TIMEZONE) ||
       locale !== (setup?.locale ?? DEFAULT_LOCALE) ||
       branding !== (setup?.brandingColor ?? DEFAULT_BRANDING) ||
@@ -131,6 +135,7 @@ export default function SettingsForm() {
     try {
       const result = await saveCompanySettings({
         name: name.trim(),
+        category,
         timezone,
         locale,
         brandingColor: branding,
@@ -227,6 +232,30 @@ export default function SettingsForm() {
                 readOnly
                 className={`${inputClass} cursor-not-allowed opacity-60`}
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="category"
+                className="block text-xs font-medium text-ink-muted"
+              >
+                Company category
+              </label>
+              <div className="relative mt-1.5">
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={selectClass}
+                >
+                  {COMPANY_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
+              </div>
             </div>
           </div>
 
