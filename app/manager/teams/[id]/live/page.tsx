@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { BreakEntry, ClockEntry, Shift } from "@/lib/company-data";
 import { useCompany } from "@/lib/company-data";
-import { fetchBreakEntries, fetchClockEntries } from "@/lib/company-data/queries";
+import { useLiveEntries } from "@/lib/company-data/useLiveEntries";
 import { minutesBetween } from "@/lib/company-data/business";
 import { initials, localDateStr } from "@/lib/format";
 import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
 import { useTeamDetail } from "../team-detail-context";
-
-const POLL_INTERVAL_MS = 30000;
 
 function formatClockTime(time: string): string {
   const [h, m] = time.split(":").map(Number);
@@ -40,33 +38,12 @@ interface PersonLiveStatus {
 export default function ManagerTeamLivePage() {
   const { team, teamPeople } = useTeamDetail();
   const { shifts, shiftAssignments } = useCompany();
-  const [liveClockEntries, setLiveClockEntries] = useState<ClockEntry[]>([]);
-  const [liveBreakEntries, setLiveBreakEntries] = useState<BreakEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const [clocks, breaks] = await Promise.all([fetchClockEntries(), fetchBreakEntries()]);
-        if (!cancelled) {
-          setLiveClockEntries(clocks);
-          setLiveBreakEntries(breaks);
-          setLastUpdated(new Date());
-          setLoading(false);
-        }
-      } catch {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const {
+    clockEntries: liveClockEntries,
+    breakEntries: liveBreakEntries,
+    loading,
+    lastUpdated,
+  } = useLiveEntries();
 
   const today = localDateStr(new Date());
 
@@ -142,7 +119,7 @@ export default function ManagerTeamLivePage() {
         </div>
         <p className="text-[11px] text-ink-faint">
           {lastUpdated
-            ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · refreshes every 30s`
+            ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · live`
             : "Loading…"}
         </p>
       </div>
