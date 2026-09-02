@@ -66,3 +66,23 @@ export async function sendInviteEmail(
     `,
   });
 }
+
+export async function sendShiftReminderEmail(
+  to: string,
+  shift: { title: string; date: string; startTime: string },
+): Promise<{ ok: boolean; error?: string }> {
+  return sendMail({
+    to,
+    subject: "Your shift starts soon",
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2 style="margin-bottom: 8px;">Your shift starts soon</h2>
+        <p style="color: #555;">This is a reminder that you have an upcoming shift.</p>
+        <p style="margin-top: 16px; padding: 12px 16px; background: #f4f4f8; border-radius: 6px;">
+          <strong>${shift.title}</strong><br />
+          ${shift.date} at ${shift.startTime}
+        </p>
+      </div>
+    `,
+  });
+}
