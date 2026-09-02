@@ -6,12 +6,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { Person, PersonRole } from "@/lib/company-data";
-import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/company";
+import { DEFAULT_TIMEZONE } from "@/lib/company";
 import { useToast } from "@/lib/toast";
 import { formatDate, formatDateTime, initials, timeAgo } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import StatCard from "@/components/ui/StatCard";
 import TeamMultiSelect from "@/components/people/TeamMultiSelect";
+import TimezoneSelect from "@/components/ui/TimezoneSelect";
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -539,21 +540,12 @@ export default function PersonDetailPage() {
               >
                 Timezone
               </label>
-              <div className="relative">
-                <select
-                  id="person-timezone"
-                  value={form.timezone}
-                  onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-                  className={selectClass}
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz.replace(/_/g, " ")}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
-              </div>
+              <TimezoneSelect
+                id="person-timezone"
+                value={form.timezone}
+                onChange={(tz) => setForm({ ...form, timezone: tz })}
+                className="mt-1.5"
+              />
             </div>
 
             <div>

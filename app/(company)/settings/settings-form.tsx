@@ -10,7 +10,6 @@ import {
   DEFAULT_LOCALE,
   DEFAULT_TIMEZONE,
   LOCALES,
-  TIMEZONES,
   getCompanySettings,
   saveCompanySettings,
   slugify,
@@ -32,6 +31,7 @@ import {
   TrashIcon,
 } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
+import TimezoneSelect from "@/components/ui/TimezoneSelect";
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -328,21 +328,12 @@ export default function SettingsForm() {
               >
                 Timezone
               </label>
-              <div className="relative mt-1.5">
-                <select
-                  id="timezone"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className={selectClass}
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz.replace(/_/g, " ")}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
-              </div>
+              <TimezoneSelect
+                id="timezone"
+                value={timezone}
+                onChange={setTimezone}
+                className="mt-1.5"
+              />
               <p className="mt-1.5 text-[11px] text-ink-subtle">
                 Schedules display in this timezone by default.
               </p>

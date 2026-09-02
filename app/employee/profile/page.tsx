@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import { useEmployeeTeam } from "@/lib/employee-team";
-import { TIMEZONES } from "@/lib/company";
 import { CheckIcon, PencilIcon, UsersIcon } from "@/components/ui/icons";
+import TimezoneSelect from "@/components/ui/TimezoneSelect";
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -131,18 +131,12 @@ export default function EmployeeProfilePage() {
                 <label htmlFor="timezone" className="block text-[11px] font-medium uppercase tracking-wide text-ink-subtle">
                   Timezone
                 </label>
-                <select
+                <TimezoneSelect
                   id="timezone"
                   value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className={inputClass}
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz.replace(/_/g, " ")}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setTimezone}
+                  className="mt-1.5"
+                />
               </div>
               <div>
                 <label htmlFor="phone" className="block text-[11px] font-medium uppercase tracking-wide text-ink-subtle">

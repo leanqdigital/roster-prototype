@@ -9,7 +9,8 @@ import type {
   PersonRole,
   Team,
 } from "@/lib/company-data";
-import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/company";
+import { DEFAULT_TIMEZONE } from "@/lib/company";
+import TimezoneSelect from "@/components/ui/TimezoneSelect";
 import { ChevronDownIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import TeamMultiSelect from "./TeamMultiSelect";
@@ -241,21 +242,12 @@ export default function PersonFormModal({
           >
             Timezone
           </label>
-          <div className="relative">
-            <select
-              id="person-timezone"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              className={selectClass}
-            >
-              {TIMEZONES.map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
-            <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
-          </div>
+          <TimezoneSelect
+            id="person-timezone"
+            value={timezone}
+            onChange={setTimezone}
+            className="mt-1.5"
+          />
         </div>
 
         {error && (

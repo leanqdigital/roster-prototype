@@ -26,21 +26,10 @@ export const DEFAULT_TIMEZONE = "America/New_York";
 export const DEFAULT_LOCALE = "en-US";
 export const DEFAULT_BRANDING = "#5e6ad2";
 
-export const TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Asia/Dubai",
-  "Asia/Kolkata",
-  "Asia/Singapore",
-  "Asia/Tokyo",
-  "Australia/Sydney",
-  "Pacific/Auckland",
-];
+// All IANA timezone names supported by the runtime (~400+), instead of a
+// hand-picked subset. `Intl.supportedValuesOf` is native (Node 18+, all
+// evergreen browsers) — no external timezone data package needed.
+export const TIMEZONES = Intl.supportedValuesOf("timeZone");
 
 export const LOCALES = [
   { value: "en-US", label: "English (US)" },

@@ -7,9 +7,11 @@ import { fetchBreakEntries, fetchClockEntries } from "@/lib/company-data/queries
 import { minutesBetween } from "@/lib/company-data/business";
 import { initials, localDateStr } from "@/lib/format";
 import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
-import { useTeamDetail } from "../team-detail-context";
 
 const POLL_INTERVAL_MS = 30000;
+
+const selectClass =
+  "h-9 rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink transition-colors focus:border-primary/60 focus:outline-none";
 
 function formatClockTime(time: string): string {
   const [h, m] = time.split(":").map(Number);
@@ -37,9 +39,9 @@ interface PersonLiveStatus {
   notClockedInYet?: boolean;
 }
 
-export default function ManagerTeamLivePage() {
-  const { team, teamPeople } = useTeamDetail();
-  const { shifts, shiftAssignments } = useCompany();
+export default function CompanyLivePage() {
+  const { people, teams, shifts, shiftAssignments } = useCompany();
+  const [teamId, setTeamId] = useState<string>("");
   const [liveClockEntries, setLiveClockEntries] = useState<ClockEntry[]>([]);
   const [liveBreakEntries, setLiveBreakEntries] = useState<BreakEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,9 +72,14 @@ export default function ManagerTeamLivePage() {
 
   const today = localDateStr(new Date());
 
+  const scopedPeople = useMemo(
+    () => (teamId ? people.filter((p) => p.teamIds.includes(teamId)) : people),
+    [people, teamId],
+  );
+
   const statuses = useMemo<PersonLiveStatus[]>(() => {
     const now = new Date();
-    return teamPeople.map((person) => {
+    return scopedPeople.map((person) => {
       const entries = liveClockEntries
         .filter((c) => c.personId === person.id)
         .sort((a, b) => b.at.localeCompare(a.at));
@@ -80,7 +87,6 @@ export default function ManagerTeamLivePage() {
 
       const todayShift = shifts.find(
         (s) =>
-          s.teamId === team.id &&
           s.date === today &&
           shiftAssignments.some(
             (a) => a.shiftId === s.id && a.personId === person.id && a.status === "approved",
@@ -118,16 +124,16 @@ export default function ManagerTeamLivePage() {
         notClockedInYet,
       };
     });
-  }, [teamPeople, liveClockEntries, liveBreakEntries, shifts, shiftAssignments, team.id, today]);
+  }, [scopedPeople, liveClockEntries, liveBreakEntries, shifts, shiftAssignments, today]);
 
   const statusByPerson = useMemo(
     () => new Map(statuses.map((s) => [s.personId, s])),
     [statuses],
   );
 
-  const working = teamPeople.filter((p) => statusByPerson.get(p.id)?.status === "working");
-  const onBreak = teamPeople.filter((p) => statusByPerson.get(p.id)?.status === "break");
-  const notClockedIn = teamPeople.filter(
+  const working = scopedPeople.filter((p) => statusByPerson.get(p.id)?.status === "working");
+  const onBreak = scopedPeople.filter((p) => statusByPerson.get(p.id)?.status === "break");
+  const notClockedIn = scopedPeople.filter(
     (p) => statusByPerson.get(p.id)?.status === "not_clocked_in" && statusByPerson.get(p.id)?.todayShift,
   );
 
@@ -137,23 +143,37 @@ export default function ManagerTeamLivePage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Live</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Who&apos;s clocked in, on break, or running late right now for {team.name}.
+            Who&apos;s clocked in, on break, or running late right now across the company.
           </p>
         </div>
-        <p className="text-[11px] text-ink-faint">
-          {lastUpdated
-            ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · refreshes every 30s`
-            : "Loading…"}
-        </p>
+        <div className="flex items-center gap-3">
+          <select
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">All teams</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-ink-faint">
+            {lastUpdated
+              ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · refreshes every 30s`
+              : "Loading…"}
+          </p>
+        </div>
       </div>
 
       {loading ? (
         <div className="mt-6 rounded-xl border border-hairline bg-surface-2 p-10 text-center text-[13px] text-ink-muted">
           Loading live status…
         </div>
-      ) : teamPeople.length === 0 ? (
+      ) : scopedPeople.length === 0 ? (
         <div className="mt-6 rounded-xl border border-hairline bg-surface-2 p-10 text-center text-[13px] text-ink-muted">
-          Nobody is on this team yet.
+          Nobody to show here.
         </div>
       ) : (
         <div className="mt-6 space-y-6">
