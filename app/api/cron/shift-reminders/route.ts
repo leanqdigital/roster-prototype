@@ -50,6 +50,13 @@ export async function GET(req: Request) {
     return `${hh}:${mm}`;
   }
 
+  // On-time reminder window: 5 min before start through 10 min after.
+  // Late catch-up: if that window was missed (cron gap, transient error),
+  // still notify up to LATE_GRACE_MINUTES after start. Beyond that the
+  // reminder is stale — suppress the email but still mark it sent so the
+  // shift isn't retried forever.
+  const LATE_GRACE_MINUTES = 60;
+
   let processed = 0;
   let sent = 0;
 
@@ -76,20 +83,31 @@ export async function GET(req: Request) {
     if (assignees.length === 0) continue;
 
     const due: AssigneeRow[] = [];
-    let allExpired = true;
+    const late: AssigneeRow[] = [];
+    let anyPending = false; // not yet in window, and not stale — keep waiting
 
     for (const assignee of assignees) {
       const person = assignee.people!;
       const shiftStartUtc = zonedTimeToUtc(shift.date, shift.start_time, person.timezone || "UTC");
       const diffMin = (shiftStartUtc.getTime() - Date.now()) / 60000;
 
-      if (diffMin > -5) allExpired = false;
-      if (diffMin <= 10 && diffMin > -5) due.push(assignee);
+      if (diffMin > 10) {
+        anyPending = true; // too early — next run
+      } else if (diffMin > -5) {
+        due.push(assignee); // on-time window
+      } else if (diffMin > -LATE_GRACE_MINUTES) {
+        late.push(assignee); // missed window, still within grace period
+      }
+      // else: more than LATE_GRACE_MINUTES past start — too stale, skip
     }
 
-    if (due.length === 0 && !allExpired) continue;
+    if (due.length === 0 && late.length === 0) {
+      if (anyPending) continue; // nobody due yet, wait for a later run
+      // everyone is either already handled elsewhere or too stale — mark
+      // sent below without emailing, so this shift stops being reprocessed
+    }
 
-    const toNotify = due.length > 0 ? due : assignees;
+    const toNotify = [...due, ...late];
 
     for (const assignee of toNotify) {
       const person = assignee.people!;
