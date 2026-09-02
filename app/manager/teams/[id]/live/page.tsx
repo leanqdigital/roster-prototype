@@ -1,28 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { BreakEntry, ClockEntry, Shift } from "@/lib/company-data";
 import { useCompany } from "@/lib/company-data";
-import {
-  fetchBreakEntries,
-  fetchClockEntries,
-} from "@/lib/company-data/queries";
-import {
-  resolvePunctuality,
-  type Punctuality,
-} from "@/lib/company-data/business";
+import { useLiveEntries } from "@/lib/company-data/useLiveEntries";
+import { minutesBetween } from "@/lib/company-data/business";
 import { initials, localDateStr } from "@/lib/format";
 import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
-import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import { useTeamDetail } from "../team-detail-context";
-
-const POLL_INTERVAL_MS = 30000;
 
 function formatClockTime(time: string): string {
   const [h, m] = time.split(":").map(Number);
   const ampm = h >= 12 ? "PM" : "AM";
   const hour = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+function formatLateMinutes(minutes: number): string {
+  if (minutes < 60) return `${minutes}m late`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h late` : `${h}h ${m}m late`;
 }
 
 type LiveStatus = "working" | "break" | "not_clocked_in";
@@ -33,43 +31,19 @@ interface PersonLiveStatus {
   lastIn?: ClockEntry;
   activeBreak?: BreakEntry;
   todayShift?: Shift;
-  punctuality?: { label: Punctuality; deviationMinutes: number };
+  lateMinutes?: number;
   notClockedInYet?: boolean;
 }
 
 export default function ManagerTeamLivePage() {
   const { team, teamPeople } = useTeamDetail();
   const { shifts, shiftAssignments } = useCompany();
-  const [liveClockEntries, setLiveClockEntries] = useState<ClockEntry[]>([]);
-  const [liveBreakEntries, setLiveBreakEntries] = useState<BreakEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const [clocks, breaks] = await Promise.all([
-          fetchClockEntries(),
-          fetchBreakEntries(),
-        ]);
-        if (!cancelled) {
-          setLiveClockEntries(clocks);
-          setLiveBreakEntries(breaks);
-          setLastUpdated(new Date());
-          setLoading(false);
-        }
-      } catch {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const {
+    clockEntries: liveClockEntries,
+    breakEntries: liveBreakEntries,
+    loading,
+    lastUpdated,
+  } = useLiveEntries();
 
   const today = localDateStr(new Date());
 
@@ -86,10 +60,7 @@ export default function ManagerTeamLivePage() {
           s.teamId === team.id &&
           s.date === today &&
           shiftAssignments.some(
-            (a) =>
-              a.shiftId === s.id &&
-              a.personId === person.id &&
-              a.status === "approved",
+            (a) => a.shiftId === s.id && a.personId === person.id && a.status === "approved",
           ),
       );
 
@@ -102,27 +73,16 @@ export default function ManagerTeamLivePage() {
         status = activeBreak ? "break" : "working";
       }
 
-      let punctuality: PersonLiveStatus["punctuality"];
+      let lateMinutes: number | undefined;
       let notClockedInYet = false;
-      if (
-        todayShift &&
-        status !== "not_clocked_in" &&
-        latest?.action === "in"
-      ) {
-        punctuality =
-          resolvePunctuality(
-            person.id,
-            latest.at,
-            "in",
-            { shifts, shiftAssignments },
-            person.timezone,
-          ) ?? undefined;
-      } else if (
-        todayShift &&
-        status === "not_clocked_in" &&
-        now >= new Date(`${todayShift.date}T${todayShift.startTime}`)
-      ) {
-        notClockedInYet = true;
+      if (todayShift) {
+        const shiftStartISO = `${todayShift.date}T${todayShift.startTime}`;
+        if (status !== "not_clocked_in" && latest) {
+          const diff = minutesBetween(shiftStartISO, latest.at);
+          if (diff > 0) lateMinutes = diff;
+        } else if (status === "not_clocked_in" && now >= new Date(shiftStartISO)) {
+          notClockedInYet = true;
+        }
       }
 
       return {
@@ -131,52 +91,35 @@ export default function ManagerTeamLivePage() {
         lastIn: latest?.action === "in" ? latest : undefined,
         activeBreak,
         todayShift,
-        punctuality,
+        lateMinutes,
         notClockedInYet,
       };
     });
-  }, [
-    teamPeople,
-    liveClockEntries,
-    liveBreakEntries,
-    shifts,
-    shiftAssignments,
-    team.id,
-    today,
-  ]);
+  }, [teamPeople, liveClockEntries, liveBreakEntries, shifts, shiftAssignments, team.id, today]);
 
   const statusByPerson = useMemo(
     () => new Map(statuses.map((s) => [s.personId, s])),
     [statuses],
   );
 
-  const working = teamPeople.filter(
-    (p) => statusByPerson.get(p.id)?.status === "working",
-  );
-  const onBreak = teamPeople.filter(
-    (p) => statusByPerson.get(p.id)?.status === "break",
-  );
+  const working = teamPeople.filter((p) => statusByPerson.get(p.id)?.status === "working");
+  const onBreak = teamPeople.filter((p) => statusByPerson.get(p.id)?.status === "break");
   const notClockedIn = teamPeople.filter(
-    (p) =>
-      statusByPerson.get(p.id)?.status === "not_clocked_in" &&
-      statusByPerson.get(p.id)?.todayShift,
+    (p) => statusByPerson.get(p.id)?.status === "not_clocked_in" && statusByPerson.get(p.id)?.todayShift,
   );
 
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            Live
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Live</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Who&apos;s clocked in, on break, or running late right now for{" "}
-            {team.name}.
+            Who&apos;s clocked in, on break, or running late right now for {team.name}.
           </p>
         </div>
         <p className="text-[11px] text-ink-faint">
           {lastUpdated
-            ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · refreshes every 30s`
+            ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · live`
             : "Loading…"}
         </p>
       </div>
@@ -195,46 +138,31 @@ export default function ManagerTeamLivePage() {
           <section className="rounded-xl border border-hairline bg-surface-2">
             <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
               <span className="size-1.5 rounded-full bg-success" />
-              <h2 className="text-[13px] font-semibold text-ink">
-                Working now
-              </h2>
-              <span className="text-[11px] text-ink-subtle">
-                ({working.length})
-              </span>
+              <h2 className="text-[13px] font-semibold text-ink">Working now</h2>
+              <span className="text-[11px] text-ink-subtle">({working.length})</span>
             </div>
             {working.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[12px] text-ink-muted">
-                Nobody is clocked in.
-              </p>
+              <p className="px-4 py-6 text-center text-[12px] text-ink-muted">Nobody is clocked in.</p>
             ) : (
               <ul className="divide-y divide-hairline/60">
                 {working.map((p) => {
                   const s = statusByPerson.get(p.id);
                   return (
-                    <li
-                      key={p.id}
-                      className="flex items-center gap-3 px-4 py-2.5"
-                    >
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
                         {initials(p.name) || "?"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-ink">
-                          {p.name}
-                        </p>
+                        <p className="truncate text-[13px] font-medium text-ink">{p.name}</p>
                         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-subtle">
                           <ClockIcon className="size-3" />
-                          Clocked in
-                          {s?.lastIn
-                            ? ` at ${new Date(s.lastIn.at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
-                            : ""}
+                          Clocked in{s?.lastIn ? ` at ${new Date(s.lastIn.at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}` : ""}
                         </p>
                       </div>
-                      {s?.punctuality && (
-                        <PunctualityBadge
-                          label={s.punctuality.label}
-                          deviationMinutes={s.punctuality.deviationMinutes}
-                        />
+                      {s?.lateMinutes !== undefined && (
+                        <span className="shrink-0 rounded-md border border-warning/30 bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-warning">
+                          {formatLateMinutes(s.lateMinutes)}
+                        </span>
                       )}
                     </li>
                   );
@@ -248,30 +176,21 @@ export default function ManagerTeamLivePage() {
             <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
               <PauseIcon className="size-3.5 text-ink-subtle" />
               <h2 className="text-[13px] font-semibold text-ink">On break</h2>
-              <span className="text-[11px] text-ink-subtle">
-                ({onBreak.length})
-              </span>
+              <span className="text-[11px] text-ink-subtle">({onBreak.length})</span>
             </div>
             {onBreak.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[12px] text-ink-muted">
-                Nobody is on break.
-              </p>
+              <p className="px-4 py-6 text-center text-[12px] text-ink-muted">Nobody is on break.</p>
             ) : (
               <ul className="divide-y divide-hairline/60">
                 {onBreak.map((p) => {
                   const s = statusByPerson.get(p.id);
                   return (
-                    <li
-                      key={p.id}
-                      className="flex items-center gap-3 px-4 py-2.5"
-                    >
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
                         {initials(p.name) || "?"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-ink">
-                          {p.name}
-                        </p>
+                        <p className="truncate text-[13px] font-medium text-ink">{p.name}</p>
                         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-subtle">
                           <PauseIcon className="size-3" />
                           On {s?.activeBreak?.type ?? "a"} break
@@ -280,11 +199,10 @@ export default function ManagerTeamLivePage() {
                             : ""}
                         </p>
                       </div>
-                      {s?.punctuality && (
-                        <PunctualityBadge
-                          label={s.punctuality.label}
-                          deviationMinutes={s.punctuality.deviationMinutes}
-                        />
+                      {s?.lateMinutes !== undefined && (
+                        <span className="shrink-0 rounded-md border border-warning/30 bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-warning">
+                          {formatLateMinutes(s.lateMinutes)}
+                        </span>
                       )}
                     </li>
                   );
@@ -297,12 +215,8 @@ export default function ManagerTeamLivePage() {
           <section className="rounded-xl border border-hairline bg-surface-2">
             <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
               <AlertTriangleIcon className="size-3.5 text-ink-subtle" />
-              <h2 className="text-[13px] font-semibold text-ink">
-                Not clocked in
-              </h2>
-              <span className="text-[11px] text-ink-subtle">
-                ({notClockedIn.length})
-              </span>
+              <h2 className="text-[13px] font-semibold text-ink">Not clocked in</h2>
+              <span className="text-[11px] text-ink-subtle">({notClockedIn.length})</span>
             </div>
             {notClockedIn.length === 0 ? (
               <p className="px-4 py-6 text-center text-[12px] text-ink-muted">
@@ -313,28 +227,19 @@ export default function ManagerTeamLivePage() {
                 {notClockedIn.map((p) => {
                   const s = statusByPerson.get(p.id);
                   return (
-                    <li
-                      key={p.id}
-                      className="flex items-center gap-3 px-4 py-2.5"
-                    >
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
                         {initials(p.name) || "?"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-ink">
-                          {p.name}
-                        </p>
+                        <p className="truncate text-[13px] font-medium text-ink">{p.name}</p>
                         <p className="mt-0.5 text-[11px] text-ink-subtle">
-                          Shift{" "}
-                          {s?.todayShift
-                            ? formatClockTime(s.todayShift.startTime)
-                            : ""}{" "}
-                          today
+                          Shift {s?.todayShift ? formatClockTime(s.todayShift.startTime) : ""} today
                         </p>
                       </div>
                       {s?.notClockedInYet && (
-                        <span className="shrink-0 rounded-md border border-danger/30 bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-danger">
-                          Not clocked in yet
+                        <span className="shrink-0 rounded-md border border-danger/30 bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-danger">
+                          not clocked in yet
                         </span>
                       )}
                     </li>
