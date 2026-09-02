@@ -13,6 +13,11 @@ const PUBLIC_PATHS = [
   "/accept-invite",
   "/auth/callback",
   "/auth/confirm",
+  // Not "public" in the open sense — this route enforces its own
+  // CRON_SECRET bearer-token auth (see app/api/cron/shift-reminders/route.ts).
+  // Listed here only to skip the cookie-session gate, since the caller
+  // (pg_net / Vercel Cron) has no browser session.
+  "/api/cron",
 ];
 
 function isPublicPath(pathname: string): boolean {
