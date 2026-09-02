@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
+import { resolvePunctuality } from "@/lib/company-data/business";
 import { useToast } from "@/lib/toast";
 import { formatDate, formatDateTime, initials, timeAgo } from "@/lib/format";
 import { PersonStatusBadge } from "@/components/people/PersonBadges";
+import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import {
   ArrowLeftIcon,
   ClockIcon,
@@ -25,7 +27,7 @@ const activityLabel: Record<string, string> = {
 
 export default function ManagerTeamMemberDetailPage() {
   const params = useParams<{ id: string; personId: string }>();
-  const { locations, activity, clockEntries, resendInvite } = useCompany();
+  const { locations, activity, clockEntries, shifts, shiftAssignments, resendInvite } = useCompany();
   const { pushToast } = useToast();
   const { team, teamPeople } = useTeamDetail();
   const [resendError, setResendError] = useState<string | null>(null);
@@ -231,20 +233,37 @@ export default function ManagerTeamMemberDetailPage() {
           </p>
         ) : (
           <ul className="divide-y divide-hairline/60">
-            {personClockLogs.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-4 px-4 py-2.5"
-              >
-                <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
-                  <ClockIcon className="size-3.5 text-ink-subtle" />
-                  {c.action === "in" ? "Clocked in" : "Clocked out"}
-                </span>
-                <span className="text-xs text-ink-subtle">
-                  {formatDateTime(c.at)}
-                </span>
-              </li>
-            ))}
+            {personClockLogs.map((c) => {
+              const punctuality = resolvePunctuality(
+                c.personId,
+                c.at,
+                c.action,
+                { shifts, shiftAssignments },
+                person.timezone,
+              );
+              return (
+                <li
+                  key={c.id}
+                  className="flex items-center justify-between gap-4 px-4 py-2.5"
+                >
+                  <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
+                    <ClockIcon className="size-3.5 text-ink-subtle" />
+                    {c.action === "in" ? "Clocked in" : "Clocked out"}
+                  </span>
+                  <span className="flex items-center gap-2.5">
+                    {punctuality && (
+                      <PunctualityBadge
+                        label={punctuality.label}
+                        deviationMinutes={punctuality.deviationMinutes}
+                      />
+                    )}
+                    <span className="text-xs text-ink-subtle">
+                      {formatDateTime(c.at)}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -4,10 +4,12 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { BreakEntry, ComplianceViolation } from "@/lib/company-data";
+import { resolvePunctuality } from "@/lib/company-data/business";
 import { formatDateTime, formatDurationMinutes, initials, localDateStr } from "@/lib/format";
 import { ClockIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
 import ComplianceViolationBadge from "@/components/breaks/ComplianceViolationBadge";
+import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import { useTeamDetail } from "../team-detail-context";
 
 const inputClass =
@@ -26,7 +28,7 @@ function daysAgoStr(days: number): string {
 function ManagerTeamTimeTrackingContent() {
   const searchParams = useSearchParams();
   const { teamPeople } = useTeamDetail();
-  const { clockEntries, breakEntries, complianceViolations } = useCompany();
+  const { clockEntries, breakEntries, complianceViolations, shifts, shiftAssignments } = useCompany();
 
   const [personId, setPersonId] = useState<string>(searchParams.get("person") ?? "");
   const [query, setQuery] = useState("");
@@ -216,6 +218,15 @@ function ManagerTeamTimeTrackingContent() {
                       const breaks = c.action === "in" ? breaksByClockEntry.get(c.id) ?? [] : [];
                       const violations =
                         c.action === "in" ? violationsByClockEntry.get(c.id) ?? [] : [];
+                      const punctuality = selectedPerson
+                        ? resolvePunctuality(
+                            c.personId,
+                            c.at,
+                            c.action,
+                            { shifts, shiftAssignments },
+                            selectedPerson.timezone,
+                          )
+                        : null;
                       return (
                         <li key={c.id} className="px-4 py-2.5">
                           <div className="flex items-center justify-between gap-4">
@@ -223,12 +234,20 @@ function ManagerTeamTimeTrackingContent() {
                               <ClockIcon className="size-3.5 text-ink-subtle" />
                               {c.action === "in" ? "Clocked in" : "Clocked out"}
                             </span>
-                            <span className="text-xs text-ink-subtle">
-                              {formatDateTime(c.at)}
+                            <span className="flex items-center gap-2.5">
+                              {punctuality && (
+                                <PunctualityBadge
+                                  label={punctuality.label}
+                                  deviationMinutes={punctuality.deviationMinutes}
+                                />
+                              )}
+                              <span className="text-xs text-ink-subtle">
+                                {formatDateTime(c.at)}
+                              </span>
                             </span>
                           </div>
                           {(breaks.length > 0 || violations.length > 0) && (
-                            <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6">
+                            <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
                               {breaks.map((b) => (
                                 <span key={b.id} className="inline-flex items-center gap-1">
                                   <BreakTypeBadge type={b.type} />

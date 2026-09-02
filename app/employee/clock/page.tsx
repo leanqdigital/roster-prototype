@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import type { BreakType } from "@/lib/company-data";
+import { resolvePunctuality } from "@/lib/company-data/business";
 import { DEFAULT_BREAK_POLICY } from "@/lib/company";
 import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
 import { AlertTriangleIcon, ClockIcon, UsersIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
+import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import { useToast } from "@/lib/toast";
 
 function formatElapsed(ms: number): string {
@@ -394,20 +396,44 @@ export default function EmployeeClockPage() {
           </div>
         ) : (
           <ul className="divide-y divide-hairline/60">
-            {myEntries.map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
-                  <ClockIcon className="size-3.5 text-ink-subtle" />
-                  {c.action === "in" ? "Clocked in" : "Clocked out"}
-                  {c.note && (
-                    <span className="text-[11px] font-normal text-ink-subtle">
-                      &middot; {c.note}
+            {myEntries.map((c) => {
+              const punctuality = myPerson
+                ? resolvePunctuality(
+                    c.personId,
+                    c.at,
+                    c.action,
+                    { shifts, shiftAssignments },
+                    myPerson.timezone,
+                  )
+                : null;
+              return (
+                <li
+                  key={c.id}
+                  className="flex items-center justify-between gap-4 px-4 py-2.5"
+                >
+                  <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
+                    <ClockIcon className="size-3.5 text-ink-subtle" />
+                    {c.action === "in" ? "Clocked in" : "Clocked out"}
+                    {c.note && (
+                      <span className="text-[11px] font-normal text-ink-subtle">
+                        &middot; {c.note}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-2.5">
+                    {punctuality && (
+                      <PunctualityBadge
+                        label={punctuality.label}
+                        deviationMinutes={punctuality.deviationMinutes}
+                      />
+                    )}
+                    <span className="text-xs text-ink-subtle">
+                      {formatDateTime(c.at)}
                     </span>
-                  )}
-                </span>
-                <span className="text-xs text-ink-subtle">{formatDateTime(c.at)}</span>
-              </li>
-            ))}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
