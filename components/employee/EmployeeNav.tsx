@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import { useTheme } from "@/lib/theme";
+import { getCompanySettings } from "@/lib/company";
 import LogoMark from "@/components/ui/Logo";
 import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
 import BottomTabBar from "@/components/ui/BottomTabBar";
@@ -30,6 +31,21 @@ export default function EmployeeNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCompanySettings().then((result) => {
+      if (!cancelled && result) {
+        setCompanyName(result.name);
+        setLogoUrl(result.logoUrl);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const myPerson = useMemo(
     () =>
@@ -89,9 +105,18 @@ export default function EmployeeNav() {
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-2 md:flex">
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-hairline px-5">
         <Link href="/employee/dashboard" className="flex min-w-0 items-center gap-2.5">
-          <LogoMark className="size-7 shrink-0" />
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt=""
+              className="size-7 shrink-0 rounded-md object-contain"
+            />
+          ) : (
+            <LogoMark className="size-7 shrink-0" />
+          )}
           <span className="truncate text-[15px] font-semibold tracking-tight text-ink">
-            Roster
+            {companyName ?? "Roster"}
           </span>
         </Link>
       </div>

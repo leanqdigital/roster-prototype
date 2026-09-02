@@ -51,6 +51,7 @@ export default function CompanyNav() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [brandingColor, setBrandingColor] = useState(DEFAULT_BRANDING);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function CompanyNav() {
       if (!cancelled && result) {
         setBrandingColor(result.brandingColor);
         setLogoUrl(result.logoUrl);
+        setCompanyName(result.name);
       }
     });
     return () => {
@@ -119,11 +121,7 @@ export default function CompanyNav() {
             <LogoMark className="size-7 shrink-0" />
           )}
           <span className="truncate text-[15px] font-semibold tracking-tight text-ink">
-            Roster
-            <span className="text-ink-subtle">
-              {" "}
-              / {user?.company ?? "Company"}
-            </span>
+            {companyName ?? user?.company ?? "Company"}
           </span>
         </Link>
       </div>
