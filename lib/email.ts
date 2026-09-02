@@ -67,22 +67,103 @@ export async function sendInviteEmail(
   });
 }
 
+function formatShiftTime(date: string, time: string): string {
+  const d = new Date(`${date}T${time}`);
+  if (Number.isNaN(d.getTime())) return time;
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatShiftDate(date: string): string {
+  const d = new Date(`${date}T00:00`);
+  if (Number.isNaN(d.getTime())) return date;
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+const EMAIL_FONT =
+  "-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+
+function detailRow(
+  label: string,
+  value: string,
+  opts: { muted?: boolean } = {},
+): string {
+  const valueStyle = opts.muted
+    ? "font-size: 14px; line-height: 22px; color: #4b5563; text-align: right;"
+    : "font-size: 14px; font-weight: 600; color: #111827; text-align: right;";
+  return `
+    <tr>
+      <td colspan="2" style="padding: 0 20px;"><div style="border-top: 1px solid #e5e7eb;"></div></td>
+    </tr>
+    <tr>
+      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; vertical-align: top; white-space: nowrap;">${label}</td>
+      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; ${valueStyle}">${value}</td>
+    </tr>
+  `;
+}
+
 export async function sendShiftReminderEmail(
   to: string,
-  shift: { title: string; date: string; startTime: string },
+  shift: {
+    title: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    companyName?: string | null;
+    description?: string | null;
+  },
 ): Promise<{ ok: boolean; error?: string }> {
+  const companyName = shift.companyName || "Roster";
   return sendMail({
     to,
-    subject: "Your shift starts soon",
+    subject: `Reminder: ${shift.title} — ${formatShiftDate(shift.date)}, ${formatShiftTime(shift.date, shift.startTime)}`,
     html: `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="margin-bottom: 8px;">Your shift starts soon</h2>
-        <p style="color: #555;">This is a reminder that you have an upcoming shift.</p>
-        <p style="margin-top: 16px; padding: 12px 16px; background: #f4f4f8; border-radius: 6px;">
-          <strong>${shift.title}</strong><br />
-          ${shift.date} at ${shift.startTime}
-        </p>
-      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: #5e6ad2; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Shift reminder
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    Hi, this is a friendly reminder about your upcoming shift at ${companyName}.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Date</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${formatShiftDate(shift.date)}</td>
+                    </tr>
+                    ${detailRow("Time", `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`)}
+                    ${detailRow("Shift", shift.title)}
+                    ${shift.description ? detailRow("Notes", shift.description, { muted: true }) : ""}
+                  </table>
+                  <p style="margin: 24px 0 0; font-family: ${EMAIL_FONT}; font-size: 13px; line-height: 20px; color: #6b7280;">
+                    If you can't make this shift, please contact your manager as soon as possible.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Times are shown in your local timezone.<br />
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     `,
   });
 }
