@@ -6,11 +6,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { Person, PersonRole } from "@/lib/company-data";
-import { DEFAULT_TIMEZONE } from "@/lib/company";
+import { resolvePunctuality } from "@/lib/company-data/business";
+import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/company";
 import { useToast } from "@/lib/toast";
 import { formatDate, formatDateTime, initials, timeAgo } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import StatCard from "@/components/ui/StatCard";
+import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import TeamMultiSelect from "@/components/people/TeamMultiSelect";
 import TimezoneSelect from "@/components/ui/TimezoneSelect";
 import {
@@ -69,6 +71,8 @@ export default function PersonDetailPage() {
     locations,
     activity,
     clockEntries,
+    shifts,
+    shiftAssignments,
     updatePerson,
     resendInvite,
     deletePerson,
@@ -195,7 +199,8 @@ export default function PersonDetailPage() {
               </span>
             </div>
             <p className="mt-0.5 text-xs text-ink-subtle">
-              {person.email} · {person.role === "manager" ? "Manager" : "Employee"}
+              {person.email} ·{" "}
+              {person.role === "manager" ? "Manager" : "Employee"}
             </p>
           </div>
         </div>
@@ -251,7 +256,10 @@ export default function PersonDetailPage() {
               ["Created", formatDate(person.createdAt)],
               ["Updated", formatDate(person.updatedAt)],
             ].map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between gap-4 py-2.5">
+              <div
+                key={k}
+                className="flex items-center justify-between gap-4 py-2.5"
+              >
                 <dt className="text-xs text-ink-subtle">{k}</dt>
                 <dd className="truncate text-[13px] text-ink-muted">{v}</dd>
               </div>
@@ -271,7 +279,8 @@ export default function PersonDetailPage() {
                 </p>
               ) : (
                 <p className="text-[13px] text-ink-subtle">
-                  No notes yet. Add context about this person from the edit form.
+                  No notes yet. Add context about this person from the edit
+                  form.
                 </p>
               )}
             </div>
@@ -400,20 +409,37 @@ export default function PersonDetailPage() {
           </p>
         ) : (
           <ul className="divide-y divide-hairline/60">
-            {personClockLogs.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-4 px-4 py-2.5"
-              >
-                <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
-                  <ClockIcon className="size-3.5 text-ink-subtle" />
-                  {c.action === "in" ? "Clocked in" : "Clocked out"}
-                </span>
-                <span className="text-xs text-ink-subtle">
-                  {formatDateTime(c.at)}
-                </span>
-              </li>
-            ))}
+            {personClockLogs.map((c) => {
+              const punctuality = resolvePunctuality(
+                c.personId,
+                c.at,
+                c.action,
+                { shifts, shiftAssignments },
+                person.timezone,
+              );
+              return (
+                <li
+                  key={c.id}
+                  className="flex items-center justify-between gap-4 px-4 py-2.5"
+                >
+                  <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
+                    <ClockIcon className="size-3.5 text-ink-subtle" />
+                    {c.action === "in" ? "Clocked in" : "Clocked out"}
+                  </span>
+                  <span className="flex items-center gap-2.5">
+                    {punctuality && (
+                      <PunctualityBadge
+                        label={punctuality.label}
+                        deviationMinutes={punctuality.deviationMinutes}
+                      />
+                    )}
+                    <span className="text-xs text-ink-subtle">
+                      {formatDateTime(c.at)}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -453,7 +479,9 @@ export default function PersonDetailPage() {
                   className="block text-xs font-medium text-ink-muted"
                 >
                   Phone{" "}
-                  <span className="font-normal text-ink-subtle">(optional)</span>
+                  <span className="font-normal text-ink-subtle">
+                    (optional)
+                  </span>
                 </label>
                 <input
                   id="person-phone"
@@ -504,7 +532,9 @@ export default function PersonDetailPage() {
                       ...form,
                       locationId: nextLoc,
                       teamIds: form.teamIds.filter(
-                        (id) => teams.find((t) => t.id === id)?.locationId === nextLoc,
+                        (id) =>
+                          teams.find((t) => t.id === id)?.locationId ===
+                          nextLoc,
                       ),
                     });
                   }}

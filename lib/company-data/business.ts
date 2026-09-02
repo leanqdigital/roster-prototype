@@ -5,14 +5,17 @@
 
 import { getBreakPolicy } from "@/lib/company";
 import { formatDurationMinutes } from "@/lib/format";
+import { zonedTimeToUtc } from "@/lib/timezone";
 import type { BreakPolicy } from "@/lib/company";
 import type {
   BreakEntry,
   BreakType,
+  ClockAction,
   CompanyState,
   ComplianceViolationSeverity,
   ComplianceViolationType,
   LeaveRequest,
+  Shift,
 } from "./types";
 
 // Client-side placeholder id for objects that aren't persisted yet (e.g.
@@ -70,6 +73,66 @@ export function hasApprovedLeaveOn(
 
 export function minutesBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
+}
+
+export type Punctuality =
+  | "early_in"
+  | "late_in"
+  | "on_time_in"
+  | "early_out"
+  | "late_out"
+  | "on_time_out";
+
+const PUNCTUALITY_GRACE_MINUTES = 5;
+
+// Compares a clock in/out against the person's nearest scheduled shift
+// (within ±36h of the clock entry) and labels it Early/Late/On Time.
+// Returns null when no scheduled shift matches.
+export function resolvePunctuality(
+  personId: string,
+  clockAt: string,
+  action: ClockAction,
+  state: Pick<CompanyState, "shifts" | "shiftAssignments">,
+  timeZone: string,
+): { label: Punctuality; deviationMinutes: number } | null {
+  const clock = new Date(clockAt).getTime();
+  if (Number.isNaN(clock)) return null;
+
+  const candidates = state.shiftAssignments
+    .filter((a) => a.personId === personId)
+    .map((a) => state.shifts.find((s) => s.id === a.shiftId))
+    .filter((s): s is Shift => {
+      if (!s) return false;
+      const shiftDay = new Date(`${s.date}T00:00:00Z`).getTime();
+      return !Number.isNaN(shiftDay) && Math.abs(shiftDay - clock) <= 36 * 3600000;
+    });
+  if (candidates.length === 0) return null;
+
+  const bounds = candidates.map((s) => {
+    const start = zonedTimeToUtc(s.date, s.startTime, timeZone).getTime();
+    return { start, end: start + s.durationMinutes * 60000 };
+  });
+
+  const target = action === "in" ? "start" : "end";
+  const best = bounds.reduce((a, b) =>
+    Math.abs(clock - a[target]) <= Math.abs(clock - b[target]) ? a : b,
+  );
+
+  const deviationMinutes = Math.round((clock - best[target]) / 60000);
+  const g = PUNCTUALITY_GRACE_MINUTES;
+  const label: Punctuality =
+    deviationMinutes < -g
+      ? action === "in"
+        ? "early_in"
+        : "early_out"
+      : deviationMinutes > g
+        ? action === "in"
+          ? "late_in"
+          : "late_out"
+        : action === "in"
+          ? "on_time_in"
+          : "on_time_out";
+  return { label, deviationMinutes };
 }
 
 export async function resolveBreakPolicy(
