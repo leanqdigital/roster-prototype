@@ -22,13 +22,32 @@ export async function GET(req: Request) {
 
   const { data: shifts, error: shiftsError } = await supabase
     .from("shifts")
-    .select("id, title, date, start_time")
+    .select("id, title, date, start_time, duration_minutes, description, companies(name)")
     .eq("status", "published")
     .is("reminder_sent_at", null)
     .in("date", [todayStr, tomorrowStr]);
 
   if (shiftsError) {
     return Response.json({ error: shiftsError.message }, { status: 500 });
+  }
+
+  type ShiftRow = {
+    id: string;
+    title: string;
+    date: string;
+    start_time: string;
+    duration_minutes: number;
+    description: string | null;
+    companies: { name: string } | null;
+  };
+
+  function endTime(startTime: string, durationMinutes: number): string {
+    const [h, m] = startTime.split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return startTime;
+    const total = (h * 60 + m + durationMinutes) % (24 * 60);
+    const hh = String(Math.floor(total / 60)).padStart(2, "0");
+    const mm = String(total % 60).padStart(2, "0");
+    return `${hh}:${mm}`;
   }
 
   let processed = 0;
@@ -74,10 +93,14 @@ export async function GET(req: Request) {
 
     for (const assignee of toNotify) {
       const person = assignee.people!;
+      const shiftRow = shift as unknown as ShiftRow;
       const result = await sendShiftReminderEmail(person.email, {
-        title: shift.title,
-        date: shift.date,
-        startTime: shift.start_time,
+        title: shiftRow.title,
+        date: shiftRow.date,
+        startTime: shiftRow.start_time,
+        endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
+        companyName: shiftRow.companies?.name ?? null,
+        description: shiftRow.description,
       });
       if (result.ok) sent += 1;
     }
