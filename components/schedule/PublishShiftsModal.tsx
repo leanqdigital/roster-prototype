@@ -31,8 +31,14 @@ export default function PublishShiftsModal({
   onClose,
 }: PublishShiftsModalProps) {
   const today = localDateStr(new Date());
-  const [start, setStart] = useState(defaultStart ?? today);
-  const [end, setEnd] = useState(defaultEnd ?? today);
+  const [start, setStart] = useState(() => {
+    const d = defaultStart ?? today;
+    return d < today ? today : d;
+  });
+  const [end, setEnd] = useState(() => {
+    const d = defaultEnd ?? today;
+    return d < today ? today : d;
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const matched = useMemo(() => {
@@ -72,6 +78,7 @@ export default function PublishShiftsModal({
             <input
               type="date"
               value={start}
+              min={today}
               onChange={(e) => setStart(e.target.value)}
               className="h-9 w-full rounded-lg border border-hairline bg-surface-1 px-3 text-[13px] text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
@@ -83,6 +90,7 @@ export default function PublishShiftsModal({
             <input
               type="date"
               value={end}
+              min={start || today}
               onChange={(e) => setEnd(e.target.value)}
               className="h-9 w-full rounded-lg border border-hairline bg-surface-1 px-3 text-[13px] text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />

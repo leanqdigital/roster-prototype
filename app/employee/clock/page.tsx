@@ -67,21 +67,34 @@ export default function EmployeeClockPage() {
   const latestEntry = myEntries[0] ?? null;
   const isWorking = latestEntry?.action === "in";
 
-  useEffect(() => {
-    if (!isWorking) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [isWorking]);
-
   const today = localDateStr(new Date());
 
-  const hasShiftToday = useMemo(() => {
-    if (!myPerson) return false;
+  const todaysShift = useMemo(() => {
+    if (!myPerson) return null;
     const myShiftIds = new Set(
       shiftAssignments.filter((a) => a.personId === myPerson.id).map((a) => a.shiftId),
     );
-    return shifts.some((s) => myShiftIds.has(s.id) && s.date === today);
+    const todays = shifts
+      .filter((s) => myShiftIds.has(s.id) && s.date === today)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return todays[0] ?? null;
   }, [shifts, shiftAssignments, myPerson, today]);
+
+  const hasShiftToday = todaysShift !== null;
+
+  const shiftStartMs = useMemo(() => {
+    if (!todaysShift) return null;
+    return new Date(`${today}T${todaysShift.startTime}:00`).getTime();
+  }, [todaysShift, today]);
+
+  useEffect(() => {
+    const counting = !isWorking && shiftStartMs !== null && Date.now() < shiftStartMs;
+    if (!isWorking && !counting) return;
+    const id = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isWorking, shiftStartMs]);
 
   const sessionBreaks = useMemo(() => {
     if (!latestEntry || latestEntry.action !== "in") return [];
@@ -350,15 +363,22 @@ export default function EmployeeClockPage() {
                 ? "You have a shift scheduled today."
                 : "No shift assigned today."}
             </p>
-            <button
-              type="button"
-              onClick={handleClockIn}
-              disabled={clockingIn}
-              className="mt-5 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {clockingIn && <Spinner className="size-3.5" />}
-              Clock in
-            </button>
+            {hasShiftToday && shiftStartMs !== null && now < shiftStartMs && (
+              <p className="mt-2 font-mono text-2xl font-semibold text-ink">
+                Shift starts in {formatElapsed(shiftStartMs - now)}
+              </p>
+            )}
+            {hasShiftToday && (
+              <button
+                type="button"
+                onClick={handleClockIn}
+                disabled={clockingIn}
+                className="mx-auto mt-5 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {clockingIn && <Spinner className="size-3.5" />}
+                Clock in
+              </button>
+            )}
           </>
         )}
       </div>

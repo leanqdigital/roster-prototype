@@ -791,10 +791,10 @@ export default function SchedulePage() {
           description={
             publishResult.count > 0
               ? publishResult.count +
-                " new shift" +
+                " shift" +
                 (publishResult.count === 1 ? "" : "s") +
-                " created for this week."
-              : "No new shifts were created \u2014 all time slots already have shifts."
+                " published."
+              : "No shifts were published."
           }
           confirmLabel="OK"
           onClose={() => setPublishResult(null)}

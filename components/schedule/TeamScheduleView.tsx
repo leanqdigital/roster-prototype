@@ -721,8 +721,8 @@ export default function TeamScheduleView({
           title="Shifts published"
           description={
             publishResult.count > 0
-              ? publishResult.count + " new shift" + (publishResult.count === 1 ? "" : "s") + " created for this week."
-              : "No new shifts were created \u2014 all time slots already have shifts."
+              ? publishResult.count + " shift" + (publishResult.count === 1 ? "" : "s") + " published."
+              : "No shifts were published."
           }
           confirmLabel="OK"
           onClose={() => setPublishResult(null)}

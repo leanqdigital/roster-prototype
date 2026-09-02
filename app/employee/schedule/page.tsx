@@ -285,7 +285,7 @@ export default function EmployeeSchedulePage() {
               <MonthCalendar
                 monthStart={monthCursor}
                 shifts={myShifts}
-                assignments={[]}
+                assignments={shiftAssignments}
                 people={people}
                 onClickShift={(shift) => setSelectedShift(shift)}
                 onDayClick={() => {}}
