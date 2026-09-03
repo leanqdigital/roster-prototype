@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
@@ -30,7 +30,7 @@ export default function ManagerNav() {
   const pathname = usePathname();
   const params = useParams<{ id?: string }>();
   const { user, signOut } = useAuth();
-  const { people } = useCompany();
+  const { people, activity } = useCompany();
   const { managedTeams, selectedTeam, selectTeam } = useManager();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -70,6 +70,25 @@ export default function ManagerNav() {
 
   const teamTab = (label: string) => teamTabs.find((t) => t.label === label);
   const myLeaveItem = { href: "/manager/leave-requests", label: "My Leave", icon: CalendarOffIcon };
+
+  const myPerson = useMemo(
+    () =>
+      people.find(
+        (p) => p.role === "manager" && p.email.toLowerCase() === user?.email.toLowerCase(),
+      ) ?? null,
+    [people, user?.email],
+  );
+  const unreadCount = useMemo(() => {
+    if (!myPerson) return 0;
+    return activity.filter((a) => a.personId === myPerson.id && !a.read).length;
+  }, [activity, myPerson]);
+
+  const myNotificationsItem = {
+    href: "/manager/notifications",
+    label: "Notifications",
+    icon: BellIcon,
+    badge: unreadCount,
+  };
   const mobileTabs = [
     { href: "/manager/dashboard", label: "Dashboard", icon: ActivityIcon },
     {
@@ -92,38 +111,50 @@ export default function ManagerNav() {
     },
   ];
   const mobileMoreItems = [
-    { href: myLeaveItem.href, label: myLeaveItem.label, icon: myLeaveItem.icon, disabled: false },
+    { href: myLeaveItem.href, label: myLeaveItem.label, icon: myLeaveItem.icon, disabled: false, badge: undefined as number | undefined },
     {
       href: teamTab("Templates")?.href ?? "#",
       label: "Templates",
       icon: ClockIcon,
       disabled: !selectedTeam,
+      badge: undefined as number | undefined,
     },
     {
       href: teamTab("Live")?.href ?? "#",
       label: "Live",
       icon: ActivityIcon,
       disabled: !selectedTeam,
+      badge: undefined as number | undefined,
     },
     {
       href: teamTab("Shift Requests")?.href ?? "#",
       label: "Shift Requests",
       icon: BellIcon,
       disabled: !selectedTeam,
+      badge: undefined as number | undefined,
     },
     {
       href: teamTab("Leave Requests")?.href ?? "#",
       label: "Leave Requests",
       icon: CalendarOffIcon,
       disabled: !selectedTeam,
+      badge: undefined as number | undefined,
     },
     {
       href: teamTab("Audit")?.href ?? "#",
       label: "Audit",
       icon: ActivityIcon,
       disabled: !selectedTeam,
+      badge: undefined as number | undefined,
     },
-    { href: "/manager/settings", label: "Settings", icon: SettingsIcon, disabled: false },
+    {
+      href: myNotificationsItem.href,
+      label: myNotificationsItem.label,
+      icon: myNotificationsItem.icon,
+      disabled: false,
+      badge: myNotificationsItem.badge as number | undefined,
+    },
+    { href: "/manager/settings", label: "Settings", icon: SettingsIcon, disabled: false, badge: undefined as number | undefined },
   ];
 
   useEffect(() => {
@@ -263,36 +294,38 @@ export default function ManagerNav() {
         </div>
       </div>
 
-      {teamTabs.length > 0 ? (
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {[myLeaveItem, ...teamTabs].map((item) => {
-            const active =
-              item.label === "Members"
-                ? pathname === item.href || pathname.startsWith(`${item.href}/people/`)
-                : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={`relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
-                  active
-                    ? "bg-primary-weak text-primary"
-                    : "text-ink-muted hover:bg-surface-3 hover:text-ink"
-                }`}
-              >
-                <item.icon className="size-4" />
-                {item.label}
-                {active && (
-                  <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-      ) : (
-        <div className="flex-1" />
-      )}
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        {[myLeaveItem, ...teamTabs, myNotificationsItem].map((item) => {
+          const active =
+            item.label === "Members"
+              ? pathname === item.href || pathname.startsWith(`${item.href}/people/`)
+              : pathname.startsWith(item.href);
+          const badge = (item as { badge?: number }).badge;
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className={`relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+                active
+                  ? "bg-primary-weak text-primary"
+                  : "text-ink-muted hover:bg-surface-3 hover:text-ink"
+              }`}
+            >
+              <item.icon className="size-4" />
+              <span className="flex-1">{item.label}</span>
+              {!!badge && (
+                <span className="flex min-w-4.5 shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
+                  {badge}
+                </span>
+              )}
+              {active && (
+                <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+              )}
+            </Link>
+          );
+        })}
+      </nav>
 
       <nav className="border-t border-hairline p-3">
         <Link
@@ -364,6 +397,7 @@ export default function ManagerNav() {
         return pathname.startsWith(href);
       }}
       moreActive={moreOpen}
+      moreBadge={unreadCount > 0}
       onMoreClick={() => setMoreOpen(true)}
     />
 
@@ -427,7 +461,12 @@ export default function ManagerNav() {
               }`}
             >
               <item.icon className="size-4" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {!!item.badge && (
+                <span className="flex min-w-4.5 shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           ),
         )}

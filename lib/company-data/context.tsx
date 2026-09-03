@@ -642,6 +642,18 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         });
         dispatch({ type: "addLeaveRequest", request });
         const person = state.people.find((p) => p.id === personId);
+        const managerIds = new Set(
+          state.teams
+            .filter((t) => person?.teamIds.includes(t.id) && t.managerId)
+            .map((t) => t.managerId as string),
+        );
+        for (const managerId of managerIds) {
+          await logActivity(
+            managerId,
+            "notified",
+            `${person?.name ?? "Someone"} requested ${request.type} leave (${request.startDate} – ${request.endDate})`,
+          );
+        }
         await logAudit({
           action: "time_off.create",
           tone: "neutral",
@@ -655,7 +667,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: errorMessage(e) };
       }
     },
-    [state.people, logAudit],
+    [state.people, state.teams, logActivity, logAudit],
   );
 
   const updateLeaveRequest = useCallback(
@@ -1355,6 +1367,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         );
 
         const person = state.people.find((p) => p.id === personId);
+        const managerId = state.teams.find((t) => t.id === targetShift.teamId)?.managerId;
+        if (managerId) {
+          await logActivity(
+            managerId,
+            "notified",
+            `${person?.name ?? "Someone"} requested to join "${targetShift.title}" on ${targetShift.date}`,
+          );
+        }
         await logAudit({
           action: "shift.requested",
           tone: "neutral",
@@ -1369,7 +1389,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: errorMessage(e) };
       }
     },
-    [state.shiftAssignments, state.shifts, state.people, state.leaveRequests, logActivity, logAudit],
+    [state.shiftAssignments, state.shifts, state.people, state.leaveRequests, state.teams, logActivity, logAudit],
   );
 
   const getAvailableShiftsForPerson = useCallback(
