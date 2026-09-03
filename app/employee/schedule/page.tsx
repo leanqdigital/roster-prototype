@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import type { Shift } from "@/lib/company-data";
 import { useToast } from "@/lib/toast";
-import { localDateStr } from "@/lib/format";
+import { formatTime, initials, localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
 import {
@@ -73,6 +73,8 @@ export default function EmployeeSchedulePage() {
     shifts,
     shiftAssignments,
     teams,
+    locations,
+    clockEntries,
     cancelSelfAssignment,
   } = useCompany();
   const { pushToast } = useToast();
@@ -200,6 +202,36 @@ export default function EmployeeSchedulePage() {
   }
 
   const selectedTeam = selectedShift ? teamMap.get(selectedShift.teamId) : null;
+
+  const selectedLocation = selectedTeam?.locationId
+    ? locations.find((l) => l.id === selectedTeam.locationId) ?? null
+    : null;
+
+  // Crew (all non-cancelled assignments) + per-person clock in/out on the shift date.
+  const selectedCrew = useMemo(() => {
+    if (!selectedShift) return [];
+    return shiftAssignments
+      .filter((a) => a.shiftId === selectedShift.id && a.status !== "cancelled")
+      .map((a) => {
+        const person = people.find((p) => p.id === a.personId) ?? null;
+        let clockIn: string | null = null;
+        let clockOut: string | null = null;
+        for (const c of clockEntries) {
+          if (c.personId !== a.personId) continue;
+          if (localDateStr(new Date(c.at)) !== selectedShift.date) continue;
+          if (c.action === "in") {
+            if (!clockIn || c.at > clockIn) clockIn = c.at;
+          } else if (!clockOut || c.at > clockOut) {
+            clockOut = c.at;
+          }
+        }
+        return { assignment: a, person, clockIn, clockOut };
+      });
+  }, [selectedShift, shiftAssignments, people, clockEntries]);
+
+  const mySelectedAssignment = selectedShift
+    ? myAssignmentMap.get(selectedShift.id) ?? null
+    : null;
 
   return (
     <div>
@@ -421,8 +453,24 @@ export default function EmployeeSchedulePage() {
         onConfirm={() => setSelectedShift(null)}
         onClose={() => setSelectedShift(null)}
       >
-        {selectedShift && (
+            {selectedShift && (
           <div className="mt-4 space-y-3">
+            {mySelectedAssignment && (
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">My request</p>
+                <span
+                  className={`mt-0.5 inline-flex rounded px-1.5 py-px text-[10px] font-medium ${
+                    mySelectedAssignment.status === "approved"
+                      ? "bg-success-weak text-success"
+                      : mySelectedAssignment.status === "pending"
+                        ? "bg-warning-weak text-warning"
+                        : "bg-danger-weak text-danger"
+                  }`}
+                >
+                  {mySelectedAssignment.status.charAt(0).toUpperCase() + mySelectedAssignment.status.slice(1)}
+                </span>
+              </div>
+            )}
             <div>
               <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Title</p>
               <p className="mt-0.5 text-[13px] text-ink">{selectedShift.title}</p>
@@ -445,6 +493,72 @@ export default function EmployeeSchedulePage() {
                 <p className="mt-0.5 text-[13px] text-ink">{selectedTeam.name}</p>
               </div>
             )}
+            {selectedLocation && (
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Location</p>
+                <p className="mt-0.5 text-[13px] text-ink">{selectedLocation.name}</p>
+                {selectedLocation.address && (
+                  <p className="text-[11px] text-ink-muted">{selectedLocation.address}</p>
+                )}
+              </div>
+            )}
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">
+                People ({selectedCrew.length}
+                {selectedShift.requiredCount > 0 ? ` of ${selectedShift.requiredCount}` : ""})
+              </p>
+              {selectedCrew.length === 0 ? (
+                <p className="mt-1 text-[12px] text-ink-muted">Nobody assigned yet.</p>
+              ) : (
+                <ul className="mt-1.5 space-y-1.5">
+                  {selectedCrew.map(({ assignment, person, clockIn, clockOut }) => {
+                    const isMe = myPerson && person?.id === myPerson.id;
+                    const isPastOrToday = selectedShift.date <= today;
+                    const clockParts: string[] = [];
+                    if (clockIn) clockParts.push(`In ${formatTime(clockIn)}`);
+                    if (clockOut) clockParts.push(`Out ${formatTime(clockOut)}`);
+                    if (clockParts.length === 0 && isPastOrToday) {
+                      clockParts.push("Not clocked in");
+                    }
+                    const hasClock = Boolean(clockIn || clockOut);
+                    return (
+                      <li
+                        key={assignment.id}
+                        className="flex items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-2.5 py-2"
+                      >
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-weak text-[10px] font-semibold text-primary">
+                          {initials(person?.name ?? "?")}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+                          {person?.name ?? "Unknown"}
+                          {isMe && <span className="ml-1 text-[11px] text-ink-subtle">(you)</span>}
+                        </span>
+                        {assignment.status !== "approved" && (
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-px text-[10px] font-medium ${
+                              assignment.status === "pending"
+                                ? "bg-warning-weak text-warning"
+                                : "bg-danger-weak text-danger"
+                            }`}
+                          >
+                            {assignment.status}
+                          </span>
+                        )}
+                        {clockParts.length > 0 && (
+                          <span
+                            className={`shrink-0 text-[11px] ${
+                              hasClock ? "text-ink-muted" : "text-ink-faint"
+                            }`}
+                          >
+                            {clockParts.join(" · ")}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
             {selectedShift.description && (
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Notes</p>
