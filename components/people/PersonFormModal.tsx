@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import Modal from "@/components/ui/Modal";
+import { useCompany } from "@/lib/company-data";
 import type {
   Location,
   Person,
@@ -31,6 +32,7 @@ export interface PersonFormInput {
   teamIds: string[];
   locationId: string | null;
   timezone: string;
+  designation?: string;
   avatarUrl?: string | null;
 }
 
@@ -54,9 +56,11 @@ export default function PersonFormModal({
   onSave,
 }: PersonFormModalProps) {
   const isEdit = person !== null;
+  const { people } = useCompany();
   const [name, setName] = useState(person?.name ?? "");
   const [email, setEmail] = useState(person?.email ?? "");
   const [phone, setPhone] = useState(person?.phone ?? "");
+  const [designation, setDesignation] = useState(person?.designation ?? "");
   const [role, setRole] = useState<PersonRole>(person?.role ?? "employee");
   const [teamIds, setTeamIds] = useState<string[]>(
     person?.teamIds ?? defaultTeamIds ?? [],
@@ -69,6 +73,17 @@ export default function PersonFormModal({
   );
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     person?.avatarUrl ?? null,
+  );
+  const knownDesignations = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          people
+            .map((p) => p.designation?.trim())
+            .filter((d): d is string => !!d),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [people],
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -89,6 +104,7 @@ export default function PersonFormModal({
         teamIds,
         locationId,
         timezone,
+        designation: designation.trim() || undefined,
         avatarUrl: isEdit ? avatarUrl : undefined,
       });
       if (!result.ok) {
@@ -199,6 +215,29 @@ export default function PersonFormModal({
               </select>
               <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
             </div>
+          </div>
+          <div>
+            <label
+              htmlFor="person-designation"
+              className="block text-xs font-medium text-ink-muted"
+            >
+              Designation{" "}
+              <span className="font-normal text-ink-subtle">(optional)</span>
+            </label>
+            <input
+              id="person-designation"
+              type="text"
+              list="known-designations"
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              placeholder="e.g. Barista, Shift Supervisor"
+              className={inputClass}
+            />
+            <datalist id="known-designations">
+              {knownDesignations.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
           </div>
         </div>
 

@@ -53,6 +53,7 @@ interface EditForm {
   teamIds: string[];
   locationId: string | null;
   timezone: string;
+  designation: string;
   notes: string;
 }
 
@@ -91,8 +92,21 @@ export default function PersonDetailPage() {
     teamIds: [],
     locationId: null,
     timezone: DEFAULT_TIMEZONE,
+    designation: "",
     notes: "",
   });
+
+  const knownDesignations = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          people
+            .map((p) => p.designation?.trim())
+            .filter((d): d is string => !!d),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [people],
+  );
   const [saved, setSaved] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
 
@@ -142,6 +156,7 @@ export default function PersonDetailPage() {
       teamIds: person.teamIds,
       locationId: person.locationId,
       timezone: person.timezone,
+      designation: person.designation ?? "",
       notes: person.notes ?? "",
     });
     setEditing(true);
@@ -156,6 +171,7 @@ export default function PersonDetailPage() {
       teamIds: form.teamIds,
       locationId: form.locationId,
       timezone: form.timezone,
+      designation: form.designation.trim() || undefined,
       notes: form.notes.trim() || undefined,
     });
     setEditing(false);
@@ -253,6 +269,7 @@ export default function PersonDetailPage() {
           <dl className="divide-y divide-hairline/60 px-4">
             {[
               ["Email", person.email],
+              ["Designation", person.designation || "—"],
               ["Phone", person.phone || "—"],
               ["Timezone", person.timezone.replace(/_/g, " ")],
               ["Tenure", timeAgo(person.createdAt)],
@@ -516,6 +533,32 @@ export default function PersonDetailPage() {
                   <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="person-designation"
+                className="block text-xs font-medium text-ink-muted"
+              >
+                Designation{" "}
+                <span className="font-normal text-ink-subtle">(optional)</span>
+              </label>
+              <input
+                id="person-designation"
+                type="text"
+                list="known-designations"
+                value={form.designation}
+                onChange={(e) =>
+                  setForm({ ...form, designation: e.target.value })
+                }
+                placeholder="e.g. Barista, Shift Supervisor"
+                className={inputClass}
+              />
+              <datalist id="known-designations">
+                {knownDesignations.map((d) => (
+                  <option key={d} value={d} />
+                ))}
+              </datalist>
             </div>
 
             <div>

@@ -138,6 +138,7 @@ export default function TeamDetailPage() {
       teamIds: input.teamIds,
       locationId: input.locationId,
       timezone: input.timezone,
+      designation: input.designation,
     });
     if (!result.ok || !result.personId) {
       return { ok: false, error: result.error };

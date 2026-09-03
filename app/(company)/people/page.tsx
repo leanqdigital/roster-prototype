@@ -63,6 +63,7 @@ export default function PeoplePage() {
         teamIds: input.teamIds,
         locationId: input.locationId,
         timezone: input.timezone,
+        designation: input.designation,
         avatarUrl: input.avatarUrl,
       });
     } else {
@@ -74,6 +75,7 @@ export default function PeoplePage() {
         teamIds: input.teamIds,
         locationId: input.locationId,
         timezone: input.timezone,
+        designation: input.designation,
       });
       if (!result.ok || !result.personId) {
         return { ok: false, error: result.error };

@@ -35,6 +35,7 @@ export interface Person {
   locationId: string | null;
   timezone: string;
   status: PersonStatus;
+  designation?: string;
   notes?: string;
   avatarUrl?: string | null;
   createdAt: string;
@@ -275,6 +276,7 @@ export interface InviteInput {
   teamIds: string[];
   locationId: string | null;
   timezone: string;
+  designation?: string;
 }
 
 export interface LocationInput {

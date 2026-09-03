@@ -82,6 +82,7 @@ export interface InsertPersonInput {
   teamIds: string[];
   locationId: string | null;
   timezone: string;
+  designation?: string;
   status?: PersonStatus;
 }
 
@@ -97,6 +98,7 @@ export async function insertPerson(input: InsertPersonInput): Promise<Person> {
       team_ids: input.teamIds,
       location_id: input.locationId,
       timezone: input.timezone,
+      designation: input.designation ?? null,
       status: input.status ?? "invited",
     })
     .select(PERSON_COLUMNS)
@@ -115,6 +117,7 @@ export async function updatePersonRow(id: string, patch: Partial<Person>): Promi
   if (patch.locationId !== undefined) update.location_id = patch.locationId;
   if (patch.timezone !== undefined) update.timezone = patch.timezone;
   if (patch.status !== undefined) update.status = patch.status;
+  if (patch.designation !== undefined) update.designation = patch.designation ?? null;
   if (patch.notes !== undefined) update.notes = patch.notes ?? null;
   if (patch.avatarUrl !== undefined) update.avatar_url = patch.avatarUrl ?? null;
   const { data, error } = await supabase

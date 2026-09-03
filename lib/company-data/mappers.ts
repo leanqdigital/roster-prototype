@@ -45,6 +45,7 @@ export interface PersonRow {
   location_id: string | null;
   timezone: string;
   status: PersonStatus;
+  designation: string | null;
   notes: string | null;
   avatar_url: string | null;
   created_at: string;
@@ -52,7 +53,7 @@ export interface PersonRow {
 }
 
 export const PERSON_COLUMNS =
-  "id, name, email, phone, role, team_ids, location_id, timezone, status, notes, avatar_url, created_at, updated_at";
+  "id, name, email, phone, role, team_ids, location_id, timezone, status, designation, notes, avatar_url, created_at, updated_at";
 
 export function fromPersonRow(row: PersonRow): Person {
   return {
@@ -65,6 +66,7 @@ export function fromPersonRow(row: PersonRow): Person {
     locationId: row.location_id,
     timezone: row.timezone,
     status: row.status,
+    designation: row.designation ?? undefined,
     notes: row.notes ?? undefined,
     avatarUrl: row.avatar_url ?? undefined,
     createdAt: row.created_at,

@@ -272,6 +272,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           teamIds: input.teamIds,
           locationId: input.locationId,
           timezone: input.timezone,
+          designation: input.designation?.trim() || undefined,
           status: "invited",
         });
         dispatch({ type: "addPerson", person });

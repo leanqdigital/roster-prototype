@@ -68,6 +68,7 @@ export default function PeopleList({
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.email.toLowerCase().includes(q) ||
+          (p.designation ?? "").toLowerCase().includes(q) ||
           (p.phone ?? "").toLowerCase().includes(q),
       );
     }
@@ -168,6 +169,7 @@ export default function PeopleList({
                     </div>
                     <p className="mt-0.5 truncate text-xs text-ink-muted">
                       {person.email}
+                      {person.designation ? ` · ${person.designation}` : ""}
                       {person.phone ? ` · ${person.phone}` : ""}
                     </p>
                   </div>
@@ -241,6 +243,7 @@ export default function PeopleList({
                   </div>
                   <p className="mt-0.5 truncate text-xs text-ink-muted">
                     {person.email}
+                    {person.designation ? ` · ${person.designation}` : ""}
                     {person.phone ? ` · ${person.phone}` : ""}
                   </p>
                 </div>
