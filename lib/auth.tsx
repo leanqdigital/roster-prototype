@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import { homeForRole } from "@/lib/roles";
 import type { AuthRole } from "@/lib/roles";
 import { inviteEmployee as inviteEmployeeAction } from "@/lib/supabase/actions";
+import { requestPasswordReset as requestPasswordResetAction } from "@/lib/supabase/public-actions";
 
 export type { AuthRole };
 export { homeForRole };
@@ -58,6 +59,7 @@ interface AuthContextValue {
     input: RegisterEmployeeInput,
   ) => Promise<{ ok: boolean; error?: string }>;
   changePassword: (current: string, next: string) => Promise<SignInResult>;
+  requestPasswordReset: (email: string) => Promise<{ ok: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -252,9 +254,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const requestPasswordReset = useCallback(
+    async (email: string): Promise<{ ok: boolean }> => {
+      return requestPasswordResetAction(email.trim().toLowerCase());
+    },
+    [],
+  );
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, ready, signIn, signOut, registerAdmin, registerEmployee, changePassword }),
-    [user, ready, signIn, signOut, registerAdmin, registerEmployee, changePassword],
+    () => ({
+      user,
+      ready,
+      signIn,
+      signOut,
+      registerAdmin,
+      registerEmployee,
+      changePassword,
+      requestPasswordReset,
+    }),
+    [
+      user,
+      ready,
+      signIn,
+      signOut,
+      registerAdmin,
+      registerEmployee,
+      changePassword,
+      requestPasswordReset,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

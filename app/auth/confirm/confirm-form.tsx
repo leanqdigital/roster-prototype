@@ -11,6 +11,23 @@ import LogoMark from "@/components/ui/Logo";
 import { MoonIcon, SunIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 
+const COPY = {
+  invite: {
+    title: "Confirm your invite",
+    subtitle: "Click below to confirm and set your password.",
+    confirmLabel: "Confirm invite",
+    pendingLabel: "Confirming…",
+    toast: "Invite confirmed",
+  },
+  recovery: {
+    title: "Reset your password",
+    subtitle: "Click below to confirm it's you and choose a new password.",
+    confirmLabel: "Continue",
+    pendingLabel: "Confirming…",
+    toast: "Identity confirmed",
+  },
+} as const;
+
 // Deliberately requires an explicit button click before calling verifyOtp().
 // If we auto-verified on page load (GET), email security scanners that
 // prefetch links in incoming mail would burn the single-use token before
@@ -29,6 +46,7 @@ export default function ConfirmInviteForm() {
   const [error, setError] = useState<string | null>(null);
 
   const valid = !!tokenHash && !!type;
+  const copy = COPY[type as keyof typeof COPY] ?? COPY.invite;
 
   const onConfirm = async () => {
     if (!tokenHash || !type) return;
@@ -44,7 +62,7 @@ export default function ConfirmInviteForm() {
       setError(verifyError.message);
       return;
     }
-    pushToast({ tone: "success", message: "Invite confirmed" });
+    pushToast({ tone: "success", message: copy.toast });
     // Hard navigation, not router.replace(). verifyOtp() persists the session
     // to cookies, but AuthProvider picks it up via an async onAuthStateChange
     // -> loadAuthUser() chain (network round trip). A soft client-side nav
@@ -74,12 +92,10 @@ export default function ConfirmInviteForm() {
           <LogoMark className="size-11" />
           <div className="text-center">
             <h1 className="text-xl font-semibold tracking-tight text-ink">
-              Confirm your invite
+              {copy.title}
             </h1>
             <p className="mt-1 text-sm text-ink-muted">
-              {valid
-                ? "Click below to confirm and set your password."
-                : "This invite link is missing or malformed."}
+              {valid ? copy.subtitle : "This link is missing or malformed."}
             </p>
           </div>
         </div>
@@ -97,7 +113,7 @@ export default function ConfirmInviteForm() {
             className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting && <Spinner className="size-3.5" />}
-            {submitting ? "Confirming…" : "Confirm invite"}
+            {submitting ? copy.pendingLabel : copy.confirmLabel}
           </button>
         </div>
 

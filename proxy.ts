@@ -11,6 +11,8 @@ const PUBLIC_PATHS = [
   "/login",
   "/register",
   "/accept-invite",
+  "/forgot-password",
+  "/reset-password",
   "/auth/callback",
   "/auth/confirm",
   // Not "public" in the open sense — this route enforces its own

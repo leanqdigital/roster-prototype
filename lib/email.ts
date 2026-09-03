@@ -67,6 +67,58 @@ export async function sendInviteEmail(
   });
 }
 
+export async function sendPasswordResetEmail(
+  to: string,
+  resetLink: string,
+): Promise<{ ok: boolean; error?: string }> {
+  return sendMail({
+    to,
+    subject: "Reset your Roster password",
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: #5e6ad2; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">Roster</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Reset your password
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    Click below to confirm it's you and choose a new password.
+                  </p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="border-radius: 6px; background-color: #5e6ad2;">
+                        <a href="${resetLink}"
+                           style="display: inline-block; padding: 10px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                          Reset password
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  <p style="margin: 24px 0 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    If the button doesn't work, copy and paste this link into your browser:<br />
+                    <a href="${resetLink}" style="color: #5e6ad2;">${resetLink}</a>
+                  </p>
+                  <p style="margin: 16px 0 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    If you didn't request this, you can safely ignore this email.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}
+
 function formatShiftTime(date: string, time: string): string {
   const d = new Date(`${date}T${time}`);
   if (Number.isNaN(d.getTime())) return time;
