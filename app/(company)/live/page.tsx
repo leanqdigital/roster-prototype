@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { BreakEntry, ClockEntry, Shift } from "@/lib/company-data";
 import { useCompany } from "@/lib/company-data";
-import {
-  fetchBreakEntries,
-  fetchClockEntries,
-} from "@/lib/company-data/queries";
+import { useLiveEntries } from "@/lib/company-data/useLiveEntries";
 import {
   resolvePunctuality,
   type Punctuality,
@@ -15,8 +12,6 @@ import { localDateStr } from "@/lib/format";
 import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
 import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import Avatar from "@/components/people/Avatar";
-
-const POLL_INTERVAL_MS = 30000;
 
 const selectClass =
   "h-9 rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink transition-colors focus:border-primary/60 focus:outline-none";
@@ -43,36 +38,12 @@ interface PersonLiveStatus {
 export default function CompanyLivePage() {
   const { people, teams, shifts, shiftAssignments } = useCompany();
   const [teamId, setTeamId] = useState<string>("");
-  const [liveClockEntries, setLiveClockEntries] = useState<ClockEntry[]>([]);
-  const [liveBreakEntries, setLiveBreakEntries] = useState<BreakEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const [clocks, breaks] = await Promise.all([
-          fetchClockEntries(),
-          fetchBreakEntries(),
-        ]);
-        if (!cancelled) {
-          setLiveClockEntries(clocks);
-          setLiveBreakEntries(breaks);
-          setLastUpdated(new Date());
-          setLoading(false);
-        }
-      } catch {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const {
+    clockEntries: liveClockEntries,
+    breakEntries: liveBreakEntries,
+    loading,
+    lastUpdated,
+  } = useLiveEntries();
 
   const today = localDateStr(new Date());
 
@@ -195,7 +166,7 @@ export default function CompanyLivePage() {
           </select>
           <p className="text-[11px] text-ink-faint">
             {lastUpdated
-              ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · refreshes every 30s`
+              ? `Updated ${lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · live`
               : "Loading…"}
           </p>
         </div>

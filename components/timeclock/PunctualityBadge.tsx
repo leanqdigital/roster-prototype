@@ -18,6 +18,13 @@ const LABELS: Record<Punctuality, string> = {
   on_time_out: "On Time",
 };
 
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}hr` : `${h}hr ${m}min`;
+}
+
 export default function PunctualityBadge({
   label,
   deviationMinutes,
@@ -31,12 +38,18 @@ export default function PunctualityBadge({
       : deviationMinutes < 0
         ? `${Math.abs(deviationMinutes)}m before scheduled time`
         : `${deviationMinutes}m after scheduled time`;
+  const isLate = label === "late_in" || label === "late_out";
+  const durationText =
+    isLate && deviationMinutes !== undefined
+      ? formatDuration(Math.abs(deviationMinutes))
+      : undefined;
   return (
     <span
       title={title}
       className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium ${STYLES[label]}`}
     >
       {LABELS[label]}
+      {durationText ? ` · ${durationText}` : ""}
     </span>
   );
 }
