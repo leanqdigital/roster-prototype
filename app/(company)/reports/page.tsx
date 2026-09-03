@@ -20,13 +20,18 @@ const inputClass =
   "h-9 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary sm:h-8";
 
 export default function ReportsPage() {
-  const { teams } = useCompany();
+  const { teams, people } = useCompany();
   const [tab, setTab] = useState<TabKey>("attendance");
   const [filters, setFilters] = useState<ReportFilters>(() => {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - 29);
-    return { rangeStart: localDateStr(start), rangeEnd: localDateStr(end), teamId: "all" };
+    return {
+      rangeStart: localDateStr(start),
+      rangeEnd: localDateStr(end),
+      teamId: "all",
+      personId: "all",
+    };
   });
 
   const set = (patch: Partial<ReportFilters>) =>
@@ -82,7 +87,7 @@ export default function ReportsPage() {
         />
         <select
           value={filters.teamId}
-          onChange={(e) => set({ teamId: e.target.value })}
+          onChange={(e) => set({ teamId: e.target.value, personId: "all" })}
           className={inputClass}
         >
           <option value="all">All teams</option>
@@ -92,6 +97,27 @@ export default function ReportsPage() {
             </option>
           ))}
         </select>
+        {tab === "leave" && (
+          <select
+            value={filters.personId}
+            onChange={(e) => set({ personId: e.target.value })}
+            className={inputClass}
+          >
+            <option value="all">All members</option>
+            {people
+              .filter(
+                (p) =>
+                  filters.teamId === "all" ||
+                  p.teamIds.includes(filters.teamId),
+              )
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+          </select>
+        )}
       </div>
 
       <div className="mt-6">

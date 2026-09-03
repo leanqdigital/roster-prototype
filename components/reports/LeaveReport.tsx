@@ -50,6 +50,7 @@ export default function LeaveReport({ filters }: { filters: ReportFilters }) {
           const p = personById.get(l.personId);
           return p?.teamIds.includes(filters.teamId) ?? false;
         })
+        .filter((l) => filters.personId === "all" || l.personId === filters.personId)
         .sort((a, b) => b.startDate.localeCompare(a.startDate)),
     [leaveRequests, personById, filters],
   );
