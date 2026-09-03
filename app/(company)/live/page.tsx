@@ -11,9 +11,10 @@ import {
   resolvePunctuality,
   type Punctuality,
 } from "@/lib/company-data/business";
-import { initials, localDateStr } from "@/lib/format";
+import { localDateStr } from "@/lib/format";
 import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
 import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
+import Avatar from "@/components/people/Avatar";
 
 const POLL_INTERVAL_MS = 30000;
 
@@ -234,9 +235,7 @@ export default function CompanyLivePage() {
                       key={p.id}
                       className="flex items-center gap-3 px-4 py-2.5"
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                        {initials(p.name) || "?"}
-                      </span>
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-ink">
                           {p.name}
@@ -284,9 +283,7 @@ export default function CompanyLivePage() {
                       key={p.id}
                       className="flex items-center gap-3 px-4 py-2.5"
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                        {initials(p.name) || "?"}
-                      </span>
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-ink">
                           {p.name}
@@ -336,9 +333,7 @@ export default function CompanyLivePage() {
                       key={p.id}
                       className="flex items-center gap-3 px-4 py-2.5"
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                        {initials(p.name) || "?"}
-                      </span>
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-ink">
                           {p.name}

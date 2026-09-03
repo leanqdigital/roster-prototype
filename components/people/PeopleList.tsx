@@ -3,8 +3,8 @@
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Location, Person, Team } from "@/lib/company-data";
-import { initials } from "@/lib/format";
 import Pagination from "@/components/ui/Pagination";
+import Avatar from "@/components/people/Avatar";
 import {
   ChevronDownIcon,
   MailIcon,
@@ -155,9 +155,7 @@ export default function PeopleList({
               <Fragment key={person.id}>
               <li className="space-y-2 p-4 md:hidden">
                 <div className="flex items-center gap-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                    {initials(person.name) || "?"}
-                  </span>
+                  <Avatar name={person.name} src={person.avatarUrl} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Link
@@ -230,9 +228,7 @@ export default function PeopleList({
               <li
                 className="group hidden items-center gap-3 px-4 py-3 md:flex"
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                  {initials(person.name) || "?"}
-                </span>
+                <Avatar name={person.name} src={person.avatarUrl} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Link

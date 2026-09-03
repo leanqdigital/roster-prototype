@@ -35,6 +35,7 @@ export interface Person {
   timezone: string;
   status: PersonStatus;
   notes?: string;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

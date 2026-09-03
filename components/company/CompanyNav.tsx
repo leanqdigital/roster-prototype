@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useCompany } from "@/lib/company-data";
 import { useTheme } from "@/lib/theme";
 import { DEFAULT_BRANDING, getCompanySettings } from "@/lib/company";
 import LogoMark from "@/components/ui/Logo";
 import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import Modal from "@/components/ui/Modal";
+import Avatar from "@/components/people/Avatar";
 import {
   ActivityIcon,
   BellIcon,
@@ -46,6 +48,7 @@ export default function CompanyNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { people } = useCompany();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -176,16 +179,11 @@ export default function CompanyNav() {
             aria-expanded={menuOpen}
             className="flex w-full items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-3"
           >
-            <span className="flex size-6.5 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-              {user?.name
-                ? user.name
-                    .split(/\s+/)
-                    .map((w) => w[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()
-                : "CA"}
-            </span>
+            <Avatar
+              name={user?.name ?? "Company admin"}
+              src={people.find((p) => p.email.toLowerCase() === user?.email.toLowerCase())?.avatarUrl}
+              className="size-6.5 text-[11px] font-semibold"
+            />
             <span className="min-w-0 flex-1 text-left">
               <span className="block truncate text-[13px] font-medium text-ink">
                 {user?.name ?? "Company admin"}

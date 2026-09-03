@@ -14,6 +14,7 @@ import TimezoneSelect from "@/components/ui/TimezoneSelect";
 import { ChevronDownIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import TeamMultiSelect from "./TeamMultiSelect";
+import AvatarUpload from "./AvatarUpload";
 import { useToast } from "@/lib/toast";
 
 const inputClass =
@@ -30,6 +31,7 @@ export interface PersonFormInput {
   teamIds: string[];
   locationId: string | null;
   timezone: string;
+  avatarUrl?: string | null;
 }
 
 interface PersonFormModalProps {
@@ -65,6 +67,9 @@ export default function PersonFormModal({
   const [timezone, setTimezone] = useState(
     person?.timezone ?? DEFAULT_TIMEZONE,
   );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    person?.avatarUrl ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { pushToast } = useToast();
@@ -84,6 +89,7 @@ export default function PersonFormModal({
         teamIds,
         locationId,
         timezone,
+        avatarUrl: isEdit ? avatarUrl : undefined,
       });
       if (!result.ok) {
         setError(result.error ?? "Couldn't save — try again.");
@@ -113,6 +119,12 @@ export default function PersonFormModal({
       onConfirm={() => {}}
     >
       <form onSubmit={onSubmit} className="mt-5 space-y-4">
+        {isEdit && (
+          <div>
+            <p className="mb-2 text-xs font-medium text-ink-muted">Profile photo</p>
+            <AvatarUpload name={name || person?.name || ""} src={avatarUrl} onPick={setAvatarUrl} />
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label

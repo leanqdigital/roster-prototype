@@ -5,8 +5,9 @@ import type { BreakEntry, ClockEntry, Shift } from "@/lib/company-data";
 import { useCompany } from "@/lib/company-data";
 import { useLiveEntries } from "@/lib/company-data/useLiveEntries";
 import { minutesBetween } from "@/lib/company-data/business";
-import { initials, localDateStr } from "@/lib/format";
+import { localDateStr } from "@/lib/format";
 import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
+import Avatar from "@/components/people/Avatar";
 import { useTeamDetail } from "../team-detail-context";
 
 function formatClockTime(time: string): string {
@@ -149,9 +150,7 @@ export default function ManagerTeamLivePage() {
                   const s = statusByPerson.get(p.id);
                   return (
                     <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                        {initials(p.name) || "?"}
-                      </span>
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-ink">{p.name}</p>
                         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-subtle">
@@ -186,9 +185,7 @@ export default function ManagerTeamLivePage() {
                   const s = statusByPerson.get(p.id);
                   return (
                     <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                        {initials(p.name) || "?"}
-                      </span>
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-ink">{p.name}</p>
                         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-subtle">
@@ -228,9 +225,7 @@ export default function ManagerTeamLivePage() {
                   const s = statusByPerson.get(p.id);
                   return (
                     <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                        {initials(p.name) || "?"}
-                      </span>
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-ink">{p.name}</p>
                         <p className="mt-0.5 text-[11px] text-ink-subtle">

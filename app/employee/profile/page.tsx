@@ -6,6 +6,8 @@ import { useCompany } from "@/lib/company-data";
 import { useEmployeeTeam } from "@/lib/employee-team";
 import { CheckIcon, PencilIcon, UsersIcon } from "@/components/ui/icons";
 import TimezoneSelect from "@/components/ui/TimezoneSelect";
+import Avatar from "@/components/people/Avatar";
+import AvatarUpload from "@/components/people/AvatarUpload";
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -17,6 +19,7 @@ export default function EmployeeProfilePage() {
   const [editing, setEditing] = useState(false);
   const [timezone, setTimezone] = useState("");
   const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const myLocation = useMemo(
@@ -44,6 +47,7 @@ export default function EmployeeProfilePage() {
   const startEdit = () => {
     setTimezone(myPerson.timezone);
     setPhone(myPerson.phone ?? "");
+    setAvatarUrl(myPerson.avatarUrl ?? null);
     setSaved(false);
     setEditing(true);
   };
@@ -53,7 +57,11 @@ export default function EmployeeProfilePage() {
   };
 
   const save = () => {
-    updatePerson(myPerson.id, { timezone, phone: phone.trim() || undefined });
+    updatePerson(myPerson.id, {
+      timezone,
+      phone: phone.trim() || undefined,
+      avatarUrl,
+    });
     setEditing(false);
     setSaved(true);
   };
@@ -62,9 +70,11 @@ export default function EmployeeProfilePage() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary-weak text-primary">
-            <UsersIcon className="size-5" />
-          </span>
+          <Avatar
+            name={myPerson.name}
+            src={myPerson.avatarUrl}
+            className="size-11 rounded-xl text-sm font-semibold"
+          />
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-ink">Profile</h1>
             <p className="mt-0.5 text-xs text-ink-subtle">{myPerson.name}</p>
@@ -90,6 +100,14 @@ export default function EmployeeProfilePage() {
       )}
 
       <div className="mt-6 rounded-xl border border-hairline bg-surface-2 p-5">
+        {editing && (
+          <div className="mb-5 border-b border-hairline pb-5">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">
+              Profile photo
+            </p>
+            <AvatarUpload name={myPerson.name} src={avatarUrl} onPick={setAvatarUrl} />
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Name</p>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useCompany } from "@/lib/company-data";
 import { useManager } from "@/lib/manager-team";
 import { useTheme } from "@/lib/theme";
 import { getCompanySettings } from "@/lib/company";
@@ -11,6 +12,7 @@ import LogoMark from "@/components/ui/Logo";
 import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import Modal from "@/components/ui/Modal";
+import Avatar from "@/components/people/Avatar";
 import {
   ActivityIcon,
   BellIcon,
@@ -28,6 +30,7 @@ export default function ManagerNav() {
   const pathname = usePathname();
   const params = useParams<{ id?: string }>();
   const { user, signOut } = useAuth();
+  const { people } = useCompany();
   const { managedTeams, selectedTeam, selectTeam } = useManager();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -315,16 +318,11 @@ export default function ManagerNav() {
             aria-expanded={menuOpen}
             className="flex w-full items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-3"
           >
-            <span className="flex size-6.5 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-              {user?.name
-                ? user.name
-                    .split(/\s+/)
-                    .map((w) => w[0])
-                    .join("")
-                    .slice(0, 2)
-                     .toUpperCase()
-                : "TM"}
-            </span>
+            <Avatar
+              name={user?.name ?? "Team manager"}
+              src={people.find((p) => p.email.toLowerCase() === user?.email.toLowerCase())?.avatarUrl}
+              className="size-6.5 text-[11px] font-semibold"
+            />
             <span className="min-w-0 flex-1 text-left">
               <span className="block truncate text-[13px] font-medium text-ink">
                 {user?.name ?? "Team manager"}

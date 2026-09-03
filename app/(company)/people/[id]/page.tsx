@@ -9,9 +9,10 @@ import type { Person, PersonRole } from "@/lib/company-data";
 import { resolvePunctuality } from "@/lib/company-data/business";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/company";
 import { useToast } from "@/lib/toast";
-import { formatDate, formatDateTime, initials, timeAgo } from "@/lib/format";
+import { formatDate, formatDateTime, timeAgo } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import StatCard from "@/components/ui/StatCard";
+import Avatar from "@/components/people/Avatar";
 import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import TeamMultiSelect from "@/components/people/TeamMultiSelect";
 import TimezoneSelect from "@/components/ui/TimezoneSelect";
@@ -184,9 +185,11 @@ export default function PersonDetailPage() {
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[13px] font-semibold text-ink">
-            {initials(person.name) || "?"}
-          </span>
+          <Avatar
+            name={person.name}
+            src={person.avatarUrl}
+            className="size-11 text-[13px] font-semibold"
+          />
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-semibold tracking-tight text-ink">

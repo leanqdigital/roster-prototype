@@ -7,7 +7,7 @@ import type { PersonFormInput } from "@/components/people/PersonFormModal";
 import PersonFormModal from "@/components/people/PersonFormModal";
 import { PersonRoleBadge, PersonStatusBadge } from "@/components/people/PersonBadges";
 import { MailIcon, PlusIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
-import { initials } from "@/lib/format";
+import Avatar from "@/components/people/Avatar";
 import Pagination from "@/components/ui/Pagination";
 import { useTeamDetail } from "./team-detail-context";
 
@@ -84,9 +84,11 @@ export default function ManagerTeamMembersPage() {
                 key={person.id}
                 className="group flex items-center gap-3 px-4 py-3"
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                  {initials(person.name) || "?"}
-                </span>
+                <Avatar
+                  name={person.name}
+                  src={person.avatarUrl}
+                  className="size-8 text-[11px] font-semibold"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Link

@@ -116,6 +116,7 @@ export async function updatePersonRow(id: string, patch: Partial<Person>): Promi
   if (patch.timezone !== undefined) update.timezone = patch.timezone;
   if (patch.status !== undefined) update.status = patch.status;
   if (patch.notes !== undefined) update.notes = patch.notes ?? null;
+  if (patch.avatarUrl !== undefined) update.avatar_url = patch.avatarUrl ?? null;
   const { data, error } = await supabase
     .from("people")
     .update(update)

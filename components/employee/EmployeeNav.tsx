@@ -11,6 +11,7 @@ import LogoMark from "@/components/ui/Logo";
 import NavUserMenuContent from "@/components/ui/NavUserMenuContent";
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import Modal from "@/components/ui/Modal";
+import Avatar from "@/components/people/Avatar";
 import {
   BellIcon,
   CalendarIcon,
@@ -158,16 +159,11 @@ export default function EmployeeNav() {
             aria-expanded={menuOpen}
             className="flex w-full items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-3"
           >
-            <span className="flex size-6.5 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-              {user?.name
-                ? user.name
-                    .split(/\s+/)
-                    .map((w) => w[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()
-                : "EM"}
-            </span>
+            <Avatar
+              name={user?.name ?? "Employee"}
+              src={myPerson?.avatarUrl}
+              className="size-6.5 text-[11px] font-semibold"
+            />
             <span className="min-w-0 flex-1 text-left">
               <span className="block truncate text-[13px] font-medium text-ink">
                 {user?.name ?? "Employee"}

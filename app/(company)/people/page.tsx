@@ -63,6 +63,7 @@ export default function PeoplePage() {
         teamIds: input.teamIds,
         locationId: input.locationId,
         timezone: input.timezone,
+        avatarUrl: input.avatarUrl,
       });
     } else {
       const result = await invitePerson({

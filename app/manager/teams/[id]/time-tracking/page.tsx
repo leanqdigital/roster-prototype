@@ -5,11 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { BreakEntry, ComplianceViolation } from "@/lib/company-data";
 import { resolvePunctuality } from "@/lib/company-data/business";
-import { formatDateTime, formatDurationMinutes, initials, localDateStr } from "@/lib/format";
+import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
 import { ClockIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
 import ComplianceViolationBadge from "@/components/breaks/ComplianceViolationBadge";
 import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
+import Avatar from "@/components/people/Avatar";
 import { useTeamDetail } from "../team-detail-context";
 
 const inputClass =
@@ -124,9 +125,7 @@ function ManagerTeamTimeTrackingContent() {
                     : "text-ink hover:bg-surface-3"
                 }`}
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                  {initials(p.name) || "?"}
-                </span>
+                <Avatar name={p.name} src={p.avatarUrl} className="size-7 text-[11px] font-semibold" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium">{p.name}</p>
                   <p className="truncate text-[11px] text-ink-subtle">{p.email}</p>
@@ -149,9 +148,11 @@ function ManagerTeamTimeTrackingContent() {
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-hairline bg-surface-2 px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[12px] font-semibold text-ink">
-                    {initials(selectedPerson.name) || "?"}
-                  </span>
+                  <Avatar
+                    name={selectedPerson.name}
+                    src={selectedPerson.avatarUrl}
+                    className="size-9 text-[12px] font-semibold"
+                  />
                   <div>
                     <p className="text-[13px] font-medium text-ink">{selectedPerson.name}</p>
                     <p className="text-[11px] text-ink-subtle">{selectedPerson.email}</p>
