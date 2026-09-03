@@ -53,6 +53,7 @@ export default function TeamDetailPage() {
   const [description, setDescription] = useState("");
   const [locationId, setLocationId] = useState<string | null>(null);
   const [managerId, setManagerId] = useState<string | null>(null);
+  const [leaveApproverId, setLeaveApproverId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -102,6 +103,7 @@ export default function TeamDetailPage() {
     setDescription(team.description ?? "");
     setLocationId(team.locationId);
     setManagerId(team.managerId);
+    setLeaveApproverId(team.leaveApproverId);
     setError(null);
     setEditing(true);
   };
@@ -114,6 +116,7 @@ export default function TeamDetailPage() {
       description: description || undefined,
       locationId,
       managerId,
+      leaveApproverId,
     });
     if (!ok) {
       setError("Team names can't be empty or duplicate an existing team.");
@@ -248,6 +251,14 @@ export default function TeamDetailPage() {
                 team.managerId
                   ? (managerName.get(team.managerId) ?? "—")
                   : "Unassigned",
+              ],
+              [
+                "Leave approver",
+                team.leaveApproverId
+                  ? (managerName.get(team.leaveApproverId) ?? "—")
+                  : team.managerId
+                    ? (managerName.get(team.managerId) ?? "—")
+                    : "Company admins",
               ],
               [
                 "Location",
@@ -419,6 +430,34 @@ export default function TeamDetailPage() {
                   No people with the manager role yet — invite one from People.
                 </p>
               )}
+            </div>
+            <div>
+              <label
+                htmlFor="team-leave-approver"
+                className="block text-xs font-medium text-ink-muted"
+              >
+                Leave approver
+              </label>
+              <div className="relative">
+                <select
+                  id="team-leave-approver"
+                  value={leaveApproverId ?? ""}
+                  onChange={(e) => setLeaveApproverId(e.target.value || null)}
+                  className={selectClass}
+                >
+                  <option value="">Team manager (default)</option>
+                  {managers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
+              </div>
+              <p className="mt-1 text-[11px] text-ink-subtle">
+                Who reviews leave requests for this team. Company admins can
+                always review too.
+              </p>
             </div>
             {error && (
               <p className="rounded-lg border border-danger/30 bg-danger-weak px-3 py-2 text-[13px] font-medium text-danger">

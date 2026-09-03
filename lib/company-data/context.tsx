@@ -202,6 +202,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       description?: string,
       locationId?: string | null,
       managerId?: string | null,
+      leaveApproverId?: string | null,
     ): Promise<Team | null> => {
       const trimmed = name.trim();
       if (!trimmed) return null;
@@ -214,6 +215,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           description: description?.trim() || undefined,
           locationId: locationId ?? null,
           managerId: managerId ?? null,
+          leaveApproverId: leaveApproverId ?? null,
         });
         dispatch({ type: "createTeam", team });
         return team;

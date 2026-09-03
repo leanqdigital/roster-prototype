@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
-import type { LeaveStatus } from "@/lib/company-data";
+import { useAuth } from "@/lib/auth";
+import type { LeaveRequest, LeaveStatus } from "@/lib/company-data";
+import Modal from "@/components/ui/Modal";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
 import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import { CalendarOffIcon } from "@/components/ui/icons";
 import Pagination from "@/components/ui/Pagination";
+import { useToast } from "@/lib/toast";
 
 const PAGE_SIZE = 10;
 
@@ -28,13 +31,55 @@ function typeLabel(type: string): string {
 }
 
 export default function CompanyLeaveRequestsPage() {
-  const { leaveRequests, people, teams } = useCompany();
+  const { leaveRequests, people, teams, approveLeave, denyLeave, revertLeaveApproval } = useCompany();
+  const { user } = useAuth();
+  const { pushToast } = useToast();
   const [statusFilter, setStatusFilter] = useState<LeaveStatus | "all">("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
+  const [denyTarget, setDenyTarget] = useState<LeaveRequest | null>(null);
+  const [denyComment, setDenyComment] = useState("");
+
+  const reviewerName = user?.name ?? "Admin";
+
+  const handleApprove = (l: LeaveRequest) => {
+    approveLeave(l.id, reviewerName);
+    pushToast({ tone: "success", message: "Leave approved" });
+  };
+
+  const handleDeny = () => {
+    if (!denyTarget) return;
+    denyLeave(denyTarget.id, reviewerName, denyComment);
+    setDenyTarget(null);
+    setDenyComment("");
+    pushToast({ tone: "success", message: "Leave denied" });
+  };
+
+  const handleUndo = (id: string) => {
+    revertLeaveApproval(id, reviewerName);
+    pushToast({ tone: "success", message: "Approval reverted" });
+  };
 
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+
+  // Who owns the decision: the leave approver of any team the requester
+  // belongs to or manages (falls back to that team's manager, then company
+  // admins — who can always step in). Requesters never approve themselves.
+  const responsibleFor = (personId: string): string => {
+    const person = personById.get(personId);
+    if (!person) return "Company admin";
+    const relevantTeams = teams.filter(
+      (t) => person.teamIds.includes(t.id) || t.managerId === person.id,
+    );
+    for (const t of relevantTeams) {
+      const approverId = t.leaveApproverId ?? t.managerId;
+      if (approverId && approverId !== person.id) {
+        return personById.get(approverId)?.name ?? "Company admin";
+      }
+    }
+    return "Company admin";
+  };
 
   const filtered = useMemo(() => {
     return leaveRequests
@@ -143,6 +188,8 @@ export default function CompanyLeaveRequestsPage() {
                     <dd className="text-ink-muted">
                       {formatShortDate(l.startDate)} – {formatShortDate(l.endDate)}
                     </dd>
+                    <dt className="text-ink-subtle">Responsible</dt>
+                    <dd className="text-ink-muted">{responsibleFor(l.personId)}</dd>
                     <dt className="text-ink-subtle">Reviewed by</dt>
                     <dd className="text-ink-muted">{l.reviewedBy ?? "—"}</dd>
                   </dl>
@@ -156,6 +203,39 @@ export default function CompanyLeaveRequestsPage() {
                     <p className="text-[11px] text-danger">
                       Comment: {l.reviewerComment}
                     </p>
+                  )}
+                  {l.status === "pending" ? (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(l)}
+                        className="flex-1 rounded-md border border-success/25 bg-success-weak px-2.5 py-2 text-[12px] font-medium text-success transition-colors hover:bg-success/15"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDenyTarget(l);
+                          setDenyComment("");
+                        }}
+                        className="flex-1 rounded-md border border-danger/25 bg-danger-weak px-2.5 py-2 text-[12px] font-medium text-danger transition-colors hover:bg-danger/15"
+                      >
+                        Deny
+                      </button>
+                    </div>
+                  ) : (
+                    l.status === "approved" && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleUndo(l.id)}
+                          className="rounded-md border border-hairline bg-surface-3 px-2.5 py-1.5 text-[11px] font-medium text-ink-muted transition-colors hover:text-ink"
+                        >
+                          Undo
+                        </button>
+                      </div>
+                    )
                   )}
                 </li>
               );
@@ -171,7 +251,9 @@ export default function CompanyLeaveRequestsPage() {
                 <th className="px-4 py-2.5 font-medium">Dates</th>
                 <th className="px-4 py-2.5 font-medium">Reason</th>
                 <th className="px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5 font-medium">Responsible</th>
                 <th className="px-4 py-2.5 font-medium">Reviewed by</th>
+                <th className="px-4 py-2.5 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -211,7 +293,45 @@ export default function CompanyLeaveRequestsPage() {
                       <LeaveStatusBadge status={l.status} />
                     </td>
                     <td className="px-4 py-3 text-ink-muted">
+                      {responsibleFor(l.personId)}
+                    </td>
+                    <td className="px-4 py-3 text-ink-muted">
                       {l.reviewedBy ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {l.status === "pending" ? (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(l)}
+                            className="rounded-md border border-success/25 bg-success-weak px-2.5 py-1 text-[11px] font-medium text-success transition-colors hover:bg-success/15"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDenyTarget(l);
+                              setDenyComment("");
+                            }}
+                            className="rounded-md border border-danger/25 bg-danger-weak px-2.5 py-1 text-[11px] font-medium text-danger transition-colors hover:bg-danger/15"
+                          >
+                            Deny
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-2">
+                          {l.status === "approved" && (
+                            <button
+                              type="button"
+                              onClick={() => handleUndo(l.id)}
+                              className="rounded-md border border-hairline bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-ink-muted transition-colors hover:text-ink"
+                            >
+                              Undo
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -222,6 +342,33 @@ export default function CompanyLeaveRequestsPage() {
           <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         </div>
       )}
+
+      <Modal
+        open={!!denyTarget}
+        title="Deny leave request"
+        description={
+          denyTarget
+            ? `${personById.get(denyTarget.personId)?.name ?? "This person"} — ${typeLabel(denyTarget.type)}, ${formatShortDate(denyTarget.startDate)} – ${formatShortDate(denyTarget.endDate)}`
+            : undefined
+        }
+        tone="danger"
+        confirmLabel="Deny request"
+        onConfirm={handleDeny}
+        onClose={() => setDenyTarget(null)}
+      >
+        <div className="mt-4">
+          <label className="mb-1.5 block text-xs font-medium text-ink-subtle">
+            Comment <span className="text-ink-faint">(optional)</span>
+          </label>
+          <textarea
+            value={denyComment}
+            onChange={(e) => setDenyComment(e.target.value)}
+            rows={3}
+            placeholder="e.g. Insufficient coverage that day"
+            className="w-full resize-none rounded-lg border border-hairline bg-surface-3 px-2.5 py-2 text-[13px] text-ink outline-none placeholder:text-ink-faint focus:border-primary"
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

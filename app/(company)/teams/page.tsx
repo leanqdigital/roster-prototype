@@ -40,6 +40,7 @@ export default function TeamsPage() {
         description: input.description,
         locationId: input.locationId,
         managerId: input.managerId,
+        leaveApproverId: input.leaveApproverId,
       });
       if (!ok) {
         return { ok: false, error: "Team names can't be empty or duplicate an existing team." };
@@ -50,6 +51,7 @@ export default function TeamsPage() {
         input.description,
         input.locationId,
         input.managerId,
+        input.leaveApproverId,
       );
       if (!team) {
         return { ok: false, error: "Team name can't be empty or match an existing team." };

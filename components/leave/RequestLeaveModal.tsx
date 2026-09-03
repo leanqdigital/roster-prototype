@@ -59,7 +59,7 @@ export default function RequestLeaveModal({
     <Modal
       open={open}
       title="Request leave"
-      description="Submit a leave request for approval by your manager."
+      description="Submit a leave request for review."
       confirmLabel="Submit request"
       confirmLoading={submitting}
       onConfirm={handleSubmit}

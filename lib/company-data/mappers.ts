@@ -82,10 +82,12 @@ export interface TeamRow {
   description: string | null;
   location_id: string | null;
   manager_id: string | null;
+  leave_approver_id: string | null;
   created_at: string;
 }
 
-export const TEAM_COLUMNS = "id, name, description, location_id, manager_id, created_at";
+export const TEAM_COLUMNS =
+  "id, name, description, location_id, manager_id, leave_approver_id, created_at";
 
 export function fromTeamRow(row: TeamRow): Team {
   return {
@@ -94,6 +96,7 @@ export function fromTeamRow(row: TeamRow): Team {
     description: row.description ?? undefined,
     locationId: row.location_id,
     managerId: row.manager_id,
+    leaveApproverId: row.leave_approver_id,
     createdAt: row.created_at,
   };
 }

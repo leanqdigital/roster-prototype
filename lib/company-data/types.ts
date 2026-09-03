@@ -9,6 +9,7 @@ export interface Team {
   description?: string;
   locationId: string | null;
   managerId: string | null;
+  leaveApproverId: string | null;
   createdAt: string;
 }
 
@@ -306,6 +307,7 @@ export interface CompanyContextValue extends CompanyState {
     description?: string,
     locationId?: string | null,
     managerId?: string | null,
+    leaveApproverId?: string | null,
   ) => Promise<Team | null>;
   updateTeam: (id: string, patch: Partial<Team>) => Promise<boolean>;
   deleteTeam: (id: string) => Promise<void>;

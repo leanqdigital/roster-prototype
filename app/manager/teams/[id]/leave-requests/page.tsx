@@ -22,7 +22,7 @@ function typeLabel(type: string): string {
 
 export default function ManagerTeamLeaveRequestsPage() {
   const { team, teamPeople } = useTeamDetail();
-  const { leaveRequests, approveLeave, denyLeave, revertLeaveApproval, shifts, shiftAssignments } = useCompany();
+  const { leaveRequests, people, approveLeave, denyLeave, revertLeaveApproval, shifts, shiftAssignments } = useCompany();
   const { myPerson } = useManager();
   const { pushToast } = useToast();
   const [denyTarget, setDenyTarget] = useState<LeaveRequest | null>(null);
@@ -30,15 +30,18 @@ export default function ManagerTeamLeaveRequestsPage() {
 
   const teamLeave = useMemo(() => {
     const memberIds = new Set(teamPeople.map((p) => p.id));
+    // Include the team manager so their own leave requests are reviewable here.
+    if (team.managerId) memberIds.add(team.managerId);
     return leaveRequests
       .filter((l) => memberIds.has(l.personId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [leaveRequests, teamPeople]);
+  }, [leaveRequests, teamPeople, team.managerId]);
 
-  const personById = useMemo(
-    () => new Map(teamPeople.map((p) => [p.id, p])),
-    [teamPeople],
-  );
+  const personById = useMemo(() => {
+    const map = new Map(people.map((p) => [p.id, p]));
+    for (const p of teamPeople) map.set(p.id, p);
+    return map;
+  }, [people, teamPeople]);
 
   const conflictsByLeaveId = useMemo(() => {
     const map = new Map<string, Shift[]>();

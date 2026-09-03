@@ -149,6 +149,7 @@ export async function insertTeam(input: {
   description?: string;
   locationId: string | null;
   managerId: string | null;
+  leaveApproverId?: string | null;
 }): Promise<Team> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -158,6 +159,7 @@ export async function insertTeam(input: {
       description: input.description ?? null,
       location_id: input.locationId,
       manager_id: input.managerId,
+      leave_approver_id: input.leaveApproverId ?? null,
     })
     .select(TEAM_COLUMNS)
     .single();
@@ -172,6 +174,7 @@ export async function updateTeamRow(id: string, patch: Partial<Team>): Promise<T
   if (patch.description !== undefined) update.description = patch.description ?? null;
   if (patch.locationId !== undefined) update.location_id = patch.locationId;
   if (patch.managerId !== undefined) update.manager_id = patch.managerId;
+  if (patch.leaveApproverId !== undefined) update.leave_approver_id = patch.leaveApproverId;
   const { data, error } = await supabase
     .from("teams")
     .update(update)
