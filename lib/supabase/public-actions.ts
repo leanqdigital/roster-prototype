@@ -38,6 +38,18 @@ export async function requestPasswordReset(email: string): Promise<{ ok: boolean
     return { ok: true };
   }
 
+  // Super_admin accounts don't self-serve password resets — no email sent,
+  // same generic response either way (no enumeration).
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
+  if (profile?.role === "super_admin") {
+    console.log(`[password-reset] blocked for super_admin ${normalizedEmail}`);
+    return { ok: true };
+  }
+
   // Same reasoning as inviteEmployee: don't email Supabase's own
   // action_link (a GET consumes the token immediately, so email-scanner
   // prefetch would burn it). Email a link to our own confirm page instead,
