@@ -28,10 +28,12 @@ import { inviteEmployee } from "@/lib/supabase/actions";
 import {
   deleteAssignmentRow,
   deleteLocationRow,
+  deletePersonalNoteRow,
   deletePersonRow,
   deleteShiftRow,
   deleteShiftsMany,
   deleteShiftTemplateRow,
+  deleteTeamNoteRow,
   deleteTeamRow,
   endBreakEntryRow,
   fetchActivity,
@@ -42,9 +44,11 @@ import {
   fetchLeaveRequests,
   fetchLocations,
   fetchPeople,
+  fetchPersonalNotes,
   fetchShiftAssignments,
   fetchShifts,
   fetchShiftTemplates,
+  fetchTeamNotes,
   fetchTeams,
   insertActivity,
   insertActivityMany,
@@ -57,19 +61,23 @@ import {
   insertLeaveRequest,
   insertLocation,
   insertPerson,
+  insertPersonalNote,
   insertShift,
   insertShiftsMany,
   insertShiftTemplate,
   insertTeam,
+  insertTeamNote,
   markActivityReadRow,
   markAllActivityReadRow,
   updateAssignmentRow,
   updateLeaveRequestRow,
   updateLocationRow,
+  updatePersonalNoteRow,
   updatePersonRow,
   updateShiftRow,
   updateShiftsByTemplate,
   updateShiftTemplateRow,
+  updateTeamNoteRow,
   updateTeamRow,
 } from "./queries";
 import type {
@@ -90,11 +98,13 @@ import type {
   Location,
   LocationInput,
   Person,
+  PersonalNote,
   Shift,
   ShiftAssignment,
   ShiftTemplate,
   ShiftTemplateInput,
   Team,
+  TeamNote,
 } from "./types";
 
 const CompanyContext = createContext<CompanyContextValue | null>(null);
@@ -124,6 +134,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           shifts,
           shiftAssignments,
           auditLog,
+          personalNotes,
+          teamNotes,
         ] = await Promise.all([
           fetchPeople(),
           fetchTeams(),
@@ -137,6 +149,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           fetchShifts(),
           fetchShiftAssignments(),
           fetchAuditLog(),
+          fetchPersonalNotes(),
+          fetchTeamNotes(),
         ]);
         if (cancelled) return;
         dispatch({
@@ -154,6 +168,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             shifts,
             shiftAssignments,
             auditLog,
+            personalNotes,
+            teamNotes,
           },
         });
       } finally {
@@ -1464,6 +1480,100 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     [state.shifts, state.shiftAssignments, state.leaveRequests],
   );
 
+  // ---------------------------------------------------------------------
+  // personal notes
+  // ---------------------------------------------------------------------
+
+  const createPersonalNote = useCallback(
+    async (input: {
+      title?: string;
+      content: string;
+    }): Promise<{ ok: boolean; error?: string; note?: PersonalNote }> => {
+      if (!input.content.trim()) return { ok: false, error: "Note can't be empty." };
+      try {
+        const note = await insertPersonalNote({
+          title: input.title?.trim() || undefined,
+          content: input.content.trim(),
+        });
+        dispatch({ type: "addPersonalNote", note });
+        return { ok: true, note };
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+    },
+    [],
+  );
+
+  const updatePersonalNote = useCallback(
+    async (id: string, patch: { title?: string; content: string }): Promise<boolean> => {
+      if (!patch.content.trim()) return false;
+      try {
+        const updated = await updatePersonalNoteRow(id, {
+          title: patch.title?.trim() || undefined,
+          content: patch.content.trim(),
+        });
+        dispatch({ type: "updatePersonalNote", id, patch: updated });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  const deletePersonalNote = useCallback(async (id: string) => {
+    await deletePersonalNoteRow(id);
+    dispatch({ type: "deletePersonalNote", id });
+  }, []);
+
+  // ---------------------------------------------------------------------
+  // team notes
+  // ---------------------------------------------------------------------
+
+  const createTeamNote = useCallback(
+    async (
+      personId: string,
+      input: { teamId: string; title?: string; content: string },
+    ): Promise<{ ok: boolean; error?: string; note?: TeamNote }> => {
+      if (!input.content.trim()) return { ok: false, error: "Note can't be empty." };
+      try {
+        const note = await insertTeamNote({
+          teamId: input.teamId,
+          personId,
+          title: input.title?.trim() || undefined,
+          content: input.content.trim(),
+        });
+        dispatch({ type: "addTeamNote", note });
+        return { ok: true, note };
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+    },
+    [],
+  );
+
+  const updateTeamNote = useCallback(
+    async (id: string, patch: { title?: string; content: string }): Promise<boolean> => {
+      if (!patch.content.trim()) return false;
+      try {
+        const updated = await updateTeamNoteRow(id, {
+          title: patch.title?.trim() || undefined,
+          content: patch.content.trim(),
+        });
+        dispatch({ type: "updateTeamNote", id, patch: updated });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  const deleteTeamNote = useCallback(async (id: string) => {
+    await deleteTeamNoteRow(id);
+    dispatch({ type: "deleteTeamNote", id });
+  }, []);
+
   const value = useMemo<CompanyContextValue>(
     () => ({
       ...state,
@@ -1514,6 +1624,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       denyShiftRequest,
       revertShiftApproval,
       getAvailableShiftsForPerson,
+      createPersonalNote,
+      updatePersonalNote,
+      deletePersonalNote,
+      createTeamNote,
+      updateTeamNote,
+      deleteTeamNote,
     }),
     [
       state,
@@ -1564,6 +1680,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       denyShiftRequest,
       revertShiftApproval,
       getAvailableShiftsForPerson,
+      createPersonalNote,
+      updatePersonalNote,
+      deletePersonalNote,
+      createTeamNote,
+      updateTeamNote,
+      deleteTeamNote,
     ],
   );
 

@@ -14,10 +14,12 @@ import {
   LEAVE_REQUEST_COLUMNS,
   LOCATION_COLUMNS,
   PERSON_COLUMNS,
+  PERSONAL_NOTE_COLUMNS,
   SHIFT_ASSIGNMENT_COLUMNS,
   SHIFT_COLUMNS,
   SHIFT_TEMPLATE_COLUMNS,
   TEAM_COLUMNS,
+  TEAM_NOTE_COLUMNS,
   fromActivityEntryRow,
   fromAuditLogRow,
   fromBreakEntryRow,
@@ -25,10 +27,12 @@ import {
   fromComplianceViolationRow,
   fromLeaveRequestRow,
   fromLocationRow,
+  fromPersonalNoteRow,
   fromPersonRow,
   fromShiftAssignmentRow,
   fromShiftRow,
   fromShiftTemplateRow,
+  fromTeamNoteRow,
   fromTeamRow,
 } from "./mappers";
 import type {
@@ -50,6 +54,7 @@ import type {
   LeaveType,
   Location,
   Person,
+  PersonalNote,
   PersonRole,
   PersonStatus,
   Shift,
@@ -57,6 +62,7 @@ import type {
   ShiftStatus,
   ShiftTemplate,
   Team,
+  TeamNote,
 } from "./types";
 
 function fail(error: { message: string } | null, context: string): never {
@@ -815,4 +821,115 @@ export async function insertAudit(input: {
     .single();
   if (error || !data) fail(error, "insertAudit");
   return fromAuditLogRow(data);
+}
+
+// ---------------------------------------------------------------------------
+// personal_notes
+// ---------------------------------------------------------------------------
+
+export async function fetchPersonalNotes(): Promise<PersonalNote[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("personal_notes")
+    .select(PERSONAL_NOTE_COLUMNS)
+    .order("updated_at", { ascending: false });
+  if (error) fail(error, "fetchPersonalNotes");
+  return (data ?? []).map(fromPersonalNoteRow);
+}
+
+export async function insertPersonalNote(input: {
+  title?: string;
+  content: string;
+}): Promise<PersonalNote> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("personal_notes")
+    .insert({ title: input.title ?? null, content: input.content })
+    .select(PERSONAL_NOTE_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "insertPersonalNote");
+  return fromPersonalNoteRow(data);
+}
+
+export async function updatePersonalNoteRow(
+  id: string,
+  patch: { title?: string; content?: string },
+): Promise<PersonalNote> {
+  const supabase = createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.title !== undefined) update.title = patch.title ?? null;
+  if (patch.content !== undefined) update.content = patch.content;
+  const { data, error } = await supabase
+    .from("personal_notes")
+    .update(update)
+    .eq("id", id)
+    .select(PERSONAL_NOTE_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "updatePersonalNoteRow");
+  return fromPersonalNoteRow(data);
+}
+
+export async function deletePersonalNoteRow(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("personal_notes").delete().eq("id", id);
+  if (error) fail(error, "deletePersonalNoteRow");
+}
+
+// ---------------------------------------------------------------------------
+// team_notes
+// ---------------------------------------------------------------------------
+
+export async function fetchTeamNotes(): Promise<TeamNote[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("team_notes")
+    .select(TEAM_NOTE_COLUMNS)
+    .order("updated_at", { ascending: false });
+  if (error) fail(error, "fetchTeamNotes");
+  return (data ?? []).map(fromTeamNoteRow);
+}
+
+export async function insertTeamNote(input: {
+  teamId: string;
+  personId: string;
+  title?: string;
+  content: string;
+}): Promise<TeamNote> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("team_notes")
+    .insert({
+      team_id: input.teamId,
+      person_id: input.personId,
+      title: input.title ?? null,
+      content: input.content,
+    })
+    .select(TEAM_NOTE_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "insertTeamNote");
+  return fromTeamNoteRow(data);
+}
+
+export async function updateTeamNoteRow(
+  id: string,
+  patch: { title?: string; content?: string },
+): Promise<TeamNote> {
+  const supabase = createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.title !== undefined) update.title = patch.title ?? null;
+  if (patch.content !== undefined) update.content = patch.content;
+  const { data, error } = await supabase
+    .from("team_notes")
+    .update(update)
+    .eq("id", id)
+    .select(TEAM_NOTE_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "updateTeamNoteRow");
+  return fromTeamNoteRow(data);
+}
+
+export async function deleteTeamNoteRow(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("team_notes").delete().eq("id", id);
+  if (error) fail(error, "deleteTeamNoteRow");
 }

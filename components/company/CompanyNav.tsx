@@ -23,6 +23,7 @@ import {
   HeartPulseIcon,
   ListIcon,
   MapPinIcon,
+  NoteIcon,
   SettingsIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
   { href: "/shift-requests", label: "Shift Requests", icon: BellIcon, soon: false },
   { href: "/leave-requests", label: "Leave Requests", icon: CalendarOffIcon, soon: false },
   { href: "/locations", label: "Locations", icon: MapPinIcon, soon: false },
+  { href: "/notes", label: "Notes", icon: NoteIcon, soon: false },
   { href: "/settings", label: "Settings", icon: SettingsIcon, soon: false },
 ];
 

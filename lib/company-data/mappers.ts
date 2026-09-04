@@ -23,12 +23,14 @@ import type {
   LeaveType,
   Location,
   Person,
+  PersonalNote,
   PersonRole,
   PersonStatus,
   Shift,
   ShiftAssignment,
   ShiftTemplate,
   Team,
+  TeamNote,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -426,5 +428,57 @@ export function fromAuditLogRow(row: AuditLogRow): AuditEntry {
     resourceId: row.resource_id,
     teamId: row.team_id ?? undefined,
     message: row.message,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// personal_notes
+// ---------------------------------------------------------------------------
+
+export interface PersonalNoteRow {
+  id: string;
+  title: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PERSONAL_NOTE_COLUMNS = "id, title, content, created_at, updated_at";
+
+export function fromPersonalNoteRow(row: PersonalNoteRow): PersonalNote {
+  return {
+    id: row.id,
+    title: row.title ?? undefined,
+    content: row.content,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// team_notes
+// ---------------------------------------------------------------------------
+
+export interface TeamNoteRow {
+  id: string;
+  team_id: string;
+  person_id: string;
+  title: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const TEAM_NOTE_COLUMNS = "id, team_id, person_id, title, content, created_at, updated_at";
+
+export function fromTeamNoteRow(row: TeamNoteRow): TeamNote {
+  return {
+    id: row.id,
+    teamId: row.team_id,
+    personId: row.person_id,
+    title: row.title ?? undefined,
+    content: row.content,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }

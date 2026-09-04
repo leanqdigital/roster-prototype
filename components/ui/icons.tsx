@@ -352,6 +352,14 @@ export const BriefcaseIcon = ({ ...p }: IconProps) => (
   </svg>
 );
 
+export const NoteIcon = ({ ...p }: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+    <path d="M14 2v6h6" />
+    <path d="M8 13h8M8 17h5" />
+  </svg>
+);
+
 export const GraduationCapIcon = ({ ...p }: IconProps) => (
   <svg {...base} {...p}>
     <path d="M22 10 12 5 2 10l10 5 10-5Z" />

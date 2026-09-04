@@ -191,6 +191,24 @@ export interface BulkAssignResult {
   skipped: BulkAssignSkip[];
 }
 
+export interface PersonalNote {
+  id: string;
+  title?: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamNote {
+  id: string;
+  teamId: string;
+  personId: string;
+  title?: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CompanyState {
   teams: Team[];
   people: Person[];
@@ -204,6 +222,8 @@ export interface CompanyState {
   shifts: Shift[];
   shiftAssignments: ShiftAssignment[];
   auditLog: AuditEntry[];
+  personalNotes: PersonalNote[];
+  teamNotes: TeamNote[];
 }
 
 export type CompanyAction =
@@ -266,7 +286,13 @@ export type CompanyAction =
       approvedBy?: string;
     }
   | { type: "addActivity"; entry: ActivityEntry }
-  | { type: "addAudit"; entry: AuditEntry };
+  | { type: "addAudit"; entry: AuditEntry }
+  | { type: "addPersonalNote"; note: PersonalNote }
+  | { type: "updatePersonalNote"; id: string; patch: Partial<PersonalNote> }
+  | { type: "deletePersonalNote"; id: string }
+  | { type: "addTeamNote"; note: TeamNote }
+  | { type: "updateTeamNote"; id: string; patch: Partial<TeamNote> }
+  | { type: "deleteTeamNote"; id: string };
 
 export interface InviteInput {
   name: string;
@@ -411,4 +437,16 @@ export interface CompanyContextValue extends CompanyState {
   denyShiftRequest: (assignmentId: string, reviewedBy: string) => Promise<void>;
   revertShiftApproval: (assignmentId: string, revertedBy: string) => Promise<void>;
   getAvailableShiftsForPerson: (personId: string, teamId: string) => Shift[];
+  createPersonalNote: (input: {
+    title?: string;
+    content: string;
+  }) => Promise<{ ok: boolean; error?: string; note?: PersonalNote }>;
+  updatePersonalNote: (id: string, patch: { title?: string; content: string }) => Promise<boolean>;
+  deletePersonalNote: (id: string) => Promise<void>;
+  createTeamNote: (
+    personId: string,
+    input: { teamId: string; title?: string; content: string },
+  ) => Promise<{ ok: boolean; error?: string; note?: TeamNote }>;
+  updateTeamNote: (id: string, patch: { title?: string; content: string }) => Promise<boolean>;
+  deleteTeamNote: (id: string) => Promise<void>;
 }

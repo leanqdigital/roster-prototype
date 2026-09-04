@@ -19,6 +19,7 @@ import {
   ChevronDownIcon,
   ClockIcon,
   ListIcon,
+  NoteIcon,
   SettingsIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -67,6 +68,7 @@ export default function EmployeeNav() {
     { href: "/employee/available-shifts", label: "Available Shifts", icon: CalendarIcon },
     { href: "/employee/clock", label: "Clock In/Out", icon: ClockIcon },
     { href: "/employee/leave-requests", label: "Leave Requests", icon: CalendarOffIcon },
+    { href: "/employee/notes", label: "Notes", icon: NoteIcon },
     { href: "/employee/settings", label: "Settings", icon: SettingsIcon },
     { href: "/employee/profile", label: "Profile", icon: UsersIcon },
     { href: "/employee/notifications", label: "Notifications", icon: BellIcon, badge: unreadCount },

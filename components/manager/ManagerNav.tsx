@@ -21,6 +21,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  NoteIcon,
   SettingsIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -70,6 +71,7 @@ export default function ManagerNav() {
 
   const teamTab = (label: string) => teamTabs.find((t) => t.label === label);
   const myLeaveItem = { href: "/manager/leave-requests", label: "My Leave", icon: CalendarOffIcon };
+  const myNotesItem = { href: "/manager/notes", label: "Notes", icon: NoteIcon };
 
   const myPerson = useMemo(
     () =>
@@ -154,6 +156,7 @@ export default function ManagerNav() {
       disabled: false,
       badge: myNotificationsItem.badge as number | undefined,
     },
+    { href: myNotesItem.href, label: myNotesItem.label, icon: myNotesItem.icon, disabled: false, badge: undefined as number | undefined },
     { href: "/manager/settings", label: "Settings", icon: SettingsIcon, disabled: false, badge: undefined as number | undefined },
   ];
 
@@ -295,7 +298,7 @@ export default function ManagerNav() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {[myLeaveItem, ...teamTabs, myNotificationsItem].map((item) => {
+        {[myLeaveItem, ...teamTabs, myNotificationsItem, myNotesItem].map((item) => {
           const active =
             item.label === "Members"
               ? pathname === item.href || pathname.startsWith(`${item.href}/people/`)

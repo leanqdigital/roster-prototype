@@ -13,6 +13,8 @@ export const initialState: CompanyState = {
   shifts: [],
   shiftAssignments: [],
   auditLog: [],
+  personalNotes: [],
+  teamNotes: [],
 };
 
 export function reducer(state: CompanyState, action: CompanyAction): CompanyState {
@@ -283,5 +285,33 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
       };
     case "addAudit":
       return { ...state, auditLog: [action.entry, ...state.auditLog] };
+    case "addPersonalNote":
+      return { ...state, personalNotes: [action.note, ...state.personalNotes] };
+    case "updatePersonalNote":
+      return {
+        ...state,
+        personalNotes: state.personalNotes.map((n) =>
+          n.id === action.id ? { ...n, ...action.patch } : n,
+        ),
+      };
+    case "deletePersonalNote":
+      return {
+        ...state,
+        personalNotes: state.personalNotes.filter((n) => n.id !== action.id),
+      };
+    case "addTeamNote":
+      return { ...state, teamNotes: [action.note, ...state.teamNotes] };
+    case "updateTeamNote":
+      return {
+        ...state,
+        teamNotes: state.teamNotes.map((n) =>
+          n.id === action.id ? { ...n, ...action.patch } : n,
+        ),
+      };
+    case "deleteTeamNote":
+      return {
+        ...state,
+        teamNotes: state.teamNotes.filter((n) => n.id !== action.id),
+      };
   }
 }
