@@ -1,17 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import type { PersonalNote, TeamNote } from "@/lib/company-data";
 import { useToast } from "@/lib/toast";
 import Modal from "@/components/ui/Modal";
+import Pagination from "@/components/ui/Pagination";
 import { Spinner } from "@/components/ui/Spinner";
 import { NoteIcon, PencilIcon, PlusIcon, TrashIcon, UsersIcon } from "@/components/ui/icons";
 
 type NoteModalState = { mode: "create" } | { mode: "edit"; note: PersonalNote } | null;
 type TeamNoteModalState = { mode: "create" } | { mode: "edit"; note: TeamNote } | null;
+
+const PAGE_SIZE = 9;
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -119,7 +123,8 @@ function NoteFormModal({
   );
 }
 
-export default function NotesPage() {
+function NotesPageContent() {
+  const searchParams = useSearchParams();
   const {
     personalNotes,
     createPersonalNote,
@@ -134,9 +139,12 @@ export default function NotesPage() {
   } = useCompany();
   const { user } = useAuth();
   const { pushToast } = useToast();
-  const [view, setView] = useState<"personal" | "team">("personal");
+  const [view, setView] = useState<"personal" | "team">(
+    searchParams.get("view") === "team" ? "team" : "personal",
+  );
   const [modal, setModal] = useState<NoteModalState>(null);
   const [confirmDelete, setConfirmDelete] = useState<PersonalNote | null>(null);
+  const [page, setPage] = useState(1);
 
   const myPerson = useMemo(
     () => people.find((p) => p.email.toLowerCase() === user?.email.toLowerCase()) ?? null,
@@ -149,7 +157,9 @@ export default function NotesPage() {
     return teams.filter((t) => myPerson.teamIds.includes(t.id) || t.managerId === myPerson.id);
   }, [teams, myPerson, user?.role]);
 
-  const [selectedTeamIdOverride, setSelectedTeamIdOverride] = useState<string | null>(null);
+  const [selectedTeamIdOverride, setSelectedTeamIdOverride] = useState<string | null>(
+    searchParams.get("team"),
+  );
   const selectedTeamId =
     selectedTeamIdOverride && myTeams.some((t) => t.id === selectedTeamIdOverride)
       ? selectedTeamIdOverride
@@ -157,6 +167,7 @@ export default function NotesPage() {
 
   const [teamModal, setTeamModal] = useState<TeamNoteModalState>(null);
   const [confirmDeleteTeamNote, setConfirmDeleteTeamNote] = useState<TeamNote | null>(null);
+  const [teamPage, setTeamPage] = useState(1);
 
   const personNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -167,6 +178,20 @@ export default function NotesPage() {
   const teamNotesForSelected = useMemo(
     () => teamNotes.filter((n) => n.teamId === selectedTeamId),
     [teamNotes, selectedTeamId],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(personalNotes.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedPersonalNotes = useMemo(
+    () => personalNotes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [personalNotes, currentPage],
+  );
+
+  const teamPageCount = Math.max(1, Math.ceil(teamNotesForSelected.length / PAGE_SIZE));
+  const currentTeamPage = Math.min(teamPage, teamPageCount);
+  const pagedTeamNotes = useMemo(
+    () => teamNotesForSelected.slice((currentTeamPage - 1) * PAGE_SIZE, currentTeamPage * PAGE_SIZE),
+    [teamNotesForSelected, currentTeamPage],
   );
 
   const canModerate = (teamId: string) =>
@@ -245,7 +270,10 @@ export default function NotesPage() {
       <div className="mt-4 inline-flex rounded-lg border border-hairline bg-surface-3 p-0.5">
         <button
           type="button"
-          onClick={() => setView("personal")}
+          onClick={() => {
+            setView("personal");
+            setPage(1);
+          }}
           className={`h-7 rounded-md px-3 text-[13px] font-medium transition-colors ${
             view === "personal" ? "bg-surface-1 text-ink shadow-sm" : "text-ink-muted hover:text-ink"
           }`}
@@ -254,7 +282,10 @@ export default function NotesPage() {
         </button>
         <button
           type="button"
-          onClick={() => setView("team")}
+          onClick={() => {
+            setView("team");
+            setTeamPage(1);
+          }}
           className={`h-7 rounded-md px-3 text-[13px] font-medium transition-colors ${
             view === "team" ? "bg-surface-1 text-ink shadow-sm" : "text-ink-muted hover:text-ink"
           }`}
@@ -284,44 +315,49 @@ export default function NotesPage() {
               </button>
             </div>
           ) : (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {personalNotes.map((note) => (
-                <div
-                  key={note.id}
-                  className="flex flex-col rounded-xl border border-hairline bg-surface-2 p-4"
-                >
-                  <h3 className="truncate text-[14px] font-semibold text-ink">
-                    {note.title || "Untitled"}
-                  </h3>
-                  <p className="mt-1.5 line-clamp-4 flex-1 whitespace-pre-wrap text-[13px] text-ink-muted">
-                    {note.content}
-                  </p>
-                  <p className="mt-3 text-[11px] text-ink-subtle">
-                    Updated {formatUpdatedAt(note.updatedAt)}
-                  </p>
-                  <div className="mt-3 flex justify-end gap-2 border-t border-hairline pt-3">
-                    <button
-                      type="button"
-                      aria-label="Edit note"
-                      title="Edit"
-                      onClick={() => setModal({ mode: "edit", note })}
-                      className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4"
-                    >
-                      <PencilIcon className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Delete note"
-                      title="Delete"
-                      onClick={() => setConfirmDelete(note)}
-                      className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-danger transition-colors hover:bg-danger-weak"
-                    >
-                      <TrashIcon className="size-3.5" />
-                    </button>
+            <>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {pagedPersonalNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="flex flex-col rounded-xl border border-hairline bg-surface-2 p-4"
+                  >
+                    <h3 className="truncate text-[14px] font-semibold text-ink">
+                      {note.title || "Untitled"}
+                    </h3>
+                    <p className="mt-1.5 line-clamp-4 flex-1 whitespace-pre-wrap text-[13px] text-ink-muted">
+                      {note.content}
+                    </p>
+                    <p className="mt-3 text-[11px] text-ink-subtle">
+                      Updated {formatUpdatedAt(note.updatedAt)}
+                    </p>
+                    <div className="mt-3 flex justify-end gap-2 border-t border-hairline pt-3">
+                      <button
+                        type="button"
+                        aria-label="Edit note"
+                        title="Edit"
+                        onClick={() => setModal({ mode: "edit", note })}
+                        className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4"
+                      >
+                        <PencilIcon className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Delete note"
+                        title="Delete"
+                        onClick={() => setConfirmDelete(note)}
+                        className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-danger transition-colors hover:bg-danger-weak"
+                      >
+                        <TrashIcon className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <div className="mt-3 overflow-hidden rounded-xl border border-hairline">
+                <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
+              </div>
+            </>
           )}
 
           {modal && (
@@ -363,7 +399,10 @@ export default function NotesPage() {
             <div className="mt-4">
               <select
                 value={selectedTeamId ?? ""}
-                onChange={(e) => setSelectedTeamIdOverride(e.target.value)}
+                onChange={(e) => {
+                  setSelectedTeamIdOverride(e.target.value);
+                  setTeamPage(1);
+                }}
                 className="h-9 rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink focus:border-primary/60 focus:outline-none"
               >
                 {myTeams.map((t) => (
@@ -385,55 +424,60 @@ export default function NotesPage() {
               </p>
             </div>
           ) : (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {teamNotesForSelected.map((note) => {
-                const canEdit = note.personId === myPerson?.id;
-                const canDelete = canEdit || canModerate(note.teamId);
-                return (
-                  <div
-                    key={note.id}
-                    className="flex flex-col rounded-xl border border-hairline bg-surface-2 p-4"
-                  >
-                    <h3 className="truncate text-[14px] font-semibold text-ink">
-                      {note.title || "Untitled"}
-                    </h3>
-                    <p className="mt-1.5 line-clamp-4 flex-1 whitespace-pre-wrap text-[13px] text-ink-muted">
-                      {note.content}
-                    </p>
-                    <p className="mt-3 text-[11px] text-ink-subtle">
-                      by {personNameById.get(note.personId) ?? "Someone"} · Updated{" "}
-                      {formatUpdatedAt(note.updatedAt)}
-                    </p>
-                    {(canEdit || canDelete) && (
-                      <div className="mt-3 flex justify-end gap-2 border-t border-hairline pt-3">
-                        {canEdit && (
-                          <button
-                            type="button"
-                            aria-label="Edit note"
-                            title="Edit"
-                            onClick={() => setTeamModal({ mode: "edit", note })}
-                            className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4"
-                          >
-                            <PencilIcon className="size-3.5" />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            aria-label="Delete note"
-                            title="Delete"
-                            onClick={() => setConfirmDeleteTeamNote(note)}
-                            className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-danger transition-colors hover:bg-danger-weak"
-                          >
-                            <TrashIcon className="size-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {pagedTeamNotes.map((note) => {
+                  const canEdit = note.personId === myPerson?.id;
+                  const canDelete = canEdit || canModerate(note.teamId);
+                  return (
+                    <div
+                      key={note.id}
+                      className="flex flex-col rounded-xl border border-hairline bg-surface-2 p-4"
+                    >
+                      <h3 className="truncate text-[14px] font-semibold text-ink">
+                        {note.title || "Untitled"}
+                      </h3>
+                      <p className="mt-1.5 line-clamp-4 flex-1 whitespace-pre-wrap text-[13px] text-ink-muted">
+                        {note.content}
+                      </p>
+                      <p className="mt-3 text-[11px] text-ink-subtle">
+                        by {personNameById.get(note.personId) ?? "Someone"} · Updated{" "}
+                        {formatUpdatedAt(note.updatedAt)}
+                      </p>
+                      {(canEdit || canDelete) && (
+                        <div className="mt-3 flex justify-end gap-2 border-t border-hairline pt-3">
+                          {canEdit && (
+                            <button
+                              type="button"
+                              aria-label="Edit note"
+                              title="Edit"
+                              onClick={() => setTeamModal({ mode: "edit", note })}
+                              className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4"
+                            >
+                              <PencilIcon className="size-3.5" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              aria-label="Delete note"
+                              title="Delete"
+                              onClick={() => setConfirmDeleteTeamNote(note)}
+                              className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-danger transition-colors hover:bg-danger-weak"
+                            >
+                              <TrashIcon className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 overflow-hidden rounded-xl border border-hairline">
+                <Pagination page={currentTeamPage} pageCount={teamPageCount} onPageChange={setTeamPage} />
+              </div>
+            </>
           )}
 
           {teamModal && (
@@ -464,5 +508,13 @@ export default function NotesPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function NotesPage() {
+  return (
+    <Suspense fallback={null}>
+      <NotesPageContent />
+    </Suspense>
   );
 }

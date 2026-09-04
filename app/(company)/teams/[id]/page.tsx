@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
+import type { TeamNote } from "@/lib/company-data";
 import { formatDate } from "@/lib/format";
 import Avatar from "@/components/people/Avatar";
 import { useToast } from "@/lib/toast";
@@ -18,11 +19,19 @@ import {
   CalendarIcon,
   ChevronDownIcon,
   ListIcon,
+  NoteIcon,
   PencilIcon,
   PlusIcon,
   TrashIcon,
   UsersIcon,
 } from "@/components/ui/icons";
+
+function formatUpdatedAt(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 const inputClass =
   "mt-1.5 h-9 w-full rounded-lg border border-hairline bg-surface-3 px-3 text-[13px] text-ink placeholder:text-ink-subtle transition-colors focus:border-primary/60 focus:outline-none";
@@ -39,7 +48,7 @@ const statusStyles: Record<string, string> = {
 export default function TeamDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { teams, people, locations, updateTeam, deleteTeam, invitePerson } =
+  const { teams, people, locations, teamNotes, deleteTeamNote, updateTeam, deleteTeam, invitePerson } =
     useCompany();
   const { registerEmployee } = useAuth();
   const { pushToast } = useToast();
@@ -49,6 +58,7 @@ export default function TeamDetailPage() {
   const [editing, setEditing] = useState(false);
   const [addingMember, setAddingMember] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteNote, setConfirmDeleteNote] = useState<TeamNote | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -77,6 +87,11 @@ export default function TeamDetailPage() {
   const members = useMemo(
     () => people.filter((p) => team && p.teamIds.includes(team.id)),
     [people, team?.id],
+  );
+
+  const notesForTeam = useMemo(
+    () => teamNotes.filter((n) => team && n.teamId === team.id),
+    [teamNotes, team?.id],
   );
 
   if (!team) {
@@ -336,6 +351,55 @@ export default function TeamDetailPage() {
         </div>
       </div>
 
+      <div className="mt-6 overflow-hidden rounded-xl border border-hairline bg-surface-2">
+        <div className="flex items-center justify-between gap-2 border-b border-hairline px-4 py-2.5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-subtle">
+            Team notes
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push(`/notes?view=team&team=${team.id}`)}
+            className="flex h-6.5 items-center gap-1 rounded-md border border-hairline bg-surface-3 px-2 text-[11px] font-medium text-ink transition-colors hover:bg-surface-4"
+          >
+            View all
+          </button>
+        </div>
+        {notesForTeam.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+            <NoteIcon className="size-6 text-ink-faint" />
+            <p className="text-[13px] text-ink-muted">No notes posted by this team yet.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-hairline/60">
+            {notesForTeam.slice(0, 4).map((note) => (
+              <li key={note.id} className="flex items-start gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-ink">
+                    {note.title || "Untitled"}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-[13px] text-ink-muted">
+                    {note.content}
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-ink-subtle">
+                    by {managerName.get(note.personId) ?? "Someone"} · Updated{" "}
+                    {formatUpdatedAt(note.updatedAt)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Delete note"
+                  title="Delete"
+                  onClick={() => setConfirmDeleteNote(note)}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-danger transition-colors hover:bg-danger-weak"
+                >
+                  <TrashIcon className="size-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {editing && (
         <Modal
           open
@@ -511,6 +575,21 @@ export default function TeamDetailPage() {
           deleteTeam(team.id);
           pushToast({ tone: "success", message: "Team deleted" });
           router.push("/teams");
+        }}
+      />
+
+      <Modal
+        open={!!confirmDeleteNote}
+        tone="danger"
+        title={`Delete "${confirmDeleteNote?.title || "Untitled"}"?`}
+        description="This note will be removed. This can't be undone."
+        confirmLabel="Delete note"
+        onClose={() => setConfirmDeleteNote(null)}
+        onConfirm={() => {
+          if (!confirmDeleteNote) return;
+          deleteTeamNote(confirmDeleteNote.id);
+          setConfirmDeleteNote(null);
+          pushToast({ tone: "success", message: "Note deleted" });
         }}
       />
     </div>
