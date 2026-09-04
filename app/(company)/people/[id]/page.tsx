@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { Person, PersonRole } from "@/lib/company-data";
-import { resolvePunctuality } from "@/lib/company-data/business";
+import { resolvePunctuality, sessionStartFor } from "@/lib/company-data/business";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/company";
 import { useToast } from "@/lib/toast";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/format";
@@ -436,6 +436,7 @@ export default function PersonDetailPage() {
                 c.action,
                 { shifts, shiftAssignments },
                 person.timezone,
+                sessionStartFor(c, clockEntries),
               );
               return (
                 <li

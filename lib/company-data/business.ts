@@ -11,6 +11,7 @@ import type {
   BreakEntry,
   BreakType,
   ClockAction,
+  ClockEntry,
   CompanyState,
   ComplianceViolationSeverity,
   ComplianceViolationType,
@@ -85,15 +86,32 @@ export type Punctuality =
 
 const PUNCTUALITY_GRACE_MINUTES = 5;
 
-// Compares a clock in/out against the person's nearest scheduled shift
-// (within ±36h of the clock entry) and labels it Early/Late/On Time.
-// Returns null when no scheduled shift matches.
+// The "in" entry that opened the session an "out" entry closes — the latest
+// clock-in at-or-before the out, for the same person. Undefined for "in"
+// entries or when the opener isn't in the list (e.g. clipped date range).
+export function sessionStartFor(
+  entry: ClockEntry,
+  clockEntries: ClockEntry[],
+): string | undefined {
+  if (entry.action !== "out") return undefined;
+  return clockEntries
+    .filter((c) => c.personId === entry.personId && c.action === "in" && c.at <= entry.at)
+    .sort((a, b) => b.at.localeCompare(a.at))[0]?.at;
+}
+
+// Compares a clock in/out against the person's scheduled shift and labels it
+// Early/Late/On Time. A clock-out is matched against the shift its session
+// opened for (via sessionStartedAt from sessionStartFor); without it, a
+// fallback keeps the clock-out from being labeled against a shift that
+// hadn't started yet (e.g. yesterday's forgotten clock-out landing on
+// today's shift). Returns null when no scheduled shift matches.
 export function resolvePunctuality(
   personId: string,
   clockAt: string,
   action: ClockAction,
   state: Pick<CompanyState, "shifts" | "shiftAssignments">,
   timeZone: string,
+  sessionStartedAt?: string,
 ): { label: Punctuality; deviationMinutes: number } | null {
   const clock = new Date(clockAt).getTime();
   if (Number.isNaN(clock)) return null;
@@ -113,10 +131,26 @@ export function resolvePunctuality(
     return { start, end: start + s.durationMinutes * 60000 };
   });
 
-  const target = action === "in" ? "start" : "end";
-  const best = bounds.reduce((a, b) =>
-    Math.abs(clock - a[target]) <= Math.abs(clock - b[target]) ? a : b,
-  );
+  const target = action === "in" ? ("start" as const) : ("end" as const);
+  let best: { start: number; end: number };
+  if (action === "out" && sessionStartedAt) {
+    const sessionStart = new Date(sessionStartedAt).getTime();
+    if (Number.isNaN(sessionStart)) return null;
+    best = bounds.reduce((a, b) =>
+      Math.abs(sessionStart - a.start) <= Math.abs(sessionStart - b.start) ? a : b,
+    );
+  } else {
+    const eligible =
+      action === "out"
+        ? bounds.filter(
+            (b) => clock - b.start >= PUNCTUALITY_GRACE_MINUTES * 60000,
+          )
+        : bounds;
+    if (eligible.length === 0) return null;
+    best = eligible.reduce((a, b) =>
+      Math.abs(clock - a[target]) <= Math.abs(clock - b[target]) ? a : b,
+    );
+  }
 
   const deviationMinutes = Math.round((clock - best[target]) / 60000);
   const g = PUNCTUALITY_GRACE_MINUTES;

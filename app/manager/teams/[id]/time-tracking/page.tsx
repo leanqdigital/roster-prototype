@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
 import type { BreakEntry, ComplianceViolation } from "@/lib/company-data";
-import { resolvePunctuality } from "@/lib/company-data/business";
+import { resolvePunctuality, sessionStartFor } from "@/lib/company-data/business";
 import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
 import { ClockIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
@@ -226,6 +226,7 @@ function ManagerTeamTimeTrackingContent() {
                             c.action,
                             { shifts, shiftAssignments },
                             selectedPerson.timezone,
+                            sessionStartFor(c, clockEntries),
                           )
                         : null;
                       return (

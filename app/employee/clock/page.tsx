@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import type { BreakType } from "@/lib/company-data";
-import { resolvePunctuality } from "@/lib/company-data/business";
+import { resolvePunctuality, sessionStartFor } from "@/lib/company-data/business";
 import { DEFAULT_BREAK_POLICY } from "@/lib/company";
 import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
 import { AlertTriangleIcon, ClockIcon, UsersIcon } from "@/components/ui/icons";
@@ -404,6 +404,7 @@ export default function EmployeeClockPage() {
                     c.action,
                     { shifts, shiftAssignments },
                     myPerson.timezone,
+                    sessionStartFor(c, clockEntries),
                   )
                 : null;
               return (

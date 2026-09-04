@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
-import { resolvePunctuality } from "@/lib/company-data/business";
+import { resolvePunctuality, sessionStartFor } from "@/lib/company-data/business";
 import { useToast } from "@/lib/toast";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/format";
 import { PersonStatusBadge } from "@/components/people/PersonBadges";
@@ -243,6 +243,7 @@ export default function ManagerTeamMemberDetailPage() {
                 c.action,
                 { shifts, shiftAssignments },
                 person.timezone,
+                sessionStartFor(c, clockEntries),
               );
               return (
                 <li
