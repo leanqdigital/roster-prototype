@@ -174,9 +174,13 @@ export interface ClockEntryRow {
   action: ClockAction;
   at: string;
   note: string | null;
+  edited_by: string | null;
+  edited_at: string | null;
+  edit_reason: string | null;
 }
 
-export const CLOCK_ENTRY_COLUMNS = "id, person_id, action, at, note";
+export const CLOCK_ENTRY_COLUMNS =
+  "id, person_id, action, at, note, edited_by, edited_at, edit_reason";
 
 export function fromClockEntryRow(row: ClockEntryRow): ClockEntry {
   return {
@@ -185,6 +189,9 @@ export function fromClockEntryRow(row: ClockEntryRow): ClockEntry {
     action: row.action,
     at: row.at,
     note: row.note ?? undefined,
+    editedBy: row.edited_by ?? undefined,
+    editedAt: row.edited_at ?? undefined,
+    editReason: row.edit_reason ?? undefined,
   };
 }
 

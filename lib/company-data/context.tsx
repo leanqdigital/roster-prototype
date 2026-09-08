@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { RRule } from "rrule";
-import { formatDurationMinutes, localDateStr } from "@/lib/format";
+import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
 import type { BreakPolicy } from "@/lib/company";
 import {
   evaluateBreakCompliance,
@@ -70,6 +70,7 @@ import {
   markActivityReadRow,
   markAllActivityReadRow,
   updateAssignmentRow,
+  updateClockEntryRow,
   updateLeaveRequestRow,
   updateLocationRow,
   updatePersonalNoteRow,
@@ -90,6 +91,7 @@ import type {
   BulkAssignResult,
   BulkAssignSkip,
   ClockAction,
+  ClockEntry,
   CompanyContextValue,
   ComplianceViolation,
   InviteInput,
@@ -484,6 +486,54 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
     },
     [state, logActivity, logAudit],
+  );
+
+  const editClockEntry = useCallback(
+    async (
+      id: string,
+      patch: { action?: ClockAction; at?: string; note?: string },
+      reason: string,
+      editedBy: string,
+    ): Promise<{ ok: boolean; error?: string }> => {
+      const original = state.clockEntries.find((c) => c.id === id);
+      if (!original) return { ok: false, error: "Entry not found." };
+      const trimmedReason = reason.trim();
+      if (!trimmedReason) return { ok: false, error: "A reason is required." };
+      const editedAt = new Date().toISOString();
+
+      let updated: ClockEntry;
+      try {
+        updated = await updateClockEntryRow(id, {
+          ...patch,
+          editedBy,
+          editedAt,
+          editReason: trimmedReason,
+        });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+      dispatch({ type: "updateClockEntry", id, patch: updated });
+
+      const person = state.people.find((p) => p.id === original.personId);
+      const fromLabel = `${original.action} @ ${formatDateTime(original.at)}`;
+      const toLabel = `${updated.action} @ ${formatDateTime(updated.at)}`;
+
+      await logActivity(
+        original.personId,
+        "notified",
+        `Your clock-${original.action} entry was corrected by ${editedBy} (${fromLabel} → ${toLabel}) — ${trimmedReason}`,
+      );
+      await logAudit({
+        action: "clock_entry.edited",
+        tone: "warning",
+        resource: "ClockEntry",
+        resourceId: id,
+        teamId: person?.teamIds[0] ?? undefined,
+        message: `${editedBy} edited ${person?.name ?? "someone"}'s clock entry: ${fromLabel} → ${toLabel} — ${trimmedReason}`,
+      });
+      return { ok: true };
+    },
+    [state.clockEntries, state.people, logActivity, logAudit],
   );
 
   const startBreak = useCallback(
@@ -1668,6 +1718,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       updateLocation,
       deleteLocation,
       addClockEntry,
+      editClockEntry,
       startBreak,
       endBreak,
       getActiveBreakForPerson,
@@ -1724,6 +1775,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       updateLocation,
       deleteLocation,
       addClockEntry,
+      editClockEntry,
       startBreak,
       endBreak,
       getActiveBreakForPerson,

@@ -3,13 +3,17 @@
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCompany } from "@/lib/company-data";
-import type { BreakEntry, ComplianceViolation } from "@/lib/company-data";
+import type { BreakEntry, ClockEntry, ComplianceViolation } from "@/lib/company-data";
 import { resolvePunctuality, sessionStartFor } from "@/lib/company-data/business";
 import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
-import { ClockIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
+import { useManager } from "@/lib/manager-team";
+import { useToast } from "@/lib/toast";
+import { ClockIcon, PencilIcon, SearchIcon, UsersIcon } from "@/components/ui/icons";
 import BreakTypeBadge from "@/components/breaks/BreakTypeBadge";
 import ComplianceViolationBadge from "@/components/breaks/ComplianceViolationBadge";
 import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
+import EditedBadge from "@/components/timeclock/EditedBadge";
+import EditClockEntryModal from "@/components/timeclock/EditClockEntryModal";
 import Avatar from "@/components/people/Avatar";
 import { useTeamDetail } from "../team-detail-context";
 
@@ -29,13 +33,17 @@ function daysAgoStr(days: number): string {
 function ManagerTeamTimeTrackingContent() {
   const searchParams = useSearchParams();
   const { teamPeople } = useTeamDetail();
-  const { clockEntries, breakEntries, complianceViolations, shifts, shiftAssignments } = useCompany();
+  const { clockEntries, breakEntries, complianceViolations, shifts, shiftAssignments, editClockEntry } = useCompany();
+  const { myPerson } = useManager();
+  const { pushToast } = useToast();
+  const reviewerName = myPerson?.name ?? "Manager";
 
   const [personId, setPersonId] = useState<string>(searchParams.get("person") ?? "");
   const [query, setQuery] = useState("");
   const [rangeStart, setRangeStart] = useState(() => daysAgoStr(7));
   const [rangeEnd, setRangeEnd] = useState(() => todayStr());
   const [loaded, setLoaded] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<ClockEntry | null>(null);
 
   const filteredPeople = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -243,9 +251,19 @@ function ManagerTeamTimeTrackingContent() {
                                   deviationMinutes={punctuality.deviationMinutes}
                                 />
                               )}
+                              {c.editedAt && (
+                                <EditedBadge editedBy={c.editedBy} editReason={c.editReason} />
+                              )}
                               <span className="text-xs text-ink-subtle">
                                 {formatDateTime(c.at)}
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingEntry(c)}
+                                className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4"
+                              >
+                                <PencilIcon className="size-3.5" />
+                              </button>
                             </span>
                           </div>
                           {(breaks.length > 0 || violations.length > 0) && (
@@ -275,6 +293,22 @@ function ManagerTeamTimeTrackingContent() {
           )}
         </div>
       </div>
+
+      {editingEntry && selectedPerson && (
+        <EditClockEntryModal
+          entry={editingEntry}
+          timezone={selectedPerson.timezone}
+          onClose={() => setEditingEntry(null)}
+          onSave={async (patch, reason) => {
+            const result = await editClockEntry(editingEntry.id, patch, reason, reviewerName);
+            if (result.ok) {
+              setEditingEntry(null);
+              pushToast({ tone: "success", message: "Clock entry updated" });
+            }
+            return result;
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -116,6 +116,13 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
       };
     case "addClockEntry":
       return { ...state, clockEntries: [action.entry, ...state.clockEntries] };
+    case "updateClockEntry":
+      return {
+        ...state,
+        clockEntries: state.clockEntries.map((c) =>
+          c.id === action.id ? { ...c, ...action.patch } : c,
+        ),
+      };
     case "addBreakEntry":
       return { ...state, breakEntries: [action.entry, ...state.breakEntries] };
     case "endBreakEntry":

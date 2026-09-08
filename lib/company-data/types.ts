@@ -61,6 +61,9 @@ export interface ClockEntry {
   action: ClockAction;
   at: string;
   note?: string;
+  editedBy?: string;
+  editedAt?: string;
+  editReason?: string;
 }
 
 export type BreakType = "meal" | "rest";
@@ -239,6 +242,7 @@ export type CompanyAction =
   | { type: "updateLocation"; id: string; patch: Partial<Location> }
   | { type: "deleteLocation"; id: string }
   | { type: "addClockEntry"; entry: ClockEntry }
+  | { type: "updateClockEntry"; id: string; patch: Partial<ClockEntry> }
   | { type: "addBreakEntry"; entry: BreakEntry }
   | { type: "endBreakEntry"; id: string; breakOutAt: string; durationMinutes: number }
   | { type: "addComplianceViolation"; violation: ComplianceViolation }
@@ -347,6 +351,12 @@ export interface CompanyContextValue extends CompanyState {
   updateLocation: (id: string, patch: Partial<Location>) => Promise<boolean>;
   deleteLocation: (id: string) => Promise<void>;
   addClockEntry: (personId: string, action: ClockAction, note?: string) => Promise<void>;
+  editClockEntry: (
+    id: string,
+    patch: { action?: ClockAction; at?: string; note?: string },
+    reason: string,
+    editedBy: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   startBreak: (
     personId: string,
     type?: BreakType,

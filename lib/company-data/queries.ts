@@ -357,6 +357,35 @@ export async function insertClockEntry(input: {
   return fromClockEntryRow(data);
 }
 
+export async function updateClockEntryRow(
+  id: string,
+  patch: {
+    action?: ClockAction;
+    at?: string;
+    note?: string;
+    editedBy: string;
+    editedAt: string;
+    editReason: string;
+  },
+): Promise<ClockEntry> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("clock_entries")
+    .update({
+      ...(patch.action !== undefined ? { action: patch.action } : {}),
+      ...(patch.at !== undefined ? { at: patch.at } : {}),
+      ...(patch.note !== undefined ? { note: patch.note || null } : {}),
+      edited_by: patch.editedBy,
+      edited_at: patch.editedAt,
+      edit_reason: patch.editReason,
+    })
+    .eq("id", id)
+    .select(CLOCK_ENTRY_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "updateClockEntryRow");
+  return fromClockEntryRow(data);
+}
+
 // ---------------------------------------------------------------------------
 // break_entries
 // ---------------------------------------------------------------------------
