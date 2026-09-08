@@ -102,13 +102,40 @@ export default function AttendanceReport({ filters }: { filters: ReportFilters }
       const entries = clockEntries
         .filter((c) => c.personId === person.id)
         .sort((a, b) => a.at.localeCompare(b.at));
-      const byDay = new Map<string, typeof entries>();
+
+      // Pair in/out across the whole sorted stream first (not per calendar
+      // day) so a session that crosses midnight — clock in 23:40, clock out
+      // 00:20 — is paired correctly instead of losing both ends to "no
+      // match on this day". Each finished session is then bucketed under
+      // the day it started.
+      type Session = { inAt: string; outAt?: string; minutes: number };
+      const sessions: Session[] = [];
+      let openIn: string | null = null;
       for (const e of entries) {
-        const key = dayKeyInTz(e.at, tz);
-        const list = byDay.get(key) ?? [];
-        list.push(e);
-        byDay.set(key, list);
+        if (e.action === "in") {
+          if (openIn) sessions.push({ inAt: openIn, minutes: 0 }); // orphaned double clock-in
+          openIn = e.at;
+        } else if (e.action === "out") {
+          if (openIn) {
+            const minutes = Math.max(
+              0,
+              Math.round((new Date(e.at).getTime() - new Date(openIn).getTime()) / 60000),
+            );
+            sessions.push({ inAt: openIn, outAt: e.at, minutes });
+            openIn = null;
+          }
+        }
       }
+      if (openIn) sessions.push({ inAt: openIn, minutes: 0 }); // still clocked in
+
+      const sessionsByDay = new Map<string, Session[]>();
+      for (const s of sessions) {
+        const key = dayKeyInTz(s.inAt, tz);
+        const list = sessionsByDay.get(key) ?? [];
+        list.push(s);
+        sessionsByDay.set(key, list);
+      }
+
       const breaksByDay = new Map<string, number>();
       for (const b of breakEntries) {
         if (b.personId !== person.id) continue;
@@ -128,38 +155,18 @@ export default function AttendanceReport({ filters }: { filters: ReportFilters }
         const onLeave = approvedLeave.some(
           (l) => l.startDate <= date && l.endDate >= date,
         );
-        const dayEntries = byDay.get(date) ?? [];
+        const daySessions = sessionsByDay.get(date) ?? [];
         const dayShifts = [...personShiftIds]
           .map((id) => shiftById.get(id))
           .filter((s): s is NonNullable<typeof s> => !!s && s.date === date);
 
-        if (!onLeave && dayEntries.length === 0 && dayShifts.length === 0) {
+        if (!onLeave && daySessions.length === 0 && dayShifts.length === 0) {
           continue; // nothing to report for this day
         }
 
-        // Pair in/out sessions; bucket each session under its "in" day.
-        let firstIn: string | undefined;
-        let lastOut: string | undefined;
-        let workedMinutes = 0;
-        let openIn: string | null = null;
-        for (const e of dayEntries) {
-          if (e.action === "in") {
-            openIn = e.at;
-            firstIn ??= e.at;
-          } else if (e.action === "out") {
-            if (openIn) {
-              workedMinutes += Math.max(
-                0,
-                Math.round(
-                  (new Date(e.at).getTime() - new Date(openIn).getTime()) /
-                    60000,
-                ),
-              );
-              openIn = null;
-            }
-            lastOut = e.at;
-          }
-        }
+        const firstIn = daySessions[0]?.inAt;
+        const lastOut = daySessions[daySessions.length - 1]?.outAt;
+        const workedMinutes = daySessions.reduce((sum, s) => sum + s.minutes, 0);
 
         const primaryShift = dayShifts[0];
         let status: AttendanceRow["status"];

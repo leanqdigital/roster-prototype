@@ -718,12 +718,16 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       status: "approved" | "denied",
       reviewedBy: string,
       reviewerComment?: string,
-    ) => {
+    ): Promise<{ ok: boolean; error?: string }> => {
       const reviewedAt = new Date().toISOString();
-      await updateLeaveRequestRow(id, { status, reviewerComment, reviewedBy, reviewedAt });
+      try {
+        await updateLeaveRequestRow(id, { status, reviewerComment, reviewedBy, reviewedAt });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
       dispatch({ type: "reviewLeaveRequest", id, status, reviewerComment, reviewedBy, reviewedAt });
       const request = state.leaveRequests.find((l) => l.id === id);
-      if (!request) return;
+      if (!request) return { ok: true };
       const person = state.people.find((p) => p.id === request.personId);
       await logActivity(
         request.personId,
@@ -740,6 +744,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         teamId: person?.teamIds[0] ?? undefined,
         message: `${reviewedBy} ${status} ${person?.name ?? "someone"}'s ${request.type} leave (${request.startDate} – ${request.endDate})`,
       });
+      return { ok: true };
     },
     [state.leaveRequests, state.people, logActivity, logAudit],
   );
@@ -756,10 +761,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   );
 
   const revertLeaveApproval = useCallback(
-    async (id: string, revertedBy: string) => {
+    async (id: string, revertedBy: string): Promise<{ ok: boolean; error?: string }> => {
       const request = state.leaveRequests.find((l) => l.id === id);
-      if (!request || request.status !== "approved") return;
-      await updateLeaveRequestRow(id, { status: "pending" });
+      if (!request || request.status !== "approved") return { ok: false, error: "Not approved." };
+      try {
+        await updateLeaveRequestRow(id, { status: "pending" });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
       dispatch({
         type: "reviewLeaveRequest",
         id,
@@ -782,6 +791,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         teamId: person?.teamIds[0] ?? undefined,
         message: `${revertedBy} reverted approval for ${person?.name ?? "someone"}'s ${request.type} leave (${request.startDate} – ${request.endDate})`,
       });
+      return { ok: true };
     },
     [state.leaveRequests, state.people, logActivity, logAudit],
   );
@@ -1055,16 +1065,60 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const deleteShift = useCallback(async (id: string) => {
-    await deleteShiftRow(id);
-    dispatch({ type: "deleteShift", id });
-  }, []);
+  const deleteShift = useCallback(
+    async (id: string) => {
+      const shift = state.shifts.find((s) => s.id === id);
+      // Capture assignees before the delete cascades shift_assignments rows.
+      const assignees = state.shiftAssignments.filter(
+        (a) => a.shiftId === id && a.status === "approved",
+      );
+      await deleteShiftRow(id);
+      dispatch({ type: "deleteShift", id });
+      for (const a of assignees) {
+        await logActivity(
+          a.personId,
+          "notified",
+          `Shift "${shift?.title ?? "shift"}" on ${shift?.date ?? ""} was cancelled`,
+        );
+      }
+      if (shift) {
+        await logAudit({
+          action: "shift.deleted",
+          tone: "warning",
+          resource: "Shift",
+          resourceId: id,
+          teamId: shift.teamId,
+          message: `Shift "${shift.title}" on ${shift.date} deleted`,
+        });
+      }
+    },
+    [state.shifts, state.shiftAssignments, logActivity, logAudit],
+  );
 
-  const deleteShifts = useCallback(async (ids: string[]) => {
-    if (ids.length === 0) return;
-    await deleteShiftsMany(ids);
-    dispatch({ type: "deleteShifts", ids });
-  }, []);
+  const deleteShifts = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
+      const shifts = state.shifts.filter((s) => ids.includes(s.id));
+      const assigneesByShift = new Map(
+        ids.map((id) => [
+          id,
+          state.shiftAssignments.filter((a) => a.shiftId === id && a.status === "approved"),
+        ]),
+      );
+      await deleteShiftsMany(ids);
+      dispatch({ type: "deleteShifts", ids });
+      for (const shift of shifts) {
+        for (const a of assigneesByShift.get(shift.id) ?? []) {
+          await logActivity(
+            a.personId,
+            "notified",
+            `Shift "${shift.title}" on ${shift.date} was cancelled`,
+          );
+        }
+      }
+    },
+    [state.shifts, state.shiftAssignments, logActivity],
+  );
 
   const createShifts = useCallback(
     async (input: {
@@ -1131,14 +1185,39 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "Staff required must be at least 1." };
       }
       try {
+        const existing = state.shifts.find((s) => s.id === id);
         const updated = await updateShiftRow(id, patch);
         dispatch({ type: "updateShift", id, patch: updated });
+
+        const title = updated.title ?? existing?.title ?? "shift";
+        const date = updated.date ?? existing?.date ?? "";
+        const startTime = updated.startTime ?? existing?.startTime ?? "";
+        const assignees = state.shiftAssignments.filter(
+          (a) => a.shiftId === id && a.status === "approved",
+        );
+        for (const a of assignees) {
+          await logActivity(
+            a.personId,
+            "notified",
+            `Shift "${title}" was updated — now ${date} at ${startTime}`,
+          );
+        }
+        if (existing) {
+          await logAudit({
+            action: "shift.updated",
+            tone: "neutral",
+            resource: "Shift",
+            resourceId: id,
+            teamId: existing.teamId,
+            message: `Shift "${title}" updated`,
+          });
+        }
         return { ok: true };
       } catch (e) {
         return { ok: false, error: errorMessage(e) };
       }
     },
-    [],
+    [state.shifts, state.shiftAssignments, logActivity, logAudit],
   );
 
   // ---------------------------------------------------------------------

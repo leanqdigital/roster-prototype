@@ -367,9 +367,13 @@ export interface CompanyContextValue extends CompanyState {
   ) => Promise<{ ok: boolean; error?: string }>;
   updateLeaveRequest: (id: string, patch: Partial<LeaveRequest>) => Promise<boolean>;
   cancelLeaveRequest: (id: string) => Promise<void>;
-  approveLeave: (id: string, reviewedBy: string) => Promise<void>;
-  denyLeave: (id: string, reviewedBy: string, comment?: string) => Promise<void>;
-  revertLeaveApproval: (id: string, revertedBy: string) => Promise<void>;
+  approveLeave: (id: string, reviewedBy: string) => Promise<{ ok: boolean; error?: string }>;
+  denyLeave: (
+    id: string,
+    reviewedBy: string,
+    comment?: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  revertLeaveApproval: (id: string, revertedBy: string) => Promise<{ ok: boolean; error?: string }>;
   markActivityRead: (id: string) => Promise<void>;
   markAllActivityRead: (personId: string) => Promise<void>;
   createShiftTemplate: (input: ShiftTemplateInput) => Promise<{

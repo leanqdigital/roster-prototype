@@ -58,9 +58,24 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
 
 // Redirects to /login if unauthenticated, or to the caller's role-appropriate
 // home if authenticated but not permitted. Returns the verified profile.
+//
+// Also fails closed if the caller's company is suspended — defense in
+// depth alongside the RLS-level enforcement (current_company_id() returns
+// NULL for a suspended company, see migration 0021), so a suspended
+// company_admin/manager gets an explicit kick to /login from a Server
+// Action instead of silently no-op'ing against RLS.
 export async function requireRole(allowedRoles: AuthRole[]): Promise<Profile> {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!allowedRoles.includes(profile.role)) redirect(homeForRole(profile.role));
+  if (profile.companyId) {
+    const supabase = await createClient();
+    const { data: company } = await supabase
+      .from("companies")
+      .select("status")
+      .eq("id", profile.companyId)
+      .single();
+    if (company?.status === "suspended") redirect("/login");
+  }
   return profile;
 }

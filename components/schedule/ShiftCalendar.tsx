@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Person, Shift, ShiftAssignment } from "@/lib/company-data";
+import { shiftsOverlap } from "@/lib/company-data/business";
 import { localDateStr } from "@/lib/format";
 import {
   AlertTriangleIcon,
@@ -59,20 +60,6 @@ function getEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(":").map(Number);
   const total = h * 60 + m + durationMinutes;
   return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function shiftsOverlap(a: Shift, b: Shift): boolean {
-  if (a.date !== b.date) return false;
-  const aStart = timeToMinutes(a.startTime);
-  const aEnd = aStart + a.durationMinutes;
-  const bStart = timeToMinutes(b.startTime);
-  const bEnd = bStart + b.durationMinutes;
-  return aStart < bEnd && bStart < aEnd;
 }
 
 interface ShiftCalendarProps {

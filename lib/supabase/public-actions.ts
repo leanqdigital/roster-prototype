@@ -1,8 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { getSiteOrigin } from "@/lib/site-url";
 
 // Unauthenticated actions live here, distinctly from actions.ts — every
 // export in actions.ts role-gates before touching the admin client; this
@@ -14,11 +14,7 @@ import { sendPasswordResetEmail } from "@/lib/email";
 export async function requestPasswordReset(email: string): Promise<{ ok: boolean }> {
   const normalizedEmail = email.trim().toLowerCase();
 
-  const h = await headers();
-  const host = h.get("host");
-  const isLocal = host?.startsWith("localhost") || host?.startsWith("127.0.0.1");
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ?? (host ? `${isLocal ? "http" : "https"}://${host}` : "");
+  const origin = getSiteOrigin();
 
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.generateLink({

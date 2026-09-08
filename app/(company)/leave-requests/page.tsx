@@ -42,22 +42,34 @@ export default function CompanyLeaveRequestsPage() {
 
   const reviewerName = user?.name ?? "Admin";
 
-  const handleApprove = (l: LeaveRequest) => {
-    approveLeave(l.id, reviewerName);
-    pushToast({ tone: "success", message: "Leave approved" });
+  const handleApprove = async (l: LeaveRequest) => {
+    const result = await approveLeave(l.id, reviewerName);
+    pushToast(
+      result.ok
+        ? { tone: "success", message: "Leave approved" }
+        : { tone: "danger", message: result.error ?? "Couldn't approve — try again." },
+    );
   };
 
-  const handleDeny = () => {
+  const handleDeny = async () => {
     if (!denyTarget) return;
-    denyLeave(denyTarget.id, reviewerName, denyComment);
+    const result = await denyLeave(denyTarget.id, reviewerName, denyComment);
     setDenyTarget(null);
     setDenyComment("");
-    pushToast({ tone: "success", message: "Leave denied" });
+    pushToast(
+      result.ok
+        ? { tone: "success", message: "Leave denied" }
+        : { tone: "danger", message: result.error ?? "Couldn't deny — try again." },
+    );
   };
 
-  const handleUndo = (id: string) => {
-    revertLeaveApproval(id, reviewerName);
-    pushToast({ tone: "success", message: "Approval reverted" });
+  const handleUndo = async (id: string) => {
+    const result = await revertLeaveApproval(id, reviewerName);
+    pushToast(
+      result.ok
+        ? { tone: "success", message: "Approval reverted" }
+        : { tone: "danger", message: result.error ?? "Couldn't revert — try again." },
+    );
   };
 
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);

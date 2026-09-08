@@ -1,10 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { requireRole } from "@/lib/supabase/dal";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sendInviteEmail } from "@/lib/email";
+import { getSiteOrigin } from "@/lib/site-url";
 
 export interface InviteEmployeeInput {
   email: string;
@@ -28,11 +28,7 @@ export async function inviteEmployee(
     return { ok: false, error: "No company context for this account." };
   }
 
-  const h = await headers();
-  const host = h.get("host");
-  const isLocal = host?.startsWith("localhost") || host?.startsWith("127.0.0.1");
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ?? (host ? `${isLocal ? "http" : "https"}://${host}` : "");
+  const origin = getSiteOrigin();
 
   const supabase = await createClient();
   const { data: company } = await supabase

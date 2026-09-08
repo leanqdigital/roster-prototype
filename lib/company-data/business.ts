@@ -33,15 +33,19 @@ export function timeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
+// Compares two shifts as absolute wall-clock intervals (date + startTime,
+// spanning past midnight via durationMinutes) rather than same-date-only
+// minute ranges — a 23:00–02:00 shift now correctly conflicts with a
+// 01:00 shift on the following date. Both sides are assumed to belong to
+// the same person, so the missing timezone cancels out in the comparison.
 export function shiftsOverlap(
   a: { date: string; startTime: string; durationMinutes: number },
   b: { date: string; startTime: string; durationMinutes: number },
 ): boolean {
-  if (a.date !== b.date) return false;
-  const aStart = timeToMinutes(a.startTime);
-  const aEnd = aStart + a.durationMinutes;
-  const bStart = timeToMinutes(b.startTime);
-  const bEnd = bStart + b.durationMinutes;
+  const aStart = new Date(`${a.date}T${a.startTime}:00`).getTime();
+  const aEnd = aStart + a.durationMinutes * 60000;
+  const bStart = new Date(`${b.date}T${b.startTime}:00`).getTime();
+  const bEnd = bStart + b.durationMinutes * 60000;
   return aStart < bEnd && bStart < aEnd;
 }
 
