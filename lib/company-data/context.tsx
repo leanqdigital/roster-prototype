@@ -24,7 +24,14 @@ import {
   shiftTimesOverlap,
 } from "./business";
 import { initialState, reducer } from "./reducer";
-import { inviteEmployee } from "@/lib/supabase/actions";
+import {
+  inviteEmployee,
+  notifyShiftAssigned,
+  notifyLeaveReviewed,
+  notifySwapProposed,
+  notifySwapResponded,
+  notifySwapReviewed,
+} from "@/lib/supabase/actions";
 import {
   deleteAssignmentRow,
   deleteLocationRow,
@@ -47,6 +54,7 @@ import {
   fetchPersonalNotes,
   fetchShiftAssignments,
   fetchShifts,
+  fetchShiftSwapRequests,
   fetchShiftTemplates,
   fetchTeamNotes,
   fetchTeams,
@@ -64,6 +72,7 @@ import {
   insertPersonalNote,
   insertShift,
   insertShiftsMany,
+  insertShiftSwapRequest,
   insertShiftTemplate,
   insertTeam,
   insertTeamNote,
@@ -77,6 +86,7 @@ import {
   updatePersonRow,
   updateShiftRow,
   updateShiftsByTemplate,
+  updateShiftSwapRequestRow,
   updateShiftTemplateRow,
   updateTeamNoteRow,
   updateTeamRow,
@@ -103,8 +113,10 @@ import type {
   PersonalNote,
   Shift,
   ShiftAssignment,
+  ShiftSwapRequest,
   ShiftTemplate,
   ShiftTemplateInput,
+  SwapType,
   Team,
   TeamNote,
 } from "./types";
@@ -138,6 +150,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           auditLog,
           personalNotes,
           teamNotes,
+          shiftSwapRequests,
         ] = await Promise.all([
           fetchPeople(),
           fetchTeams(),
@@ -153,6 +166,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           fetchAuditLog(),
           fetchPersonalNotes(),
           fetchTeamNotes(),
+          fetchShiftSwapRequests(),
         ]);
         if (cancelled) return;
         dispatch({
@@ -172,6 +186,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             auditLog,
             personalNotes,
             teamNotes,
+            shiftSwapRequests,
           },
         });
       } finally {
@@ -794,6 +809,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         teamId: person?.teamIds[0] ?? undefined,
         message: `${reviewedBy} ${status} ${person?.name ?? "someone"}'s ${request.type} leave (${request.startDate} – ${request.endDate})`,
       });
+      notifyLeaveReviewed(id).catch(() => {});
       return { ok: true };
     },
     [state.leaveRequests, state.people, logActivity, logAudit],
@@ -1339,6 +1355,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           message: `${person?.name ?? "Someone"} assigned to "${targetShift.title}" on ${targetShift.date}${override ? " (conflict overridden)" : ""}`,
         });
 
+        notifyShiftAssigned(shiftId, personId).catch(() => {});
+
         return { ok: true };
       } catch (e) {
         return { ok: false, error: errorMessage(e) };
@@ -1551,6 +1569,486 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     [state.shifts, state.shiftAssignments],
   );
 
+  // ---------------------------------------------------------------------
+  // shift swaps
+  // ---------------------------------------------------------------------
+
+  const proposeSwap = useCallback(
+    async (input: {
+      swapType: SwapType;
+      offeredShiftId: string;
+      requestedShiftId?: string;
+      initiatorPersonId: string;
+      targetPersonId: string;
+      initiatorComment?: string;
+    }): Promise<{ ok: boolean; error?: string; request?: ShiftSwapRequest }> => {
+      if (input.initiatorPersonId === input.targetPersonId) {
+        return { ok: false, error: "You can't propose a swap with yourself." };
+      }
+      if (input.swapType === "trade" && !input.requestedShiftId) {
+        return { ok: false, error: "Select a shift to trade for." };
+      }
+
+      const offeredShift = state.shifts.find((s) => s.id === input.offeredShiftId);
+      if (!offeredShift || offeredShift.status !== "published") {
+        return { ok: false, error: "Shift not found." };
+      }
+      const offeredAssignment = state.shiftAssignments.find(
+        (a) =>
+          a.shiftId === input.offeredShiftId &&
+          a.personId === input.initiatorPersonId &&
+          a.status === "approved",
+      );
+      if (!offeredAssignment) {
+        return { ok: false, error: "You're not assigned to this shift." };
+      }
+
+      const target = state.people.find((p) => p.id === input.targetPersonId);
+      if (!target || target.status !== "active" || !target.teamIds.includes(offeredShift.teamId)) {
+        return { ok: false, error: "Coworker must be an active member of this shift's team." };
+      }
+
+      if (input.swapType === "trade") {
+        const requestedShift = state.shifts.find((s) => s.id === input.requestedShiftId);
+        if (!requestedShift) return { ok: false, error: "Shift not found." };
+        const requestedAssignment = state.shiftAssignments.find(
+          (a) =>
+            a.shiftId === input.requestedShiftId &&
+            a.personId === input.targetPersonId &&
+            a.status === "approved",
+        );
+        if (!requestedAssignment) {
+          return { ok: false, error: "Coworker isn't assigned to that shift." };
+        }
+      }
+
+      const duplicate = state.shiftSwapRequests.some(
+        (r) =>
+          r.offeredShiftId === input.offeredShiftId &&
+          r.initiatorPersonId === input.initiatorPersonId &&
+          (r.status === "pending_target" || r.status === "accepted_pending_manager"),
+      );
+      if (duplicate) {
+        return { ok: false, error: "You already have an active swap request for this shift." };
+      }
+
+      try {
+        const request = await insertShiftSwapRequest({
+          swapType: input.swapType,
+          offeredShiftId: input.offeredShiftId,
+          requestedShiftId: input.requestedShiftId,
+          initiatorPersonId: input.initiatorPersonId,
+          targetPersonId: input.targetPersonId,
+          initiatorComment: input.initiatorComment?.trim() || undefined,
+        });
+        dispatch({ type: "addShiftSwapRequest", request });
+
+        const initiator = state.people.find((p) => p.id === input.initiatorPersonId);
+        await logActivity(
+          input.targetPersonId,
+          "notified",
+          `${initiator?.name ?? "Someone"} proposed a shift ${
+            input.swapType === "trade" ? "trade" : "give-away"
+          } for "${offeredShift.title}" on ${offeredShift.date}`,
+        );
+        await logAudit({
+          action: "shift_swap.proposed",
+          tone: "neutral",
+          resource: "ShiftSwapRequest",
+          resourceId: request.id,
+          teamId: offeredShift.teamId,
+          message: `${initiator?.name ?? "Someone"} proposed a shift ${request.swapType} to ${
+            target.name
+          } for "${offeredShift.title}" on ${offeredShift.date}`,
+        });
+
+        notifySwapProposed(request.id).catch(() => {});
+
+        return { ok: true, request };
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+    },
+    [state.shifts, state.shiftAssignments, state.people, state.shiftSwapRequests, logActivity, logAudit],
+  );
+
+  const respondToSwap = useCallback(
+    async (
+      id: string,
+      response: "accept" | "decline",
+      respondingPersonId: string,
+    ): Promise<{ ok: boolean; error?: string; conflict?: boolean }> => {
+      const request = state.shiftSwapRequests.find((r) => r.id === id);
+      if (!request || request.status !== "pending_target") {
+        return { ok: false, error: "This request is no longer awaiting a response." };
+      }
+      if (request.targetPersonId !== respondingPersonId) {
+        return { ok: false, error: "Not authorized to respond to this request." };
+      }
+
+      const offeredShift = state.shifts.find((s) => s.id === request.offeredShiftId);
+      const requestedShift = request.requestedShiftId
+        ? state.shifts.find((s) => s.id === request.requestedShiftId)
+        : undefined;
+
+      if (response === "accept") {
+        if (!offeredShift) return { ok: false, error: "Shift not found." };
+
+        const approvedLeave = hasApprovedLeaveOn(
+          request.targetPersonId,
+          offeredShift.date,
+          state.leaveRequests,
+        );
+        if (approvedLeave) {
+          return {
+            ok: false,
+            conflict: true,
+            error: `TIME_OFF_CONFLICT: ${approvedLeave.type} leave approved ${approvedLeave.startDate} – ${approvedLeave.endDate}.`,
+          };
+        }
+        const targetShiftIds = new Set(
+          state.shiftAssignments
+            .filter((a) => a.personId === request.targetPersonId && a.status !== "cancelled")
+            .map((a) => a.shiftId),
+        );
+        const targetConflict = state.shifts.find(
+          (s) => s.id !== offeredShift.id && targetShiftIds.has(s.id) && shiftsOverlap(s, offeredShift),
+        );
+        if (targetConflict) {
+          return {
+            ok: false,
+            conflict: true,
+            error: `Conflicts with "${targetConflict.title}" on ${targetConflict.date} at ${targetConflict.startTime}.`,
+          };
+        }
+
+        if (request.swapType === "trade" && requestedShift) {
+          const approvedLeaveInitiator = hasApprovedLeaveOn(
+            request.initiatorPersonId,
+            requestedShift.date,
+            state.leaveRequests,
+          );
+          if (approvedLeaveInitiator) {
+            return {
+              ok: false,
+              conflict: true,
+              error: `TIME_OFF_CONFLICT: ${approvedLeaveInitiator.type} leave approved ${approvedLeaveInitiator.startDate} – ${approvedLeaveInitiator.endDate}.`,
+            };
+          }
+          const initiatorShiftIds = new Set(
+            state.shiftAssignments
+              .filter((a) => a.personId === request.initiatorPersonId && a.status !== "cancelled")
+              .map((a) => a.shiftId),
+          );
+          const initiatorConflict = state.shifts.find(
+            (s) =>
+              s.id !== requestedShift.id &&
+              initiatorShiftIds.has(s.id) &&
+              shiftsOverlap(s, requestedShift),
+          );
+          if (initiatorConflict) {
+            return {
+              ok: false,
+              conflict: true,
+              error: `Conflicts with "${initiatorConflict.title}" on ${initiatorConflict.date} at ${initiatorConflict.startTime}.`,
+            };
+          }
+        }
+      }
+
+      const targetRespondedAt = new Date().toISOString();
+      const status = response === "accept" ? "accepted_pending_manager" : "declined_by_target";
+      try {
+        const updated = await updateShiftSwapRequestRow(id, { status, targetRespondedAt });
+        dispatch({ type: "updateShiftSwapRequest", id, patch: updated });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+
+      const responder = state.people.find((p) => p.id === respondingPersonId);
+      await logActivity(
+        request.initiatorPersonId,
+        "notified",
+        `${responder?.name ?? "Someone"} ${response === "accept" ? "accepted" : "declined"} your shift ${
+          request.swapType === "trade" ? "trade" : "give-away"
+        } proposal for "${offeredShift?.title ?? "shift"}" on ${offeredShift?.date ?? ""}`,
+      );
+      await logAudit({
+        action: response === "accept" ? "shift_swap.accepted" : "shift_swap.declined",
+        tone: response === "accept" ? "success" : "warning",
+        resource: "ShiftSwapRequest",
+        resourceId: id,
+        teamId: offeredShift?.teamId,
+        message: `${responder?.name ?? "Someone"} ${response === "accept" ? "accepted" : "declined"} a shift ${
+          request.swapType
+        } proposal`,
+      });
+
+      notifySwapResponded(id).catch(() => {});
+
+      return { ok: true };
+    },
+    [
+      state.shiftSwapRequests,
+      state.shifts,
+      state.shiftAssignments,
+      state.leaveRequests,
+      state.people,
+      logActivity,
+      logAudit,
+    ],
+  );
+
+  const cancelSwap = useCallback(
+    async (id: string, cancelledBy: string): Promise<{ ok: boolean; error?: string }> => {
+      const request = state.shiftSwapRequests.find((r) => r.id === id);
+      if (!request || request.status !== "pending_target") {
+        return { ok: false, error: "This request can no longer be cancelled." };
+      }
+      try {
+        const updated = await updateShiftSwapRequestRow(id, { status: "cancelled" });
+        dispatch({ type: "updateShiftSwapRequest", id, patch: updated });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+      const offeredShift = state.shifts.find((s) => s.id === request.offeredShiftId);
+      await logAudit({
+        action: "shift_swap.cancelled",
+        tone: "neutral",
+        resource: "ShiftSwapRequest",
+        resourceId: id,
+        teamId: offeredShift?.teamId,
+        message: `${cancelledBy} cancelled a shift ${request.swapType} proposal for "${
+          offeredShift?.title ?? "shift"
+        }" on ${offeredShift?.date ?? ""}`,
+      });
+      return { ok: true };
+    },
+    [state.shiftSwapRequests, state.shifts, logAudit],
+  );
+
+  const reviewSwap = useCallback(
+    async (
+      id: string,
+      status: "approved" | "denied",
+      reviewedBy: string,
+      reviewerComment?: string,
+    ): Promise<{ ok: boolean; error?: string; conflict?: boolean }> => {
+      const request = state.shiftSwapRequests.find((r) => r.id === id);
+      if (!request || request.status !== "accepted_pending_manager") {
+        return { ok: false, error: "This request is not awaiting manager review." };
+      }
+
+      const offeredShift = state.shifts.find((s) => s.id === request.offeredShiftId);
+      const requestedShift = request.requestedShiftId
+        ? state.shifts.find((s) => s.id === request.requestedShiftId)
+        : undefined;
+      const reviewedAt = new Date().toISOString();
+
+      if (status === "denied") {
+        try {
+          const updated = await updateShiftSwapRequestRow(id, {
+            status: "denied",
+            reviewedBy,
+            reviewedAt,
+            reviewerComment,
+          });
+          dispatch({ type: "updateShiftSwapRequest", id, patch: updated });
+        } catch (e) {
+          return { ok: false, error: errorMessage(e) };
+        }
+        await logActivity(
+          request.initiatorPersonId,
+          "notified",
+          `Your shift ${request.swapType} proposal for "${offeredShift?.title ?? "shift"}" was denied${
+            reviewerComment ? ` — ${reviewerComment}` : ""
+          }`,
+        );
+        await logActivity(
+          request.targetPersonId,
+          "notified",
+          `The shift ${request.swapType} for "${offeredShift?.title ?? "shift"}" was denied by ${reviewedBy}`,
+        );
+        await logAudit({
+          action: "shift_swap.denied",
+          tone: "warning",
+          resource: "ShiftSwapRequest",
+          resourceId: id,
+          teamId: offeredShift?.teamId,
+          message: `${reviewedBy} denied a shift ${request.swapType} proposal for "${
+            offeredShift?.title ?? "shift"
+          }"`,
+        });
+        notifySwapReviewed(id).catch(() => {});
+        return { ok: true };
+      }
+
+      if (!offeredShift) return { ok: false, error: "Shift not found." };
+      const offeredAssignment = state.shiftAssignments.find(
+        (a) =>
+          a.shiftId === request.offeredShiftId &&
+          a.personId === request.initiatorPersonId &&
+          a.status === "approved",
+      );
+      if (!offeredAssignment) {
+        return { ok: false, error: "The offered shift is no longer assigned as expected. Deny and ask them to re-propose." };
+      }
+
+      let requestedAssignment: ShiftAssignment | undefined;
+      if (request.swapType === "trade") {
+        if (!requestedShift) return { ok: false, error: "Shift not found." };
+        requestedAssignment = state.shiftAssignments.find(
+          (a) =>
+            a.shiftId === request.requestedShiftId &&
+            a.personId === request.targetPersonId &&
+            a.status === "approved",
+        );
+        if (!requestedAssignment) {
+          return { ok: false, error: "The requested shift is no longer assigned as expected. Deny and ask them to re-propose." };
+        }
+      }
+
+      const approvedLeave = hasApprovedLeaveOn(request.targetPersonId, offeredShift.date, state.leaveRequests);
+      if (approvedLeave) {
+        return {
+          ok: false,
+          conflict: true,
+          error: `TIME_OFF_CONFLICT: ${approvedLeave.type} leave approved ${approvedLeave.startDate} – ${approvedLeave.endDate}.`,
+        };
+      }
+      const targetShiftIds = new Set(
+        state.shiftAssignments
+          .filter((a) => a.personId === request.targetPersonId && a.status !== "cancelled")
+          .map((a) => a.shiftId),
+      );
+      const targetConflict = state.shifts.find(
+        (s) => s.id !== offeredShift.id && targetShiftIds.has(s.id) && shiftsOverlap(s, offeredShift),
+      );
+      if (targetConflict) {
+        return {
+          ok: false,
+          conflict: true,
+          error: `Conflicts with "${targetConflict.title}" on ${targetConflict.date} at ${targetConflict.startTime}.`,
+        };
+      }
+      if (request.swapType === "trade" && requestedShift) {
+        const approvedLeaveInitiator = hasApprovedLeaveOn(
+          request.initiatorPersonId,
+          requestedShift.date,
+          state.leaveRequests,
+        );
+        if (approvedLeaveInitiator) {
+          return {
+            ok: false,
+            conflict: true,
+            error: `TIME_OFF_CONFLICT: ${approvedLeaveInitiator.type} leave approved ${approvedLeaveInitiator.startDate} – ${approvedLeaveInitiator.endDate}.`,
+          };
+        }
+        const initiatorShiftIds = new Set(
+          state.shiftAssignments
+            .filter((a) => a.personId === request.initiatorPersonId && a.status !== "cancelled")
+            .map((a) => a.shiftId),
+        );
+        const initiatorConflict = state.shifts.find(
+          (s) =>
+            s.id !== requestedShift.id &&
+            initiatorShiftIds.has(s.id) &&
+            shiftsOverlap(s, requestedShift),
+        );
+        if (initiatorConflict) {
+          return {
+            ok: false,
+            conflict: true,
+            error: `Conflicts with "${initiatorConflict.title}" on ${initiatorConflict.date} at ${initiatorConflict.startTime}.`,
+          };
+        }
+      }
+
+      try {
+        await updateAssignmentRow(offeredAssignment.id, {
+          personId: request.targetPersonId,
+          approvedAt: reviewedAt,
+          approvedBy: reviewedBy,
+        });
+        dispatch({
+          type: "reassignAssignment",
+          id: offeredAssignment.id,
+          personId: request.targetPersonId,
+          approvedAt: reviewedAt,
+          approvedBy: reviewedBy,
+        });
+
+        if (request.swapType === "trade" && requestedAssignment) {
+          await updateAssignmentRow(requestedAssignment.id, {
+            personId: request.initiatorPersonId,
+            approvedAt: reviewedAt,
+            approvedBy: reviewedBy,
+          });
+          dispatch({
+            type: "reassignAssignment",
+            id: requestedAssignment.id,
+            personId: request.initiatorPersonId,
+            approvedAt: reviewedAt,
+            approvedBy: reviewedBy,
+          });
+        }
+
+        const updated = await updateShiftSwapRequestRow(id, {
+          status: "approved",
+          reviewedBy,
+          reviewedAt,
+          reviewerComment,
+        });
+        dispatch({ type: "updateShiftSwapRequest", id, patch: updated });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+
+      await logActivity(
+        request.initiatorPersonId,
+        "notified",
+        `Your shift ${request.swapType} proposal for "${offeredShift.title}" was approved`,
+      );
+      await logActivity(
+        request.targetPersonId,
+        "notified",
+        `The shift ${request.swapType} for "${offeredShift.title}" was approved`,
+      );
+      await logAudit({
+        action: "shift_swap.approved",
+        tone: "success",
+        resource: "ShiftSwapRequest",
+        resourceId: id,
+        teamId: offeredShift.teamId,
+        message: `${reviewedBy} approved a shift ${request.swapType} for "${offeredShift.title}"`,
+      });
+
+      notifySwapReviewed(id).catch(() => {});
+
+      return { ok: true };
+    },
+    [state.shiftSwapRequests, state.shifts, state.shiftAssignments, state.leaveRequests, logActivity, logAudit],
+  );
+
+  const getSwapsInvolvingPerson = useCallback(
+    (personId: string): ShiftSwapRequest[] =>
+      state.shiftSwapRequests
+        .filter((r) => r.initiatorPersonId === personId || r.targetPersonId === personId)
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    [state.shiftSwapRequests],
+  );
+
+  const getSwapableCoworkers = useCallback(
+    (personId: string, shiftId: string): Person[] => {
+      const shift = state.shifts.find((s) => s.id === shiftId);
+      if (!shift) return [];
+      return state.people.filter(
+        (p) => p.id !== personId && p.status === "active" && p.teamIds.includes(shift.teamId),
+      );
+    },
+    [state.shifts, state.people],
+  );
+
   const bulkAssign = useCallback(
     async (input: BulkAssignInput): Promise<BulkAssignResult> => {
       const eligible = state.shifts.filter(
@@ -1760,6 +2258,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       createTeamNote,
       updateTeamNote,
       deleteTeamNote,
+      proposeSwap,
+      respondToSwap,
+      cancelSwap,
+      reviewSwap,
+      getSwapsInvolvingPerson,
+      getSwapableCoworkers,
     }),
     [
       state,
@@ -1817,6 +2321,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       createTeamNote,
       updateTeamNote,
       deleteTeamNote,
+      proposeSwap,
+      respondToSwap,
+      cancelSwap,
+      reviewSwap,
+      getSwapsInvolvingPerson,
+      getSwapableCoworkers,
     ],
   );
 

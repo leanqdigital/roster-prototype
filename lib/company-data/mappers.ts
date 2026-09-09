@@ -28,7 +28,10 @@ import type {
   PersonStatus,
   Shift,
   ShiftAssignment,
+  ShiftSwapRequest,
+  ShiftSwapStatus,
   ShiftTemplate,
+  SwapType,
   Team,
   TeamNote,
 } from "./types";
@@ -485,6 +488,49 @@ export function fromTeamNoteRow(row: TeamNoteRow): TeamNote {
     personId: row.person_id,
     title: row.title ?? undefined,
     content: row.content,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// shift_swap_requests
+// ---------------------------------------------------------------------------
+
+export interface ShiftSwapRequestRow {
+  id: string;
+  swap_type: SwapType;
+  offered_shift_id: string;
+  requested_shift_id: string | null;
+  initiator_person_id: string;
+  target_person_id: string;
+  status: ShiftSwapStatus;
+  initiator_comment: string | null;
+  target_responded_at: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  reviewer_comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const SHIFT_SWAP_REQUEST_COLUMNS =
+  "id, swap_type, offered_shift_id, requested_shift_id, initiator_person_id, target_person_id, status, initiator_comment, target_responded_at, reviewed_by, reviewed_at, reviewer_comment, created_at, updated_at";
+
+export function fromShiftSwapRequestRow(row: ShiftSwapRequestRow): ShiftSwapRequest {
+  return {
+    id: row.id,
+    swapType: row.swap_type,
+    offeredShiftId: row.offered_shift_id,
+    requestedShiftId: row.requested_shift_id ?? undefined,
+    initiatorPersonId: row.initiator_person_id,
+    targetPersonId: row.target_person_id,
+    status: row.status,
+    initiatorComment: row.initiator_comment ?? undefined,
+    targetRespondedAt: row.target_responded_at ?? undefined,
+    reviewedBy: row.reviewed_by ?? undefined,
+    reviewedAt: row.reviewed_at ?? undefined,
+    reviewerComment: row.reviewer_comment ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

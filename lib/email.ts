@@ -219,3 +219,320 @@ export async function sendShiftReminderEmail(
     `,
   });
 }
+
+const LEAVE_TYPE_LABELS: Record<string, string> = {
+  vacation: "Vacation",
+  sick: "Sick",
+  personal: "Personal",
+  bereavement: "Bereavement",
+  other: "Other",
+};
+
+export async function sendLeaveReviewedEmail(
+  to: string,
+  request: {
+    type: string;
+    startDate: string;
+    endDate: string;
+    status: "approved" | "denied";
+    reviewerComment?: string | null;
+    companyName?: string | null;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const companyName = request.companyName || "Roster";
+  const typeLabel = LEAVE_TYPE_LABELS[request.type] ?? request.type;
+  const dateRange =
+    request.startDate === request.endDate
+      ? formatShiftDate(request.startDate)
+      : `${formatShiftDate(request.startDate)} – ${formatShiftDate(request.endDate)}`;
+  const approved = request.status === "approved";
+  const accent = approved ? "#5e6ad2" : "#dc2626";
+  return sendMail({
+    to,
+    subject: `Your ${typeLabel} leave request was ${request.status}`,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: ${accent}; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Leave request ${request.status}
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    Your ${typeLabel.toLowerCase()} leave request has been ${request.status}.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Dates</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${dateRange}</td>
+                    </tr>
+                    ${detailRow("Type", typeLabel)}
+                    ${request.reviewerComment ? detailRow("Comment", request.reviewerComment, { muted: true }) : ""}
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}
+
+export async function sendShiftAssignedEmail(
+  to: string,
+  shift: {
+    title: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    companyName?: string | null;
+    description?: string | null;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const companyName = shift.companyName || "Roster";
+  return sendMail({
+    to,
+    subject: `New shift assigned: ${shift.title} — ${formatShiftDate(shift.date)}`,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: #5e6ad2; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    You've been assigned a shift
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    You've been added to the schedule at ${companyName}.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Date</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${formatShiftDate(shift.date)}</td>
+                    </tr>
+                    ${detailRow("Time", `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`)}
+                    ${detailRow("Shift", shift.title)}
+                    ${shift.description ? detailRow("Notes", shift.description, { muted: true }) : ""}
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Times are shown in your local timezone.<br />
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}
+
+type SwapShiftInfo = { title: string; date: string; startTime: string; endTime: string };
+
+export async function sendShiftSwapProposedEmail(
+  to: string,
+  input: {
+    swapType: "giveaway" | "trade";
+    initiatorName: string;
+    companyName?: string | null;
+    offeredShift: SwapShiftInfo;
+    requestedShift?: SwapShiftInfo | null;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const companyName = input.companyName || "Roster";
+  const kind = input.swapType === "trade" ? "trade" : "give-away";
+  return sendMail({
+    to,
+    subject: `${input.initiatorName} proposed a shift ${kind}`,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: #5e6ad2; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    New shift ${kind} request
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    ${input.initiatorName} would like to ${input.swapType === "trade" ? "trade shifts with you" : "give you one of their shifts"}.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Offered shift</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${input.offeredShift.title}</td>
+                    </tr>
+                    ${detailRow("Date", formatShiftDate(input.offeredShift.date))}
+                    ${detailRow("Time", `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`)}
+                    ${
+                      input.requestedShift
+                        ? `${detailRow("In exchange for", input.requestedShift.title)}${detailRow("Date", formatShiftDate(input.requestedShift.date))}${detailRow("Time", `${formatShiftTime(input.requestedShift.date, input.requestedShift.startTime)} – ${formatShiftTime(input.requestedShift.date, input.requestedShift.endTime)}`)}`
+                        : ""
+                    }
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}
+
+export async function sendShiftSwapRespondedEmail(
+  to: string,
+  input: {
+    swapType: "giveaway" | "trade";
+    response: "accepted" | "declined";
+    responderName: string;
+    companyName?: string | null;
+    offeredShift: SwapShiftInfo;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const companyName = input.companyName || "Roster";
+  const accepted = input.response === "accepted";
+  const accent = accepted ? "#5e6ad2" : "#dc2626";
+  return sendMail({
+    to,
+    subject: `Your swap request was ${input.response}`,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: ${accent}; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Swap request ${input.response}
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    ${input.responderName} has ${input.response} your shift ${input.swapType === "trade" ? "trade" : "give-away"} request${accepted ? ". It now needs manager approval." : "."}
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Shift</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${input.offeredShift.title}</td>
+                    </tr>
+                    ${detailRow("Date", formatShiftDate(input.offeredShift.date))}
+                    ${detailRow("Time", `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`)}
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}
+
+export async function sendShiftSwapReviewedEmail(
+  to: string,
+  input: {
+    swapType: "giveaway" | "trade";
+    status: "approved" | "denied";
+    reviewerComment?: string | null;
+    companyName?: string | null;
+    offeredShift: SwapShiftInfo;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const companyName = input.companyName || "Roster";
+  const approved = input.status === "approved";
+  const accent = approved ? "#5e6ad2" : "#dc2626";
+  return sendMail({
+    to,
+    subject: `Your shift swap was ${input.status}`,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: ${accent}; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Shift swap ${input.status}
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    Your shift ${input.swapType === "trade" ? "trade" : "give-away"} request has been ${input.status} by a manager.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Shift</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${input.offeredShift.title}</td>
+                    </tr>
+                    ${detailRow("Date", formatShiftDate(input.offeredShift.date))}
+                    ${detailRow("Time", `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`)}
+                    ${input.reviewerComment ? detailRow("Comment", input.reviewerComment, { muted: true }) : ""}
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}

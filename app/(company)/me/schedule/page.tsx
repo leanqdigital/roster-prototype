@@ -11,6 +11,7 @@ import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  PrinterIcon,
 } from "@/components/ui/icons";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
 
@@ -212,7 +213,7 @@ export default function MySchedulePage() {
       </div>
 
       {/* Person selector — always visible */}
-      <div className="mt-6 rounded-xl border border-hairline bg-surface-2 p-4">
+      <div className="mt-6 rounded-xl border border-hairline bg-surface-2 p-4 print:hidden">
         <label className="block text-[13px] font-medium text-ink">
           Viewing schedule for
         </label>
@@ -232,33 +233,35 @@ export default function MySchedulePage() {
         <>
           {/* Week navigation */}
           <div className="mt-6 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={goPrev}
-              className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-            >
-              <ChevronLeftIcon className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={goToday}
-              className="h-8 rounded-lg border border-hairline bg-surface-2 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-            >
-              <ChevronRightIcon className="size-3.5" />
-            </button>
+            <div className="flex items-center gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={goPrev}
+                className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                <ChevronLeftIcon className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={goToday}
+                className="h-8 rounded-lg border border-hairline bg-surface-2 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                <ChevronRightIcon className="size-3.5" />
+              </button>
+            </div>
             <span className="ml-2 text-[15px] font-semibold text-ink">
               {view === "week"
                 ? formatDateRange(weekStart)
                 : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
             </span>
-            <div className="ml-3 flex items-center rounded-lg border border-hairline bg-surface-2 p-0.5">
+            <div className="ml-3 flex items-center rounded-lg border border-hairline bg-surface-2 p-0.5 print:hidden">
               <button
                 type="button"
                 onClick={() => setView("week")}
@@ -278,6 +281,14 @@ export default function MySchedulePage() {
                 Month
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="ml-auto flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3 print:hidden"
+            >
+              <PrinterIcon className="size-3.5" />
+              Print
+            </button>
           </div>
 
           {/* Week calendar */}

@@ -26,6 +26,7 @@ import {
   PencilIcon,
   PlayIcon,
   PlusIcon,
+  PrinterIcon,
   TrashIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -317,33 +318,35 @@ export default function TeamScheduleView({
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={goPrev}
-            className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-          >
-            <ChevronLeftIcon className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={goToday}
-            className="h-8 rounded-lg border border-hairline bg-surface-2 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            onClick={goNext}
-            className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-          >
-            <ChevronRightIcon className="size-3.5" />
-          </button>
+          <div className="flex items-center gap-2 print:hidden">
+            <button
+              type="button"
+              onClick={goPrev}
+              className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+            >
+              <ChevronLeftIcon className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={goToday}
+              className="h-8 rounded-lg border border-hairline bg-surface-2 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+            >
+              <ChevronRightIcon className="size-3.5" />
+            </button>
+          </div>
           <span className="ml-2 text-[15px] font-semibold text-ink">
             {view === "week"
               ? formatDateRange(weekStart)
               : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
           </span>
-          <div className="ml-3 hidden items-center rounded-lg border border-hairline bg-surface-2 p-0.5 md:flex">
+          <div className="ml-3 hidden items-center rounded-lg border border-hairline bg-surface-2 p-0.5 md:flex print:hidden">
             <button
               type="button"
               onClick={() => setView("week")}
@@ -363,9 +366,17 @@ export default function TeamScheduleView({
               Month
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="ml-3 flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3 print:hidden"
+          >
+            <PrinterIcon className="size-3.5" />
+            Print
+          </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 print:hidden">
           <button
             type="button"
             onClick={() => setModal({ type: "bulk-create" })}
@@ -499,7 +510,7 @@ export default function TeamScheduleView({
 
       {/* Action buttons for each shift */}
       {visibleShifts.length > 0 && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-2 print:hidden">
           <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">
             {view === "week" ? "Shifts this week" : "Shifts in this month"}
           </p>
@@ -582,7 +593,7 @@ export default function TeamScheduleView({
       )}
 
       {teamAuditLog.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-4 print:hidden">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">
             Recent activity
           </p>

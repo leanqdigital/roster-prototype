@@ -15,6 +15,7 @@ export const initialState: CompanyState = {
   auditLog: [],
   personalNotes: [],
   teamNotes: [],
+  shiftSwapRequests: [],
 };
 
 export function reducer(state: CompanyState, action: CompanyAction): CompanyState {
@@ -319,6 +320,32 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
       return {
         ...state,
         teamNotes: state.teamNotes.filter((n) => n.id !== action.id),
+      };
+    case "addShiftSwapRequest":
+      return {
+        ...state,
+        shiftSwapRequests: [action.request, ...state.shiftSwapRequests],
+      };
+    case "updateShiftSwapRequest":
+      return {
+        ...state,
+        shiftSwapRequests: state.shiftSwapRequests.map((r) =>
+          r.id === action.id ? { ...r, ...action.patch } : r,
+        ),
+      };
+    case "reassignAssignment":
+      return {
+        ...state,
+        shiftAssignments: state.shiftAssignments.map((a) =>
+          a.id === action.id
+            ? {
+                ...a,
+                personId: action.personId,
+                approvedAt: action.approvedAt ?? a.approvedAt,
+                approvedBy: action.approvedBy ?? a.approvedBy,
+              }
+            : a,
+        ),
       };
   }
 }

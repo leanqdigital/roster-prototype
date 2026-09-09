@@ -226,7 +226,7 @@ export default function ShiftCalendar({
 
   return (
     <div className="overflow-hidden rounded-xl border border-hairline bg-surface-2">
-      <div className="hidden overflow-x-auto md:block">
+      <div className="hidden overflow-x-auto md:block print:block">
         <table className="w-full min-w-[700px] border-collapse">
           <thead>
             <tr className="border-b border-hairline">
@@ -293,7 +293,7 @@ export default function ShiftCalendar({
         </table>
       </div>
 
-      <div className="md:hidden">
+      <div className="md:hidden print:hidden">
         <div className="flex items-center gap-1 border-b border-hairline px-2 py-2">
           <button
             type="button"

@@ -21,6 +21,7 @@ import {
   ListIcon,
   NoteIcon,
   SettingsIcon,
+  SwapIcon,
   UsersIcon,
 } from "@/components/ui/icons";
 
@@ -28,7 +29,7 @@ export default function EmployeeNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const { people, activity } = useCompany();
+  const { people, activity, shiftSwapRequests } = useCompany();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -62,12 +63,20 @@ export default function EmployeeNav() {
     return activity.filter((a) => a.personId === myPerson.id && !a.read).length;
   }, [activity, myPerson]);
 
+  const incomingSwapCount = useMemo(() => {
+    if (!myPerson) return 0;
+    return shiftSwapRequests.filter(
+      (r) => r.targetPersonId === myPerson.id && r.status === "pending_target",
+    ).length;
+  }, [shiftSwapRequests, myPerson]);
+
   const navItems = [
     { href: "/employee/dashboard", label: "Dashboard", icon: ListIcon },
     { href: "/employee/schedule", label: "Schedule", icon: CalendarIcon },
     { href: "/employee/available-shifts", label: "Available Shifts", icon: CalendarIcon },
     { href: "/employee/clock", label: "Clock In/Out", icon: ClockIcon },
     { href: "/employee/leave-requests", label: "Leave Requests", icon: CalendarOffIcon },
+    { href: "/employee/shift-swaps", label: "Shift Swaps", icon: SwapIcon, badge: incomingSwapCount },
     { href: "/employee/notes", label: "Notes", icon: NoteIcon },
     { href: "/employee/settings", label: "Settings", icon: SettingsIcon },
     { href: "/employee/profile", label: "Profile", icon: UsersIcon },

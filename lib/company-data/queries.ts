@@ -17,6 +17,7 @@ import {
   PERSONAL_NOTE_COLUMNS,
   SHIFT_ASSIGNMENT_COLUMNS,
   SHIFT_COLUMNS,
+  SHIFT_SWAP_REQUEST_COLUMNS,
   SHIFT_TEMPLATE_COLUMNS,
   TEAM_COLUMNS,
   TEAM_NOTE_COLUMNS,
@@ -31,6 +32,7 @@ import {
   fromPersonRow,
   fromShiftAssignmentRow,
   fromShiftRow,
+  fromShiftSwapRequestRow,
   fromShiftTemplateRow,
   fromTeamNoteRow,
   fromTeamRow,
@@ -60,7 +62,10 @@ import type {
   Shift,
   ShiftAssignment,
   ShiftStatus,
+  ShiftSwapRequest,
+  ShiftSwapStatus,
   ShiftTemplate,
+  SwapType,
   Team,
   TeamNote,
 } from "./types";
@@ -797,6 +802,7 @@ export async function updateAssignmentRow(
   if (patch.approvedAt !== undefined) update.approved_at = patch.approvedAt ?? null;
   if (patch.approvedBy !== undefined) update.approved_by = patch.approvedBy ?? null;
   if (patch.cancelledAt !== undefined) update.cancelled_at = patch.cancelledAt ?? null;
+  if (patch.personId !== undefined) update.person_id = patch.personId; // new
   const { data, error } = await supabase
     .from("shift_assignments")
     .update(update)
@@ -961,4 +967,65 @@ export async function deleteTeamNoteRow(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("team_notes").delete().eq("id", id);
   if (error) fail(error, "deleteTeamNoteRow");
+}
+
+// ---------------------------------------------------------------------------
+// shift_swap_requests
+// ---------------------------------------------------------------------------
+
+export async function fetchShiftSwapRequests(): Promise<ShiftSwapRequest[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("shift_swap_requests")
+    .select(SHIFT_SWAP_REQUEST_COLUMNS);
+  if (error) fail(error, "fetchShiftSwapRequests");
+  return (data ?? []).map(fromShiftSwapRequestRow);
+}
+
+export async function insertShiftSwapRequest(input: {
+  swapType: SwapType;
+  offeredShiftId: string;
+  requestedShiftId?: string;
+  initiatorPersonId: string;
+  targetPersonId: string;
+  initiatorComment?: string;
+}): Promise<ShiftSwapRequest> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("shift_swap_requests")
+    .insert({
+      swap_type: input.swapType,
+      offered_shift_id: input.offeredShiftId,
+      requested_shift_id: input.requestedShiftId ?? null,
+      initiator_person_id: input.initiatorPersonId,
+      target_person_id: input.targetPersonId,
+      initiator_comment: input.initiatorComment ?? null,
+      status: "pending_target" as ShiftSwapStatus,
+    })
+    .select(SHIFT_SWAP_REQUEST_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "insertShiftSwapRequest");
+  return fromShiftSwapRequestRow(data);
+}
+
+export async function updateShiftSwapRequestRow(
+  id: string,
+  patch: Partial<ShiftSwapRequest>,
+): Promise<ShiftSwapRequest> {
+  const supabase = createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.status !== undefined) update.status = patch.status;
+  if (patch.targetRespondedAt !== undefined)
+    update.target_responded_at = patch.targetRespondedAt ?? null;
+  if (patch.reviewedBy !== undefined) update.reviewed_by = patch.reviewedBy ?? null;
+  if (patch.reviewedAt !== undefined) update.reviewed_at = patch.reviewedAt ?? null;
+  if (patch.reviewerComment !== undefined) update.reviewer_comment = patch.reviewerComment ?? null;
+  const { data, error } = await supabase
+    .from("shift_swap_requests")
+    .update(update)
+    .eq("id", id)
+    .select(SHIFT_SWAP_REQUEST_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "updateShiftSwapRequestRow");
+  return fromShiftSwapRequestRow(data);
 }

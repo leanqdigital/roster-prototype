@@ -162,6 +162,32 @@ export interface ShiftAssignment {
   createdAt: string;
 }
 
+export type SwapType = "giveaway" | "trade";
+export type ShiftSwapStatus =
+  | "pending_target"
+  | "accepted_pending_manager"
+  | "approved"
+  | "denied"
+  | "declined_by_target"
+  | "cancelled";
+
+export interface ShiftSwapRequest {
+  id: string;
+  swapType: SwapType;
+  offeredShiftId: string;
+  requestedShiftId?: string;
+  initiatorPersonId: string;
+  targetPersonId: string;
+  status: ShiftSwapStatus;
+  initiatorComment?: string;
+  targetRespondedAt?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewerComment?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type AuditTone = "neutral" | "success" | "warning" | "danger";
 
 export interface AuditEntry {
@@ -227,6 +253,7 @@ export interface CompanyState {
   auditLog: AuditEntry[];
   personalNotes: PersonalNote[];
   teamNotes: TeamNote[];
+  shiftSwapRequests: ShiftSwapRequest[];
 }
 
 export type CompanyAction =
@@ -296,7 +323,16 @@ export type CompanyAction =
   | { type: "deletePersonalNote"; id: string }
   | { type: "addTeamNote"; note: TeamNote }
   | { type: "updateTeamNote"; id: string; patch: Partial<TeamNote> }
-  | { type: "deleteTeamNote"; id: string };
+  | { type: "deleteTeamNote"; id: string }
+  | { type: "addShiftSwapRequest"; request: ShiftSwapRequest }
+  | { type: "updateShiftSwapRequest"; id: string; patch: Partial<ShiftSwapRequest> }
+  | {
+      type: "reassignAssignment";
+      id: string;
+      personId: string;
+      approvedAt?: string;
+      approvedBy?: string;
+    };
 
 export interface InviteInput {
   name: string;
@@ -463,4 +499,26 @@ export interface CompanyContextValue extends CompanyState {
   ) => Promise<{ ok: boolean; error?: string; note?: TeamNote }>;
   updateTeamNote: (id: string, patch: { title?: string; content: string }) => Promise<boolean>;
   deleteTeamNote: (id: string) => Promise<void>;
+  proposeSwap: (input: {
+    swapType: SwapType;
+    offeredShiftId: string;
+    requestedShiftId?: string;
+    initiatorPersonId: string;
+    targetPersonId: string;
+    initiatorComment?: string;
+  }) => Promise<{ ok: boolean; error?: string; request?: ShiftSwapRequest }>;
+  respondToSwap: (
+    id: string,
+    response: "accept" | "decline",
+    respondingPersonId: string,
+  ) => Promise<{ ok: boolean; error?: string; conflict?: boolean }>;
+  cancelSwap: (id: string, cancelledBy: string) => Promise<{ ok: boolean; error?: string }>;
+  reviewSwap: (
+    id: string,
+    status: "approved" | "denied",
+    reviewedBy: string,
+    reviewerComment?: string,
+  ) => Promise<{ ok: boolean; error?: string; conflict?: boolean }>;
+  getSwapsInvolvingPerson: (personId: string) => ShiftSwapRequest[];
+  getSwapableCoworkers: (personId: string, shiftId: string) => Person[];
 }

@@ -8,10 +8,12 @@ import { useToast } from "@/lib/toast";
 import { formatTime, initials, localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
+import ProposeSwapModal from "@/components/shifts/ProposeSwapModal";
 import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  PrinterIcon,
   TrashIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -86,6 +88,7 @@ export default function EmployeeSchedulePage() {
   });
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<Shift | null>(null);
+  const [swapShift, setSwapShift] = useState<Shift | null>(null);
 
   const myPerson = useMemo(
     () =>
@@ -263,33 +266,35 @@ export default function EmployeeSchedulePage() {
         <>
           {/* Week navigation */}
           <div className="mt-6 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={goPrev}
-              className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-            >
-              <ChevronLeftIcon className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={goToday}
-              className="h-8 rounded-lg border border-hairline bg-surface-2 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
-            >
-              <ChevronRightIcon className="size-3.5" />
-            </button>
+            <div className="flex items-center gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={goPrev}
+                className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                <ChevronLeftIcon className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={goToday}
+                className="h-8 rounded-lg border border-hairline bg-surface-2 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                className="flex h-8 items-center gap-1 rounded-lg border border-hairline bg-surface-2 px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                <ChevronRightIcon className="size-3.5" />
+              </button>
+            </div>
             <span className="ml-2 text-[15px] font-semibold text-ink">
               {view === "week"
                 ? formatDateRange(weekStart)
                 : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
             </span>
-            <div className="ml-3 flex items-center rounded-lg border border-hairline bg-surface-2 p-0.5">
+            <div className="ml-3 flex items-center rounded-lg border border-hairline bg-surface-2 p-0.5 print:hidden">
               <button
                 type="button"
                 onClick={() => setView("week")}
@@ -309,6 +314,14 @@ export default function EmployeeSchedulePage() {
                 Month
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="ml-auto flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3 print:hidden"
+            >
+              <PrinterIcon className="size-3.5" />
+              Print
+            </button>
           </div>
 
           {/* Week calendar */}
@@ -412,7 +425,7 @@ export default function EmployeeSchedulePage() {
                                       <button
                                         type="button"
                                         onClick={() => setCancelConfirm(shift)}
-                                        className="shrink-0 rounded p-1.5 text-ink-subtle transition-colors hover:bg-danger-weak hover:text-danger"
+                                        className="shrink-0 rounded p-1.5 text-ink-subtle transition-colors hover:bg-danger-weak hover:text-danger print:hidden"
                                         title="Cancel request"
                                       >
                                         <TrashIcon className="size-3.5" />
@@ -565,6 +578,18 @@ export default function EmployeeSchedulePage() {
                 <p className="mt-0.5 text-[13px] text-ink">{selectedShift.description}</p>
               </div>
             )}
+            {mySelectedAssignment?.status === "approved" && selectedShift.date >= today && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSwapShift(selectedShift);
+                  setSelectedShift(null);
+                }}
+                className="mt-2 h-8 w-full rounded-lg border border-hairline bg-surface-3 text-[13px] font-medium text-ink transition-colors hover:bg-surface-4"
+              >
+                Propose swap
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setSelectedShift(null)}
@@ -575,6 +600,15 @@ export default function EmployeeSchedulePage() {
           </div>
         )}
       </Modal>
+
+      {swapShift && myPerson && (
+        <ProposeSwapModal
+          open={!!swapShift}
+          shift={swapShift}
+          personId={myPerson.id}
+          onClose={() => setSwapShift(null)}
+        />
+      )}
 
       <Modal
         open={!!cancelConfirm}

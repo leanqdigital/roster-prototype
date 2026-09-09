@@ -23,6 +23,7 @@ import {
   ClockIcon,
   NoteIcon,
   SettingsIcon,
+  SwapIcon,
   UsersIcon,
 } from "@/components/ui/icons";
 
@@ -64,6 +65,7 @@ export default function ManagerNav() {
         { href: `/manager/teams/${selectedTeam.id}/time-tracking`, label: "Time Tracking", icon: ClockIcon },
         { href: `/manager/teams/${selectedTeam.id}/live`, label: "Live", icon: ActivityIcon },
         { href: `/manager/teams/${selectedTeam.id}/shift-requests`, label: "Shift Requests", icon: BellIcon },
+        { href: `/manager/teams/${selectedTeam.id}/shift-swaps`, label: "Shift Swaps", icon: SwapIcon },
         { href: `/manager/teams/${selectedTeam.id}/leave-requests`, label: "Leave Requests", icon: CalendarOffIcon },
         { href: `/manager/teams/${selectedTeam.id}/audit`, label: "Audit", icon: ActivityIcon },
       ]
@@ -132,6 +134,13 @@ export default function ManagerNav() {
       href: teamTab("Shift Requests")?.href ?? "#",
       label: "Shift Requests",
       icon: BellIcon,
+      disabled: !selectedTeam,
+      badge: undefined as number | undefined,
+    },
+    {
+      href: teamTab("Shift Swaps")?.href ?? "#",
+      label: "Shift Swaps",
+      icon: SwapIcon,
       disabled: !selectedTeam,
       badge: undefined as number | undefined,
     },

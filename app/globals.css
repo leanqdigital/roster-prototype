@@ -150,3 +150,30 @@ select:disabled {
   background: var(--ink-subtle);
   background-clip: padding-box;
 }
+
+@media print {
+  :root {
+    --canvas: #ffffff !important;
+    --surface-1: #ffffff !important;
+    --surface-2: #ffffff !important;
+    --surface-3: #f4f4f5 !important;
+    --surface-4: #e5e5e8 !important;
+    --hairline: #00000026 !important;
+    --ink: #000000 !important;
+    --ink-muted: #3a3a3a !important;
+    --ink-subtle: #5c5c5c !important;
+    --ink-faint: #8a8a8a !important;
+  }
+  @page {
+    margin: 12mm;
+  }
+  aside,
+  nav[aria-label="Primary"] {
+    display: none !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
