@@ -78,6 +78,7 @@ export default function EmployeeSchedulePage() {
     teams,
     locations,
     clockEntries,
+    companyHolidays,
     cancelSelfAssignment,
   } = useCompany();
   const { pushToast } = useToast();
@@ -127,6 +128,22 @@ export default function EmployeeSchedulePage() {
 
   const viewStartStr = localDateStr(viewRange.start);
   const viewEndStr = localDateStr(viewRange.end);
+
+  const holidays = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const h of companyHolidays) {
+      if (!h.isActive) continue;
+      if (h.endDate < viewStartStr || h.startDate > viewEndStr) continue;
+      const d = new Date(h.startDate + "T00:00:00");
+      const last = new Date(h.endDate + "T00:00:00");
+      while (d <= last) {
+        const key = d.toISOString().slice(0, 10);
+        if (key >= viewStartStr && key <= viewEndStr) map.set(key, h.name);
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return map;
+  }, [companyHolidays, viewStartStr, viewEndStr]);
 
   const myAssignmentShiftIds = useMemo(() => {
     if (!myPerson) return new Set<string>();
@@ -357,6 +374,7 @@ export default function EmployeeSchedulePage() {
                 assignments={shiftAssignments}
                 people={people}
                 onClickShift={(shift) => setSelectedShift(shift)}
+                holidays={holidays}
               />
             ) : view === "month" ? (
               <MonthCalendar
@@ -366,6 +384,7 @@ export default function EmployeeSchedulePage() {
                 people={people}
                 onClickShift={(shift) => setSelectedShift(shift)}
                 onDayClick={() => {}}
+                holidays={holidays}
               />
             ) : (
             <div className="overflow-x-auto">
@@ -376,6 +395,7 @@ export default function EmployeeSchedulePage() {
                     {days.map((day, i) => {
                       const key = dateKey(day);
                       const isToday = key === today;
+                      const holidayName = holidays.get(key);
                       return (
                         <th
                           key={i}
@@ -387,6 +407,11 @@ export default function EmployeeSchedulePage() {
                           <span className={`mt-0.5 flex size-6 items-center justify-center rounded-full text-[15px] font-semibold ${isToday ? "bg-primary text-white" : "text-ink"}`}>
                             {day.getDate()}
                           </span>
+                          {holidayName && (
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning-weak px-1.5 py-0.5 text-[9px] font-medium text-warning">
+                              {holidayName}
+                            </span>
+                          )}
                         </th>
                       );
                     })}
@@ -397,6 +422,7 @@ export default function EmployeeSchedulePage() {
                     const key = dateKey(day);
                     const dayShifts = shiftsByDate.get(key) ?? [];
                     const isToday = key === today;
+                    const holidayName = holidays.get(key);
                     return (
                       <tr
                         key={dayIdx}
@@ -406,7 +432,13 @@ export default function EmployeeSchedulePage() {
                           {DAY_NAMES[day.getDay()]}
                         </td>
                         <td colSpan={6} className="px-2 py-1.5">
-                          {dayShifts.length === 0 ? (
+                          {holidayName && dayShifts.length === 0 ? (
+                            <div className="flex items-center justify-center gap-2 py-3">
+                              <span className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning-weak px-2.5 py-1 text-[11px] font-medium text-warning">
+                                {holidayName}
+                              </span>
+                            </div>
+                          ) : dayShifts.length === 0 ? (
                             <p className="py-2 text-center text-[11px] text-ink-faint">
                               No shifts
                             </p>
