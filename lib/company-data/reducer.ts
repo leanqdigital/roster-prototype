@@ -4,6 +4,7 @@ export const initialState: CompanyState = {
   teams: [],
   people: [],
   locations: [],
+  companyHolidays: [],
   activity: [],
   clockEntries: [],
   breakEntries: [],
@@ -114,6 +115,28 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
         people: state.people.map((p) =>
           p.locationId === action.id ? { ...p, locationId: null } : p,
         ),
+      };
+    case "createCompanyHoliday":
+      return {
+        ...state,
+        companyHolidays: [action.holiday, ...state.companyHolidays],
+      };
+    case "addCompanyHolidays":
+      return {
+        ...state,
+        companyHolidays: [...action.holidays, ...state.companyHolidays],
+      };
+    case "updateCompanyHoliday":
+      return {
+        ...state,
+        companyHolidays: state.companyHolidays.map((h) =>
+          h.id === action.id ? { ...h, ...action.patch } : h,
+        ),
+      };
+    case "deleteCompanyHoliday":
+      return {
+        ...state,
+        companyHolidays: state.companyHolidays.filter((h) => h.id !== action.id),
       };
     case "addClockEntry":
       return { ...state, clockEntries: [action.entry, ...state.clockEntries] };

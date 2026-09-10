@@ -34,6 +34,7 @@ import {
 } from "@/lib/supabase/actions";
 import {
   deleteAssignmentRow,
+  deleteCompanyHolidayRow,
   deleteLocationRow,
   deletePersonalNoteRow,
   deletePersonRow,
@@ -47,6 +48,7 @@ import {
   fetchAuditLog,
   fetchBreakEntries,
   fetchClockEntries,
+  fetchCompanyHolidays,
   fetchComplianceViolations,
   fetchLeaveRequests,
   fetchLocations,
@@ -65,6 +67,8 @@ import {
   insertAudit,
   insertBreakEntry,
   insertClockEntry,
+  insertCompanyHoliday,
+  insertCompanyHolidaysMany,
   insertComplianceViolation,
   insertLeaveRequest,
   insertLocation,
@@ -80,6 +84,7 @@ import {
   markAllActivityReadRow,
   updateAssignmentRow,
   updateClockEntryRow,
+  updateCompanyHolidayRow,
   updateLeaveRequestRow,
   updateLocationRow,
   updatePersonalNoteRow,
@@ -103,6 +108,8 @@ import type {
   ClockAction,
   ClockEntry,
   CompanyContextValue,
+  CompanyHoliday,
+  CompanyHolidayInput,
   ComplianceViolation,
   InviteInput,
   LeaveRequest,
@@ -139,6 +146,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           people,
           teams,
           locations,
+          companyHolidays,
           activity,
           clockEntries,
           breakEntries,
@@ -155,6 +163,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           fetchPeople(),
           fetchTeams(),
           fetchLocations(),
+          fetchCompanyHolidays(),
           fetchActivity(),
           fetchClockEntries(),
           fetchBreakEntries(),
@@ -175,6 +184,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             people,
             teams,
             locations,
+            companyHolidays,
             activity,
             clockEntries,
             breakEntries,
@@ -432,6 +442,76 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     await deleteLocationRow(id);
     dispatch({ type: "deleteLocation", id });
   }, []);
+
+  // ---------------------------------------------------------------------
+  // company holidays
+  // ---------------------------------------------------------------------
+
+  const createCompanyHoliday = useCallback(
+    async (input: CompanyHolidayInput): Promise<CompanyHoliday | null> => {
+      try {
+        const holiday = await insertCompanyHoliday(input);
+        dispatch({ type: "createCompanyHoliday", holiday });
+        return holiday;
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  const updateCompanyHoliday = useCallback(
+    async (id: string, patch: Partial<CompanyHoliday>): Promise<boolean> => {
+      try {
+        const updated = await updateCompanyHolidayRow(id, patch);
+        dispatch({ type: "updateCompanyHoliday", id, patch: updated });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  const deleteCompanyHoliday = useCallback(async (id: string) => {
+    await deleteCompanyHolidayRow(id);
+    dispatch({ type: "deleteCompanyHoliday", id });
+  }, []);
+
+  const getHolidaysInRange = useCallback(
+    (start: string, end: string): Map<string, string> => {
+      const map = new Map<string, string>();
+      for (const h of state.companyHolidays) {
+        if (!h.isActive) continue;
+        if (h.endDate < start || h.startDate > end) continue;
+        // Expand multi-day holiday into individual date keys
+        const d = new Date(h.startDate + "T00:00:00");
+        const last = new Date(h.endDate + "T00:00:00");
+        while (d <= last) {
+          const key = d.toISOString().slice(0, 10);
+          if (key >= start && key <= end) map.set(key, h.name);
+          d.setDate(d.getDate() + 1);
+        }
+      }
+      return map;
+    },
+    [state.companyHolidays],
+  );
+
+  const importCompanyHolidays = useCallback(
+    async (
+      inputs: CompanyHolidayInput[],
+    ): Promise<{ ok: boolean; error?: string; count: number }> => {
+      try {
+        const inserted = await insertCompanyHolidaysMany(inputs);
+        dispatch({ type: "addCompanyHolidays", holidays: inserted });
+        return { ok: true, count: inserted.length };
+      } catch (e) {
+        return { ok: false, error: errorMessage(e), count: 0 };
+      }
+    },
+    [],
+  );
 
   // ---------------------------------------------------------------------
   // clock / breaks / compliance
@@ -1112,6 +1192,13 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       if (input.date < localDateStr(new Date())) return { ok: false, error: "Cannot create shift for a past date." };
       if (input.durationMinutes <= 0) return { ok: false, error: "Duration must be greater than 0." };
       if (input.requiredCount < 1) return { ok: false, error: "Staff required must be at least 1." };
+      // Check against company holidays
+      for (const h of state.companyHolidays) {
+        if (!h.isActive) continue;
+        if (input.date >= h.startDate && input.date <= h.endDate) {
+          return { ok: false, error: `Cannot create shift on a company holiday (${h.name}).` };
+        }
+      }
       try {
         const shift = await insertShift({
           teamId: input.teamId,
@@ -1128,7 +1215,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: errorMessage(e) };
       }
     },
-    [],
+    [state.companyHolidays],
   );
 
   const deleteShift = useCallback(
@@ -1202,9 +1289,23 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "Duration must be greater than 0.", count: 0 };
       if (input.requiredCount < 1)
         return { ok: false, error: "Staff required must be at least 1.", count: 0 };
+      // Filter out holiday dates
+      const holidayDates = new Set<string>();
+      for (const h of state.companyHolidays) {
+        if (!h.isActive) continue;
+        const d = new Date(h.startDate + "T00:00:00");
+        const last = new Date(h.endDate + "T00:00:00");
+        while (d <= last) {
+          holidayDates.add(d.toISOString().slice(0, 10));
+          d.setDate(d.getDate() + 1);
+        }
+      }
+      const validDates = input.dates.filter((d) => !holidayDates.has(d));
+      if (validDates.length === 0)
+        return { ok: false, error: "All selected dates fall on company holidays.", count: 0 };
       try {
         const inserted = await insertShiftsMany(
-          input.dates.map((date) => ({
+          validDates.map((date) => ({
             teamId: input.teamId,
             title: input.title.trim(),
             date,
@@ -1220,7 +1321,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: errorMessage(e), count: 0 };
       }
     },
-    [],
+    [state.companyHolidays],
   );
 
   const applyTemplateToShifts = useCallback(
@@ -2215,6 +2316,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       createLocation,
       updateLocation,
       deleteLocation,
+      createCompanyHoliday,
+      updateCompanyHoliday,
+      deleteCompanyHoliday,
+      getHolidaysInRange,
+      importCompanyHolidays,
       addClockEntry,
       editClockEntry,
       startBreak,
@@ -2278,6 +2384,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       createLocation,
       updateLocation,
       deleteLocation,
+      createCompanyHoliday,
+      updateCompanyHoliday,
+      deleteCompanyHoliday,
+      getHolidaysInRange,
+      importCompanyHolidays,
       addClockEntry,
       editClockEntry,
       startBreak,

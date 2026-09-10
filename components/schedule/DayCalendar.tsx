@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Person, Shift, ShiftAssignment } from "@/lib/company-data";
 import { shiftsOverlap } from "@/lib/company-data/business";
 import { localDateStr } from "@/lib/format";
+import { CalendarOffIcon } from "@/components/ui/icons";
 
 const FULL_DAY_NAMES = [
   "Sunday",
@@ -46,6 +47,7 @@ interface DayCalendarProps {
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (shift: Shift) => void;
+  holidays?: Map<string, string>;
 }
 
 export default function DayCalendar({
@@ -58,6 +60,7 @@ export default function DayCalendar({
   selectMode = false,
   selectedIds,
   onToggleSelect,
+  holidays,
 }: DayCalendarProps) {
   const today = localDateStr(new Date());
   const key = dateKey(date);
@@ -126,8 +129,17 @@ export default function DayCalendar({
     ", " +
     date.getFullYear();
 
+  const holidayName = holidays?.get(key);
+
   return (
     <div className="overflow-hidden rounded-xl border border-hairline bg-surface-2">
+      {/* Holiday banner */}
+      {holidayName && (
+        <div className="flex items-center gap-2 border-b border-warning/20 bg-warning-weak px-4 py-2.5">
+          <CalendarOffIcon className="size-3.5 text-warning" />
+          <span className="text-[12px] font-medium text-warning">{holidayName}</span>
+        </div>
+      )}
       {/* Header */}
       <div
         className={`flex items-center justify-between px-4 py-3 ${

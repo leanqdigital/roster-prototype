@@ -108,6 +108,7 @@ export default function SchedulePage() {
     shiftAssignments,
     shiftTemplates,
     leaveRequests,
+    companyHolidays,
     auditLog,
     createShift,
     updateShift,
@@ -189,6 +190,22 @@ export default function SchedulePage() {
     const shiftIds = new Set(visibleShifts.map((s) => s.id));
     return shiftAssignments.filter((a) => shiftIds.has(a.shiftId));
   }, [shiftAssignments, visibleShifts]);
+
+  const holidays = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const h of companyHolidays) {
+      if (!h.isActive) continue;
+      if (h.endDate < dstr(viewRange.start) || h.startDate > dstr(viewRange.end)) continue;
+      const d = new Date(h.startDate + "T00:00:00");
+      const last = new Date(h.endDate + "T00:00:00");
+      while (d <= last) {
+        const key = d.toISOString().slice(0, 10);
+        if (key >= dstr(viewRange.start) && key <= dstr(viewRange.end)) map.set(key, h.name);
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return map;
+  }, [companyHolidays, viewRange]);
 
   const activeTemplates = useMemo(
     () =>
@@ -542,7 +559,7 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {visibleShifts.length === 0 && (
+      {visibleShifts.length === 0 && holidays.size === 0 && (
         <div className="mt-8 rounded-xl border border-hairline bg-surface-2 p-10 text-center">
           <ClockIcon className="mx-auto size-11 text-ink-faint" />
           <h2 className="mt-3 text-[15px] font-semibold text-ink">
@@ -571,7 +588,7 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {visibleShifts.length > 0 && (
+      {(visibleShifts.length > 0 || holidays.size > 0) && (
         <div className="mt-4">
           {view === "day" ? (
             <DayCalendar
@@ -584,6 +601,7 @@ export default function SchedulePage() {
               selectMode={selectMode}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
+              holidays={holidays}
             />
           ) : view === "month" ? (
             <MonthCalendar
@@ -595,6 +613,7 @@ export default function SchedulePage() {
               onDayClick={(date) =>
                 setModal({ type: "create", defaultDate: date })
               }
+              holidays={holidays}
             />
           ) : (
             <ShiftCalendar
@@ -607,6 +626,7 @@ export default function SchedulePage() {
               selectMode={selectMode}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
+              holidays={holidays}
             />
           )}
         </div>

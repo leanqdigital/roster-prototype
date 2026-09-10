@@ -73,6 +73,7 @@ export default function MySchedulePage() {
     shifts,
     shiftAssignments,
     teams,
+    companyHolidays,
   } = useCompany();
 
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
@@ -147,6 +148,22 @@ export default function MySchedulePage() {
     for (const t of teams) map.set(t.id, t);
     return map;
   }, [teams]);
+
+  const holidays = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const h of companyHolidays) {
+      if (!h.isActive) continue;
+      if (h.endDate < viewStartStr || h.startDate > viewEndStr) continue;
+      const d = new Date(h.startDate + "T00:00:00");
+      const last = new Date(h.endDate + "T00:00:00");
+      while (d <= last) {
+        const key = d.toISOString().slice(0, 10);
+        if (key >= viewStartStr && key <= viewEndStr) map.set(key, h.name);
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return map;
+  }, [companyHolidays, viewStartStr, viewEndStr]);
 
   const goPrev = () => {
     if (view === "day") {
@@ -318,22 +335,24 @@ export default function MySchedulePage() {
           {/* Week calendar */}
           <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
             {view === "day" ? (
-              <DayCalendar
-                date={selectedDate}
-                shifts={myShifts}
-                assignments={[]}
-                people={people}
-                onClickShift={() => {}}
-              />
+            <DayCalendar
+              date={selectedDate}
+              shifts={myShifts}
+              assignments={[]}
+              people={people}
+              onClickShift={() => {}}
+              holidays={holidays}
+            />
             ) : view === "month" ? (
-              <MonthCalendar
-                monthStart={monthCursor}
-                shifts={myShifts}
-                assignments={[]}
-                people={people}
-                onClickShift={() => {}}
-                onDayClick={() => {}}
-              />
+            <MonthCalendar
+              monthStart={monthCursor}
+              shifts={myShifts}
+              assignments={[]}
+              people={people}
+              onClickShift={() => {}}
+              onDayClick={() => {}}
+              holidays={holidays}
+            />
             ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px] border-collapse">
