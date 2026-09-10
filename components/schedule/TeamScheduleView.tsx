@@ -8,6 +8,7 @@ import { formatDateTime, localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import ShiftCalendar from "@/components/schedule/ShiftCalendar";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
+import DayCalendar from "@/components/schedule/DayCalendar";
 import PublishShiftsModal from "@/components/schedule/PublishShiftsModal";
 import AssignShiftModal from "@/components/schedule/AssignShiftModal";
 import BulkAssignModal from "@/components/schedule/BulkAssignModal";
@@ -101,7 +102,8 @@ export default function TeamScheduleView({
   );
 
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
-  const [view, setView] = useState<"week" | "month">("week");
+  const [view, setView] = useState<"day" | "week" | "month">("week");
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [monthCursor, setMonthCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -120,6 +122,7 @@ export default function TeamScheduleView({
   const weekKey = localDateStr(weekStart) + "|" + localDateStr(weekEnd);
 
   const viewRange = useMemo(() => {
+    if (view === "day") return { start: selectedDate, end: selectedDate };
     if (view === "week") return { start: weekStart, end: weekEnd };
     const start = new Date(monthCursor);
     const day = start.getDay();
@@ -131,7 +134,7 @@ export default function TeamScheduleView({
     end.setDate(last.getDate() + (endDay === 0 ? 0 : 7 - endDay));
     end.setHours(0, 0, 0, 0);
     return { start, end };
-  }, [view, weekStart, weekEnd, monthCursor]);
+  }, [view, weekStart, weekEnd, monthCursor, selectedDate]);
 
   const visibleShifts = useMemo(() => {
     const startStr = localDateStr(viewRange.start);
@@ -162,7 +165,11 @@ export default function TeamScheduleView({
   );
 
   const goPrev = () => {
-    if (view === "month") {
+    if (view === "day") {
+      const prev = new Date(selectedDate);
+      prev.setDate(prev.getDate() - 1);
+      setSelectedDate(prev);
+    } else if (view === "month") {
       const prev = new Date(monthCursor);
       prev.setMonth(prev.getMonth() - 1);
       setMonthCursor(prev);
@@ -174,7 +181,11 @@ export default function TeamScheduleView({
   };
 
   const goNext = () => {
-    if (view === "month") {
+    if (view === "day") {
+      const next = new Date(selectedDate);
+      next.setDate(next.getDate() + 1);
+      setSelectedDate(next);
+    } else if (view === "month") {
       const next = new Date(monthCursor);
       next.setMonth(next.getMonth() + 1);
       setMonthCursor(next);
@@ -186,7 +197,9 @@ export default function TeamScheduleView({
   };
 
   const goToday = () => {
-    if (view === "month") {
+    if (view === "day") {
+      setSelectedDate(new Date());
+    } else if (view === "month") {
       const now = new Date();
       setMonthCursor(new Date(now.getFullYear(), now.getMonth(), 1));
     } else {
@@ -342,11 +355,22 @@ export default function TeamScheduleView({
             </button>
           </div>
           <span className="ml-2 text-[15px] font-semibold text-ink">
-            {view === "week"
-              ? formatDateRange(weekStart)
-              : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
+            {view === "day"
+              ? selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })
+              : view === "week"
+                ? formatDateRange(weekStart)
+                : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
           </span>
           <div className="ml-3 hidden items-center rounded-lg border border-hairline bg-surface-2 p-0.5 md:flex print:hidden">
+            <button
+              type="button"
+              onClick={() => setView("day")}
+              className={`h-7 rounded-md px-3 text-[12px] font-medium transition-colors ${
+                view === "day" ? "bg-primary text-white" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              Day
+            </button>
             <button
               type="button"
               onClick={() => setView("week")}
@@ -455,7 +479,9 @@ export default function TeamScheduleView({
       {visibleShifts.length === 0 && (
         <div className="mt-8 rounded-xl border border-hairline bg-surface-2 p-10 text-center">
           <ClockIcon className="mx-auto size-11 text-ink-faint" />
-          <h2 className="mt-3 text-[15px] font-semibold text-ink">No shifts this week</h2>
+          <h2 className="mt-3 text-[15px] font-semibold text-ink">
+            {view === "day" ? "No shifts this day" : "No shifts this week"}
+          </h2>
           <p className="mx-auto mt-1 max-w-sm text-xs text-ink-muted">
             Add a shift manually, bulk add across a date range, or apply a saved template.
           </p>
@@ -483,7 +509,19 @@ export default function TeamScheduleView({
 
       {visibleShifts.length > 0 && (
         <div className="mt-4">
-          {view === "month" ? (
+          {view === "day" ? (
+            <DayCalendar
+              date={selectedDate}
+              shifts={visibleShifts}
+              assignments={visibleAssignments}
+              people={people}
+              onClickShift={(shift) => setModal({ type: "assign", shift })}
+              onAddShift={(date) => setModal({ type: "create", defaultDate: date })}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
+          ) : view === "month" ? (
             <MonthCalendar
               monthStart={monthCursor}
               shifts={visibleShifts}
@@ -512,7 +550,7 @@ export default function TeamScheduleView({
       {visibleShifts.length > 0 && (
         <div className="mt-4 space-y-2 print:hidden">
           <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">
-            {view === "week" ? "Shifts this week" : "Shifts in this month"}
+            {view === "day" ? "Shifts this day" : view === "week" ? "Shifts this week" : "Shifts in this month"}
           </p>
           <div className="space-y-1.5">
             {visibleShifts.map((shift) => {
