@@ -8,6 +8,7 @@ import { useToast } from "@/lib/toast";
 import { formatTime, initials, localDateStr } from "@/lib/format";
 import Modal from "@/components/ui/Modal";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
+import DayCalendar from "@/components/schedule/DayCalendar";
 import ProposeSwapModal from "@/components/shifts/ProposeSwapModal";
 import {
   CalendarIcon,
@@ -81,7 +82,8 @@ export default function EmployeeSchedulePage() {
   } = useCompany();
   const { pushToast } = useToast();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
-  const [view, setView] = useState<"week" | "month">("week");
+  const [view, setView] = useState<"day" | "week" | "month">("week");
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [monthCursor, setMonthCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -109,6 +111,7 @@ export default function EmployeeSchedulePage() {
   const today = localDateStr(new Date());
 
   const viewRange = useMemo(() => {
+    if (view === "day") return { start: selectedDate, end: selectedDate };
     if (view === "week") return { start: weekStart, end: weekEnd };
     const start = new Date(monthCursor);
     const day = start.getDay();
@@ -120,7 +123,7 @@ export default function EmployeeSchedulePage() {
     end.setDate(last.getDate() + (endDay === 0 ? 0 : 7 - endDay));
     end.setHours(0, 0, 0, 0);
     return { start, end };
-  }, [view, weekStart, weekEnd, monthCursor]);
+  }, [view, weekStart, weekEnd, monthCursor, selectedDate]);
 
   const viewStartStr = localDateStr(viewRange.start);
   const viewEndStr = localDateStr(viewRange.end);
@@ -164,7 +167,11 @@ export default function EmployeeSchedulePage() {
   }, [teams]);
 
   const goPrev = () => {
-    if (view === "month") {
+    if (view === "day") {
+      const prev = new Date(selectedDate);
+      prev.setDate(prev.getDate() - 1);
+      setSelectedDate(prev);
+    } else if (view === "month") {
       const prev = new Date(monthCursor);
       prev.setMonth(prev.getMonth() - 1);
       setMonthCursor(prev);
@@ -176,7 +183,11 @@ export default function EmployeeSchedulePage() {
   };
 
   const goNext = () => {
-    if (view === "month") {
+    if (view === "day") {
+      const next = new Date(selectedDate);
+      next.setDate(next.getDate() + 1);
+      setSelectedDate(next);
+    } else if (view === "month") {
       const next = new Date(monthCursor);
       next.setMonth(next.getMonth() + 1);
       setMonthCursor(next);
@@ -188,7 +199,9 @@ export default function EmployeeSchedulePage() {
   };
 
   const goToday = () => {
-    if (view === "month") {
+    if (view === "day") {
+      setSelectedDate(new Date());
+    } else if (view === "month") {
       const now = new Date();
       setMonthCursor(new Date(now.getFullYear(), now.getMonth(), 1));
     } else {
@@ -290,11 +303,22 @@ export default function EmployeeSchedulePage() {
               </button>
             </div>
             <span className="ml-2 text-[15px] font-semibold text-ink">
-              {view === "week"
-                ? formatDateRange(weekStart)
-                : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
+              {view === "day"
+                ? selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })
+                : view === "week"
+                  ? formatDateRange(weekStart)
+                  : MONTH_NAMES[monthCursor.getMonth()] + " " + monthCursor.getFullYear()}
             </span>
             <div className="ml-3 flex items-center rounded-lg border border-hairline bg-surface-2 p-0.5 print:hidden">
+              <button
+                type="button"
+                onClick={() => setView("day")}
+                className={`h-7 rounded-md px-3 text-[12px] font-medium transition-colors ${
+                  view === "day" ? "bg-primary text-white" : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                Day
+              </button>
               <button
                 type="button"
                 onClick={() => setView("week")}
@@ -326,7 +350,15 @@ export default function EmployeeSchedulePage() {
 
           {/* Week calendar */}
           <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-2">
-            {view === "month" ? (
+            {view === "day" ? (
+              <DayCalendar
+                date={selectedDate}
+                shifts={myShifts}
+                assignments={shiftAssignments}
+                people={people}
+                onClickShift={(shift) => setSelectedShift(shift)}
+              />
+            ) : view === "month" ? (
               <MonthCalendar
                 monthStart={monthCursor}
                 shifts={myShifts}
@@ -449,9 +481,11 @@ export default function EmployeeSchedulePage() {
           {myShifts.length === 0 && (
             <div className="mt-8 rounded-xl border border-hairline bg-surface-2 p-10 text-center">
               <CalendarIcon className="mx-auto size-11 text-ink-faint" />
-              <h2 className="mt-3 text-[15px] font-semibold text-ink">No shifts this week</h2>
+              <h2 className="mt-3 text-[15px] font-semibold text-ink">
+                {view === "day" ? "No shifts this day" : "No shifts this week"}
+              </h2>
               <p className="mx-auto mt-1 max-w-sm text-xs text-ink-muted">
-                You don&apos;t have any shifts assigned for this week. Check back later or contact your manager.
+                You don&apos;t have any shifts assigned for {view === "day" ? "this day" : "this week"}. Check back later or contact your manager.
               </p>
             </div>
           )}
