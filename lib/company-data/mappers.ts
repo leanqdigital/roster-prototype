@@ -14,6 +14,7 @@ import type {
   BreakType,
   ClockAction,
   ClockEntry,
+  CompanyHoliday,
   ComplianceViolation,
   ComplianceViolationSeverity,
   ComplianceViolationStatus,
@@ -531,6 +532,35 @@ export function fromShiftSwapRequestRow(row: ShiftSwapRequestRow): ShiftSwapRequ
     reviewedBy: row.reviewed_by ?? undefined,
     reviewedAt: row.reviewed_at ?? undefined,
     reviewerComment: row.reviewer_comment ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// company_holidays
+// ---------------------------------------------------------------------------
+
+export interface CompanyHolidayRow {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const COMPANY_HOLIDAY_COLUMNS =
+  "id, name, start_date, end_date, is_active, created_at, updated_at";
+
+export function fromCompanyHolidayRow(row: CompanyHolidayRow): CompanyHoliday {
+  return {
+    id: row.id,
+    name: row.name,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

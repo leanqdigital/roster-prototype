@@ -6,6 +6,7 @@ import { shiftsOverlap } from "@/lib/company-data/business";
 import { localDateStr } from "@/lib/format";
 import {
   AlertTriangleIcon,
+  CalendarOffIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@/components/ui/icons";
@@ -71,6 +72,7 @@ interface ShiftCalendarProps {
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (shift: Shift) => void;
+  holidays?: Map<string, string>;
 }
 
 export default function ShiftCalendar({
@@ -82,6 +84,7 @@ export default function ShiftCalendar({
   selectMode = false,
   selectedIds,
   onToggleSelect,
+  holidays,
 }: ShiftCalendarProps) {
   const days = useMemo(() => getWeekDays(weekStart), [weekStart]);
   const today = localDateStr(new Date());
@@ -234,6 +237,7 @@ export default function ShiftCalendar({
               {days.map((day, i) => {
                 const key = dateKey(day);
                 const isToday = key === today;
+                const holidayName = holidays?.get(key);
                 return (
                   <th
                     key={i}
@@ -255,6 +259,11 @@ export default function ShiftCalendar({
                     >
                       {day.getDate()}
                     </span>
+                    {holidayName && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning-weak px-1.5 py-0.5 text-[9px] font-medium text-warning">
+                        {holidayName}
+                      </span>
+                    )}
                   </th>
                 );
               })}
@@ -265,6 +274,7 @@ export default function ShiftCalendar({
               const key = dateKey(day);
               const dayShifts = shiftsByDate.get(key) ?? [];
               const isToday = key === today;
+              const holidayName = holidays?.get(key);
               return (
                 <tr
                   key={dayIdx}
@@ -276,12 +286,25 @@ export default function ShiftCalendar({
                     {FULL_DAY_NAMES[dayIdx].slice(0, 3)}
                   </td>
                   <td colSpan={6} className="px-2 py-1.5">
-                    {dayShifts.length === 0 ? (
+                    {holidayName && dayShifts.length === 0 ? (
+                      <div className="flex items-center justify-center gap-2 py-3">
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning-weak px-2.5 py-1 text-[11px] font-medium text-warning">
+                          <CalendarOffIcon className="size-3" />
+                          {holidayName}
+                        </span>
+                      </div>
+                    ) : dayShifts.length === 0 ? (
                       <p className="py-2 text-center text-[11px] text-ink-faint">
                         No shifts
                       </p>
                     ) : (
                       <div className="space-y-1.5 py-1">
+                        {holidayName && (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning-weak px-1.5 py-0.5 text-[10px] font-medium text-warning">
+                            <CalendarOffIcon className="size-2.5" />
+                            {holidayName}
+                          </span>
+                        )}
                         {dayShifts.map((shift) => renderShift(shift))}
                       </div>
                     )}
@@ -309,6 +332,7 @@ export default function ShiftCalendar({
               const key = dateKey(day);
               const isToday = key === today;
               const isActive = i === activeDayIndex;
+              const hasHoliday = holidays?.has(key);
               return (
                 <button
                   key={i}
@@ -319,7 +343,9 @@ export default function ShiftCalendar({
                       ? "bg-primary text-white"
                       : isToday
                         ? "bg-primary-weak text-primary"
-                        : "text-ink-muted hover:bg-surface-3"
+                        : hasHoliday
+                          ? "bg-amber-50 text-amber-700"
+                          : "text-ink-muted hover:bg-surface-3"
                   }`}
                 >
                   <span className="text-[10px] font-medium uppercase tracking-wide">
@@ -346,6 +372,12 @@ export default function ShiftCalendar({
           <p className="pb-1.5 text-[11px] font-medium text-ink-subtle">
             {FULL_DAY_NAMES[activeDayIndex]}
           </p>
+          {holidays?.has(dateKey(activeDay)) && (
+            <span className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning-weak px-2.5 py-1 text-[11px] font-medium text-warning">
+              <CalendarOffIcon className="size-3" />
+              {holidays.get(dateKey(activeDay))}
+            </span>
+          )}
           {activeDayShifts.length === 0 ? (
             <p className="py-6 text-center text-[11px] text-ink-faint">
               No shifts

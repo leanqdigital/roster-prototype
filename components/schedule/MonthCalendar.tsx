@@ -43,6 +43,7 @@ interface MonthCalendarProps {
   people: Person[];
   onClickShift: (shift: Shift) => void;
   onDayClick: (date: string) => void;
+  holidays?: Map<string, string>;
 }
 
 export default function MonthCalendar({
@@ -52,6 +53,7 @@ export default function MonthCalendar({
   people,
   onClickShift,
   onDayClick,
+  holidays,
 }: MonthCalendarProps) {
   const weeks = useMemo(() => getMonthGrid(monthStart), [monthStart]);
   const today = localDateStr(new Date());
@@ -115,6 +117,7 @@ export default function MonthCalendar({
                 const inMonth = key.slice(0, 7) === monthKey.slice(0, 7);
                 const isToday = key === today;
                 const dayShifts = shiftsByDate.get(key) ?? [];
+                const holidayName = holidays?.get(key);
                 return (
                   <div
                     key={key}
@@ -147,6 +150,11 @@ export default function MonthCalendar({
                     </div>
 
                     <div className="space-y-1">
+                      {holidayName && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning-weak px-1.5 py-0.5 text-[9px] font-medium text-warning">
+                          {holidayName}
+                        </span>
+                      )}
                       {dayShifts.slice(0, 3).map((shift) => {
                         const count = assignmentCountByShift.get(shift.id) ?? 0;
                         const isUnderstaffed = count < shift.requiredCount;

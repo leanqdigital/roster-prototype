@@ -10,6 +10,7 @@ import {
   AUDIT_LOG_COLUMNS,
   BREAK_ENTRY_COLUMNS,
   CLOCK_ENTRY_COLUMNS,
+  COMPANY_HOLIDAY_COLUMNS,
   COMPLIANCE_VIOLATION_COLUMNS,
   LEAVE_REQUEST_COLUMNS,
   LOCATION_COLUMNS,
@@ -25,6 +26,7 @@ import {
   fromAuditLogRow,
   fromBreakEntryRow,
   fromClockEntryRow,
+  fromCompanyHolidayRow,
   fromComplianceViolationRow,
   fromLeaveRequestRow,
   fromLocationRow,
@@ -47,6 +49,8 @@ import type {
   BreakType,
   ClockAction,
   ClockEntry,
+  CompanyHoliday,
+  CompanyHolidayInput,
   ComplianceViolation,
   ComplianceViolationSeverity,
   ComplianceViolationStatus,
@@ -267,6 +271,86 @@ export async function deleteLocationRow(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("locations").delete().eq("id", id);
   if (error) fail(error, "deleteLocationRow");
+}
+
+// ---------------------------------------------------------------------------
+// company_holidays
+// ---------------------------------------------------------------------------
+
+export async function fetchCompanyHolidays(): Promise<CompanyHoliday[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("company_holidays")
+    .select(COMPANY_HOLIDAY_COLUMNS);
+  if (error) fail(error, "fetchCompanyHolidays");
+  return (data ?? []).map(fromCompanyHolidayRow);
+}
+
+export async function insertCompanyHoliday(
+  input: CompanyHolidayInput,
+): Promise<CompanyHoliday> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("company_holidays")
+    .insert({
+      name: input.name,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      is_active: input.isActive,
+    })
+    .select(COMPANY_HOLIDAY_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "insertCompanyHoliday");
+  return fromCompanyHolidayRow(data);
+}
+
+export async function updateCompanyHolidayRow(
+  id: string,
+  patch: Partial<CompanyHoliday>,
+): Promise<CompanyHoliday> {
+  const supabase = createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.name !== undefined) update.name = patch.name;
+  if (patch.startDate !== undefined) update.start_date = patch.startDate;
+  if (patch.endDate !== undefined) update.end_date = patch.endDate;
+  if (patch.isActive !== undefined) update.is_active = patch.isActive;
+  const { data, error } = await supabase
+    .from("company_holidays")
+    .update(update)
+    .eq("id", id)
+    .select(COMPANY_HOLIDAY_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "updateCompanyHolidayRow");
+  return fromCompanyHolidayRow(data);
+}
+
+export async function deleteCompanyHolidayRow(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("company_holidays")
+    .delete()
+    .eq("id", id);
+  if (error) fail(error, "deleteCompanyHolidayRow");
+}
+
+export async function insertCompanyHolidaysMany(
+  inputs: CompanyHolidayInput[],
+): Promise<CompanyHoliday[]> {
+  if (inputs.length === 0) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("company_holidays")
+    .insert(
+      inputs.map((input) => ({
+        name: input.name,
+        start_date: input.startDate,
+        end_date: input.endDate,
+        is_active: input.isActive,
+      })),
+    )
+    .select(COMPANY_HOLIDAY_COLUMNS);
+  if (error || !data) fail(error, "insertCompanyHolidaysMany");
+  return data.map(fromCompanyHolidayRow);
 }
 
 // ---------------------------------------------------------------------------

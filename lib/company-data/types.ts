@@ -220,6 +220,23 @@ export interface BulkAssignResult {
   skipped: BulkAssignSkip[];
 }
 
+export interface CompanyHoliday {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompanyHolidayInput {
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+}
+
 export interface PersonalNote {
   id: string;
   title?: string;
@@ -242,6 +259,7 @@ export interface CompanyState {
   teams: Team[];
   people: Person[];
   locations: Location[];
+  companyHolidays: CompanyHoliday[];
   activity: ActivityEntry[];
   clockEntries: ClockEntry[];
   breakEntries: BreakEntry[];
@@ -268,6 +286,10 @@ export type CompanyAction =
   | { type: "createLocation"; location: Location }
   | { type: "updateLocation"; id: string; patch: Partial<Location> }
   | { type: "deleteLocation"; id: string }
+  | { type: "createCompanyHoliday"; holiday: CompanyHoliday }
+  | { type: "addCompanyHolidays"; holidays: CompanyHoliday[] }
+  | { type: "updateCompanyHoliday"; id: string; patch: Partial<CompanyHoliday> }
+  | { type: "deleteCompanyHoliday"; id: string }
   | { type: "addClockEntry"; entry: ClockEntry }
   | { type: "updateClockEntry"; id: string; patch: Partial<ClockEntry> }
   | { type: "addBreakEntry"; entry: BreakEntry }
@@ -386,6 +408,13 @@ export interface CompanyContextValue extends CompanyState {
   createLocation: (input: LocationInput) => Promise<Location | null>;
   updateLocation: (id: string, patch: Partial<Location>) => Promise<boolean>;
   deleteLocation: (id: string) => Promise<void>;
+  createCompanyHoliday: (input: CompanyHolidayInput) => Promise<CompanyHoliday | null>;
+  updateCompanyHoliday: (id: string, patch: Partial<CompanyHoliday>) => Promise<boolean>;
+  deleteCompanyHoliday: (id: string) => Promise<void>;
+  getHolidaysInRange: (start: string, end: string) => Map<string, string>;
+  importCompanyHolidays: (
+    inputs: CompanyHolidayInput[],
+  ) => Promise<{ ok: boolean; error?: string; count: number }>;
   addClockEntry: (personId: string, action: ClockAction, note?: string) => Promise<void>;
   editClockEntry: (
     id: string,
