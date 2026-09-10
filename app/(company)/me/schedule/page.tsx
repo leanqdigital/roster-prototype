@@ -362,6 +362,7 @@ export default function MySchedulePage() {
                     {days.map((day, i) => {
                       const key = dateKey(day);
                       const isToday = key === today;
+                      const holidayName = holidays.get(key);
                       return (
                         <th
                           key={i}
@@ -373,6 +374,11 @@ export default function MySchedulePage() {
                           <span className={`mt-0.5 flex size-6 items-center justify-center rounded-full text-[15px] font-semibold ${isToday ? "bg-primary text-white" : "text-ink"}`}>
                             {day.getDate()}
                           </span>
+                          {holidayName && (
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning-weak px-1.5 py-0.5 text-[9px] font-medium text-warning">
+                              {holidayName}
+                            </span>
+                          )}
                         </th>
                       );
                     })}
@@ -383,6 +389,7 @@ export default function MySchedulePage() {
                     const key = dateKey(day);
                     const dayShifts = shiftsByDate.get(key) ?? [];
                     const isToday = key === today;
+                    const holidayName = holidays.get(key);
                     return (
                       <tr
                         key={dayIdx}
@@ -392,7 +399,13 @@ export default function MySchedulePage() {
                           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day.getDay()]}
                         </td>
                         <td colSpan={6} className="px-2 py-1.5">
-                          {dayShifts.length === 0 ? (
+                          {holidayName && dayShifts.length === 0 ? (
+                            <div className="flex items-center justify-center gap-2 py-3">
+                              <span className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning-weak px-2.5 py-1 text-[11px] font-medium text-warning">
+                                {holidayName}
+                              </span>
+                            </div>
+                          ) : dayShifts.length === 0 ? (
                             <p className="py-2 text-center text-[11px] text-ink-faint">
                               No shifts
                             </p>
