@@ -22,6 +22,28 @@ export const DEFAULT_BREAK_POLICY: BreakPolicy = {
   maxRestBreaksPerShift: 3,
 };
 
+export interface EmailSettings {
+  shiftAssigned: boolean;
+  leaveReviewed: boolean;
+  swapProposed: boolean;
+  swapResponded: boolean;
+  swapReviewed: boolean;
+  shiftReminder: boolean;
+  shiftReminderMinutesBefore: number;
+  forgotClockOut: boolean;
+}
+
+export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
+  shiftAssigned: true,
+  leaveReviewed: true,
+  swapProposed: true,
+  swapResponded: true,
+  swapReviewed: true,
+  shiftReminder: true,
+  shiftReminderMinutesBefore: 10,
+  forgotClockOut: true,
+};
+
 export const DEFAULT_TIMEZONE = "America/New_York";
 export const DEFAULT_LOCALE = "en-US";
 export const DEFAULT_BRANDING = "#5e6ad2";
@@ -70,6 +92,7 @@ export interface CompanySettings {
   brandingColor: string;
   logoUrl: string | null;
   breakPolicy: BreakPolicy;
+  emailSettings: EmailSettings;
   category: string | null;
   completedSetupAt: string | null;
 }
@@ -83,12 +106,13 @@ interface CompanyRow {
   branding_color: string | null;
   logo_url: string | null;
   break_policy: BreakPolicy;
+  email_settings: EmailSettings;
   category: string | null;
   completed_setup_at: string | null;
 }
 
 const COMPANY_COLUMNS =
-  "id, name, slug, timezone, locale, branding_color, logo_url, break_policy, category, completed_setup_at";
+  "id, name, slug, timezone, locale, branding_color, logo_url, break_policy, category, completed_setup_at, email_settings";
 
 function fromRow(row: CompanyRow): CompanySettings {
   return {
@@ -100,6 +124,7 @@ function fromRow(row: CompanyRow): CompanySettings {
     brandingColor: row.branding_color ?? DEFAULT_BRANDING,
     logoUrl: row.logo_url,
     breakPolicy: row.break_policy ?? DEFAULT_BREAK_POLICY,
+    emailSettings: row.email_settings ?? DEFAULT_EMAIL_SETTINGS,
     category: row.category,
     completedSetupAt: row.completed_setup_at,
   };
@@ -134,6 +159,7 @@ export interface CompanySettingsPatch {
   brandingColor?: string;
   logoUrl?: string | null;
   breakPolicy?: BreakPolicy;
+  emailSettings?: EmailSettings;
   category?: string;
 }
 
@@ -155,6 +181,7 @@ export async function saveCompanySettings(
   if (patch.brandingColor !== undefined) update.branding_color = patch.brandingColor;
   if (patch.logoUrl !== undefined) update.logo_url = patch.logoUrl;
   if (patch.breakPolicy !== undefined) update.break_policy = patch.breakPolicy;
+  if (patch.emailSettings !== undefined) update.email_settings = patch.emailSettings;
   if (patch.category !== undefined) update.category = patch.category;
 
   const { data, error } = await supabase

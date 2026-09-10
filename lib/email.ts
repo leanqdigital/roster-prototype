@@ -220,6 +220,84 @@ export async function sendShiftReminderEmail(
   });
 }
 
+export async function sendForgotClockOutEmail(
+  to: string,
+  info: {
+    clockInAt: string; // ISO instant
+    shiftTitle?: string | null;
+    shiftEndAt?: string | null; // ISO instant, if matched to a shift
+    companyName?: string | null;
+    timezone: string;
+    clockLink: string;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const companyName = info.companyName || "Roster";
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: info.timezone,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  return sendMail({
+    to,
+    subject: "Did you forget to clock out?",
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: #dc2626; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Did you forget to clock out?
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    You're still clocked in at ${companyName}, past the end of your shift.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Clocked in</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${fmt(info.clockInAt)}</td>
+                    </tr>
+                    ${info.shiftTitle ? detailRow("Shift", info.shiftTitle) : ""}
+                    ${info.shiftEndAt ? detailRow("Shift ended", fmt(info.shiftEndAt)) : ""}
+                  </table>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top: 24px;">
+                    <tr>
+                      <td style="border-radius: 6px; background-color: #dc2626;">
+                        <a href="${info.clockLink}"
+                           style="display: inline-block; padding: 10px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                          Clock out now
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Times are shown in your local timezone.<br />
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}
+
 const LEAVE_TYPE_LABELS: Record<string, string> = {
   vacation: "Vacation",
   sick: "Sick",

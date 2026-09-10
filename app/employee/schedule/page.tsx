@@ -6,6 +6,7 @@ import { useCompany } from "@/lib/company-data";
 import type { Shift } from "@/lib/company-data";
 import { useToast } from "@/lib/toast";
 import { formatTime, initials, localDateStr } from "@/lib/format";
+import { buildIcsForPerson, downloadIcsFile } from "@/lib/ical";
 import Modal from "@/components/ui/Modal";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
 import DayCalendar from "@/components/schedule/DayCalendar";
@@ -14,6 +15,7 @@ import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  DownloadIcon,
   PrinterIcon,
   TrashIcon,
   UsersIcon,
@@ -182,6 +184,37 @@ export default function EmployeeSchedulePage() {
     for (const t of teams) map.set(t.id, t);
     return map;
   }, [teams]);
+
+  const hasUpcomingApprovedShifts = useMemo(() => {
+    if (!myPerson) return false;
+    const approvedShiftIds = new Set(
+      shiftAssignments
+        .filter((a) => a.personId === myPerson.id && a.status === "approved")
+        .map((a) => a.shiftId),
+    );
+    return shifts.some(
+      (s) => s.status === "published" && s.date >= today && approvedShiftIds.has(s.id),
+    );
+  }, [myPerson, shifts, shiftAssignments, today]);
+
+  const handleExportIcs = () => {
+    if (!myPerson) return;
+    const result = buildIcsForPerson({
+      shifts,
+      assignments: shiftAssignments,
+      person: myPerson,
+      teams,
+      locations,
+      fromDate: today,
+    });
+    if (!result.ok || !result.ics) {
+      pushToast({ tone: "danger", message: result.error ?? "Failed to export calendar." });
+      return;
+    }
+    const slug = myPerson.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    downloadIcsFile(result.ics, `${slug || "schedule"}-schedule.ics`);
+    pushToast({ tone: "success", message: "Calendar exported" });
+  };
 
   const goPrev = () => {
     if (view === "day") {
@@ -355,14 +388,30 @@ export default function EmployeeSchedulePage() {
                 Month
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="ml-auto flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3 print:hidden"
-            >
-              <PrinterIcon className="size-3.5" />
-              Print
-            </button>
+            <div className="ml-auto flex items-center gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={handleExportIcs}
+                disabled={!hasUpcomingApprovedShifts}
+                title={
+                  hasUpcomingApprovedShifts
+                    ? "Download upcoming approved shifts as .ics"
+                    : "No upcoming approved shifts to export"
+                }
+                className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-2"
+              >
+                <DownloadIcon className="size-3.5" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+              >
+                <PrinterIcon className="size-3.5" />
+                Print
+              </button>
+            </div>
           </div>
 
           {/* Week calendar */}

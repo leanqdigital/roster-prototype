@@ -13,6 +13,20 @@ import {
   sendShiftSwapReviewedEmail,
 } from "@/lib/email";
 import { getSiteOrigin } from "@/lib/site-url";
+import type { EmailSettings } from "@/lib/company";
+
+// email_settings may be missing/partial on older rows before the column
+// backfilled or if a key was added later — default every key to enabled.
+type BooleanEmailSettingKey = {
+  [K in keyof EmailSettings]: EmailSettings[K] extends boolean ? K : never;
+}[keyof EmailSettings];
+
+function emailEnabled(
+  settings: Partial<EmailSettings> | null | undefined,
+  key: BooleanEmailSettingKey,
+): boolean {
+  return settings?.[key] ?? true;
+}
 
 export interface InviteEmployeeInput {
   email: string;
@@ -146,7 +160,9 @@ export async function notifyShiftAssigned(
 
   const { data: shift } = await supabase
     .from("shifts")
-    .select("title, date, start_time, duration_minutes, description, companies(name)")
+    .select(
+      "title, date, start_time, duration_minutes, description, companies(name, email_settings)",
+    )
     .eq("id", shiftId)
     .single();
   if (!shift) return { ok: true };
@@ -157,9 +173,10 @@ export async function notifyShiftAssigned(
     start_time: string;
     duration_minutes: number;
     description: string | null;
-    companies: { name: string } | null;
+    companies: { name: string; email_settings: EmailSettings | null } | null;
   };
   const shiftRow = shift as unknown as ShiftRow;
+  if (!emailEnabled(shiftRow.companies?.email_settings, "shiftAssigned")) return { ok: true };
 
   return sendShiftAssignedEmail(person.email, {
     title: shiftRow.title,
@@ -200,9 +217,10 @@ export async function notifyLeaveReviewed(
 
   const { data: company } = await supabase
     .from("companies")
-    .select("name")
+    .select("name, email_settings")
     .eq("id", profile.companyId)
     .single();
+  if (!emailEnabled(company?.email_settings, "leaveReviewed")) return { ok: true };
 
   return sendLeaveReviewedEmail(person.email, {
     type: request.type,
@@ -219,16 +237,26 @@ type SwapShiftRow = {
   date: string;
   start_time: string;
   duration_minutes: number;
-  companies: { name: string } | null;
+  companies: { name: string; email_settings: EmailSettings | null } | null;
 };
 
 async function fetchSwapShiftInfo(
   supabase: Awaited<ReturnType<typeof createClient>>,
   shiftId: string,
-): Promise<{ title: string; date: string; startTime: string; endTime: string; companyName: string | null } | null> {
+): Promise<
+  | {
+      title: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      companyName: string | null;
+      companyEmailSettings: EmailSettings | null;
+    }
+  | null
+> {
   const { data: shift } = await supabase
     .from("shifts")
-    .select("title, date, start_time, duration_minutes, companies(name)")
+    .select("title, date, start_time, duration_minutes, companies(name, email_settings)")
     .eq("id", shiftId)
     .single();
   if (!shift) return null;
@@ -239,6 +267,7 @@ async function fetchSwapShiftInfo(
     startTime: shiftRow.start_time,
     endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
     companyName: shiftRow.companies?.name ?? null,
+    companyEmailSettings: shiftRow.companies?.email_settings ?? null,
   };
 }
 
@@ -272,6 +301,7 @@ export async function notifySwapProposed(swapId: string): Promise<{ ok: boolean;
 
   const offeredShift = await fetchSwapShiftInfo(supabase, swap.offered_shift_id);
   if (!offeredShift) return { ok: true };
+  if (!emailEnabled(offeredShift.companyEmailSettings, "swapProposed")) return { ok: true };
   const requestedShift = swap.requested_shift_id
     ? await fetchSwapShiftInfo(supabase, swap.requested_shift_id)
     : null;
@@ -315,6 +345,7 @@ export async function notifySwapResponded(swapId: string): Promise<{ ok: boolean
 
   const offeredShift = await fetchSwapShiftInfo(supabase, swap.offered_shift_id);
   if (!offeredShift) return { ok: true };
+  if (!emailEnabled(offeredShift.companyEmailSettings, "swapResponded")) return { ok: true };
 
   return sendShiftSwapRespondedEmail(initiatorPerson.email, {
     swapType: swap.swap_type,
@@ -342,6 +373,7 @@ export async function notifySwapReviewed(swapId: string): Promise<{ ok: boolean;
 
   const offeredShift = await fetchSwapShiftInfo(supabase, swap.offered_shift_id);
   if (!offeredShift) return { ok: true };
+  if (!emailEnabled(offeredShift.companyEmailSettings, "swapReviewed")) return { ok: true };
 
   const { data: people } = await supabase
     .from("people")

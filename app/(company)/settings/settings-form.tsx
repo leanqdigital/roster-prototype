@@ -7,6 +7,7 @@ import {
   COMPANY_CATEGORIES,
   DEFAULT_BRANDING,
   DEFAULT_BREAK_POLICY,
+  DEFAULT_EMAIL_SETTINGS,
   DEFAULT_LOCALE,
   DEFAULT_TIMEZONE,
   LOCALES,
@@ -14,7 +15,7 @@ import {
   saveCompanySettings,
   slugify,
 } from "@/lib/company";
-import type { BreakPolicy, CompanySettings } from "@/lib/company";
+import type { BreakPolicy, CompanySettings, EmailSettings } from "@/lib/company";
 import { COMPANY_COLORS } from "@/lib/data";
 import { formatDurationMinutes } from "@/lib/format";
 import { useToast } from "@/lib/toast";
@@ -25,12 +26,14 @@ import {
   ChevronDownIcon,
   ClockIcon,
   ImageIcon,
+  MailIcon,
   PaletteIcon,
   PauseIcon,
   SaveIcon,
   TrashIcon,
 } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
+import Switch from "@/components/ui/Switch";
 import TimezoneSelect from "@/components/ui/TimezoneSelect";
 
 const inputClass =
@@ -63,6 +66,7 @@ export default function SettingsForm() {
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [logoUrl, setLogoUrl] = useState("");
   const [breakPolicy, setBreakPolicy] = useState<BreakPolicy>(DEFAULT_BREAK_POLICY);
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>(DEFAULT_EMAIL_SETTINGS);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -82,6 +86,7 @@ export default function SettingsForm() {
         setBranding(result.brandingColor);
         setLogoUrl(result.logoUrl ?? "");
         setBreakPolicy(result.breakPolicy);
+        setEmailSettings(result.emailSettings);
       }
     });
     return () => {
@@ -98,7 +103,9 @@ export default function SettingsForm() {
       branding !== (setup?.brandingColor ?? DEFAULT_BRANDING) ||
       logoUrl !== (setup?.logoUrl ?? "") ||
       JSON.stringify(breakPolicy) !==
-        JSON.stringify(setup?.breakPolicy ?? DEFAULT_BREAK_POLICY));
+        JSON.stringify(setup?.breakPolicy ?? DEFAULT_BREAK_POLICY) ||
+      JSON.stringify(emailSettings) !==
+        JSON.stringify(setup?.emailSettings ?? DEFAULT_EMAIL_SETTINGS));
 
   const onLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -141,6 +148,7 @@ export default function SettingsForm() {
         brandingColor: branding,
         logoUrl: logoUrl || null,
         breakPolicy,
+        emailSettings,
       });
       if (!result) {
         setError("Couldn't save changes.");
@@ -576,6 +584,74 @@ export default function SettingsForm() {
                 />
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-hairline bg-surface-2 p-5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-lg border border-primary/25 bg-primary-weak text-primary">
+              <MailIcon className="size-4" />
+            </span>
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink">
+              Email Notifications
+            </h2>
+          </div>
+
+          <div className="mt-4 space-y-2.5">
+            {(
+              [
+                ["shiftAssigned", "Shift assigned", "When an employee is assigned a shift"],
+                ["leaveReviewed", "Leave reviewed", "When a leave request is approved or denied"],
+                ["swapProposed", "Swap proposed", "When a shift swap is proposed to someone"],
+                ["swapResponded", "Swap responded", "When a coworker responds to a swap"],
+                ["swapReviewed", "Swap reviewed", "When a manager approves or denies a swap"],
+                ["shiftReminder", "Shift reminder", "Reminder sent before a shift starts"],
+                ["forgotClockOut", "Forgot to clock out", "Alert when someone is still clocked in after their shift ends"],
+              ] as [keyof EmailSettings, string, string][]
+            ).map(([key, title, description]) => (
+              <div
+                key={key}
+                className="flex items-center justify-between gap-3 rounded-lg border border-hairline bg-surface-1 px-3.5 py-3"
+              >
+                <div>
+                  <p className="text-[13px] font-medium text-ink">{title}</p>
+                  <p className="text-[11px] text-ink-subtle">{description}</p>
+                </div>
+                <Switch
+                  checked={emailSettings[key] as boolean}
+                  onChange={(v) => setEmailSettings((s) => ({ ...s, [key]: v }))}
+                  label={title}
+                />
+              </div>
+            ))}
+            {emailSettings.shiftReminder && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-hairline bg-surface-1 px-3.5 py-3">
+                <div>
+                  <label htmlFor="shift-reminder-minutes" className="text-[13px] font-medium text-ink">
+                    Send reminder
+                  </label>
+                  <p className="text-[11px] text-ink-subtle">Minutes before shift starts</p>
+                </div>
+                <div className="relative">
+                  <input
+                    id="shift-reminder-minutes"
+                    type="number"
+                    min={0}
+                    value={emailSettings.shiftReminderMinutesBefore}
+                    onChange={(e) =>
+                      setEmailSettings((s) => ({
+                        ...s,
+                        shiftReminderMinutesBefore: Number(e.target.value) || 0,
+                      }))
+                    }
+                    className={`${inputClass} mt-0 w-20 pr-9 text-right`}
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-subtle">
+                    min
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>

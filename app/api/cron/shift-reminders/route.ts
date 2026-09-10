@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendShiftReminderEmail } from "@/lib/email";
 import { zonedTimeToUtc } from "@/lib/timezone";
+import type { EmailSettings } from "@/lib/company";
 
 // Vercel Cron hits this route (see vercel.json) once a minute. Auth via
 // CRON_SECRET — Vercel auto-sends `Authorization: Bearer $CRON_SECRET` when
@@ -38,7 +39,9 @@ export async function GET(req: Request) {
 
   const { data: shifts, error: shiftsError } = await supabase
     .from("shifts")
-    .select("id, title, date, start_time, duration_minutes, description, companies(name)")
+    .select(
+      "id, title, date, start_time, duration_minutes, description, companies(name, email_settings)",
+    )
     .eq("status", "published")
     .gte("date", startDate)
     .lte("date", endDate);
@@ -54,7 +57,7 @@ export async function GET(req: Request) {
     start_time: string;
     duration_minutes: number;
     description: string | null;
-    companies: { name: string } | null;
+    companies: { name: string; email_settings: EmailSettings | null } | null;
   };
 
   function endTime(startTime: string, durationMinutes: number): string {
@@ -105,6 +108,9 @@ export async function GET(req: Request) {
 
     if (assignees.length === 0) continue;
 
+    const shiftRow = shift as unknown as ShiftRow;
+    const minutesBefore = shiftRow.companies?.email_settings?.shiftReminderMinutesBefore ?? 10;
+
     const due: AssigneeRow[] = [];
     const late: AssigneeRow[] = [];
     const stale: AssigneeRow[] = [];
@@ -114,7 +120,7 @@ export async function GET(req: Request) {
       const shiftStartUtc = zonedTimeToUtc(shift.date, shift.start_time, person.timezone || "UTC");
       const diffMin = (shiftStartUtc.getTime() - Date.now()) / 60000;
 
-      if (diffMin > 10) {
+      if (diffMin > minutesBefore) {
         // too early — leave reminder_sent_at null, picked up on a later run
       } else if (diffMin > -5) {
         due.push(assignee); // on-time window
@@ -125,25 +131,31 @@ export async function GET(req: Request) {
       }
     }
 
-    const shiftRow = shift as unknown as ShiftRow;
     const sentIds: string[] = stale.map((a) => a.id); // mark stale as handled, no email
 
-    for (const assignee of [...due, ...late]) {
-      const person = assignee.people!;
-      const result = await sendShiftReminderEmail(person.email, {
-        title: shiftRow.title,
-        date: shiftRow.date,
-        startTime: shiftRow.start_time,
-        endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
-        companyName: shiftRow.companies?.name ?? null,
-        description: shiftRow.description,
-      });
-      if (result.ok) {
-        sent += 1;
-        sentIds.push(assignee.id);
+    // Company opted out of shift reminders entirely — a deliberate choice,
+    // not a transient failure, so mark due/late assignees handled without
+    // emailing (same bucket as stale) instead of retrying them forever.
+    if (shiftRow.companies?.email_settings?.shiftReminder === false) {
+      sentIds.push(...due.map((a) => a.id), ...late.map((a) => a.id));
+    } else {
+      for (const assignee of [...due, ...late]) {
+        const person = assignee.people!;
+        const result = await sendShiftReminderEmail(person.email, {
+          title: shiftRow.title,
+          date: shiftRow.date,
+          startTime: shiftRow.start_time,
+          endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
+          companyName: shiftRow.companies?.name ?? null,
+          description: shiftRow.description,
+        });
+        if (result.ok) {
+          sent += 1;
+          sentIds.push(assignee.id);
+        }
+        // send failed: leave reminder_sent_at null so this specific assignee
+        // is retried next run (still within the late-grace window)
       }
-      // send failed: leave reminder_sent_at null so this specific assignee
-      // is retried next run (still within the late-grace window)
     }
 
     if (sentIds.length > 0) {
