@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import { useAuth } from "@/lib/auth";
-import { useCompany } from "@/lib/company-data";
+import { useCompany, hasApprovedLeaveOn } from "@/lib/company-data";
 import type { ShiftSwapRequest } from "@/lib/company-data";
 import SwapStatusBadge from "@/components/shifts/SwapStatusBadge";
-import { SwapIcon } from "@/components/ui/icons";
+import { SwapIcon, AlertTriangleIcon } from "@/components/ui/icons";
 import { useToast } from "@/lib/toast";
 
 function formatShortDate(dateStr: string): string {
@@ -15,7 +15,8 @@ function formatShortDate(dateStr: string): string {
 
 export default function EmployeeShiftSwapsPage() {
   const { user } = useAuth();
-  const { people, shifts, getSwapsInvolvingPerson, respondToSwap, cancelSwap } = useCompany();
+  const { people, shifts, leaveRequests, getSwapsInvolvingPerson, respondToSwap, cancelSwap } =
+    useCompany();
   const { pushToast } = useToast();
 
   const myPerson = useMemo(
@@ -47,6 +48,13 @@ export default function EmployeeShiftSwapsPage() {
 
   const personName = (personId: string): string =>
     people.find((p) => p.id === personId)?.name ?? "Someone";
+
+  const leaveConflictFor = (r: ShiftSwapRequest) => {
+    if (!myPerson) return undefined;
+    const offeredShift = shifts.find((s) => s.id === r.offeredShiftId);
+    if (!offeredShift) return undefined;
+    return hasApprovedLeaveOn(myPerson.id, offeredShift.date, leaveRequests);
+  };
 
   const handleRespond = async (request: ShiftSwapRequest, response: "accept" | "decline") => {
     if (!myPerson) return;
@@ -105,48 +113,60 @@ export default function EmployeeShiftSwapsPage() {
               <p className="mt-2 text-xs text-ink-muted">Nothing waiting on your response.</p>
             ) : (
               <ul className="mt-2 space-y-2">
-                {incoming.map((r) => (
-                  <li
-                    key={r.id}
-                    className="rounded-lg border border-hairline bg-surface-2 px-4 py-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-ink">
-                          {personName(r.initiatorPersonId)} wants to{" "}
-                          {r.swapType === "trade" ? "trade" : "give away"} a shift
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-ink-subtle">
-                          Offered: {shiftLabel(r.offeredShiftId)}
-                        </p>
-                        {r.requestedShiftId && (
-                          <p className="text-[11px] text-ink-subtle">
-                            In exchange for: {shiftLabel(r.requestedShiftId)}
+                {incoming.map((r) => {
+                  const leaveConflict = leaveConflictFor(r);
+                  return (
+                    <li
+                      key={r.id}
+                      className="rounded-lg border border-hairline bg-surface-2 px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium text-ink">
+                            {personName(r.initiatorPersonId)} wants to{" "}
+                            {r.swapType === "trade" ? "trade" : "give away"} a shift
                           </p>
-                        )}
-                        {r.initiatorComment && (
-                          <p className="mt-0.5 text-[11px] text-ink-muted">{r.initiatorComment}</p>
-                        )}
+                          <p className="mt-0.5 text-[11px] text-ink-subtle">
+                            Offered: {shiftLabel(r.offeredShiftId)}
+                          </p>
+                          {r.requestedShiftId && (
+                            <p className="text-[11px] text-ink-subtle">
+                              In exchange for: {shiftLabel(r.requestedShiftId)}
+                            </p>
+                          )}
+                          {r.initiatorComment && (
+                            <p className="mt-0.5 text-[11px] text-ink-muted">{r.initiatorComment}</p>
+                          )}
+                          {leaveConflict && (
+                            <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-danger">
+                              <AlertTriangleIcon className="size-3" />
+                              You have approved {leaveConflict.type} leave that day (
+                              {leaveConflict.startDate} – {leaveConflict.endDate})
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleRespond(r, "decline")}
+                            className="rounded-md border border-hairline bg-surface-3 px-2.5 py-1.5 text-[11px] font-medium text-ink-muted transition-colors hover:bg-surface-4 hover:text-ink"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRespond(r, "accept")}
+                            disabled={!!leaveConflict}
+                            title={leaveConflict ? "You're on approved leave that day" : undefined}
+                            className="rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-primary"
+                          >
+                            Accept
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleRespond(r, "decline")}
-                          className="rounded-md border border-hairline bg-surface-3 px-2.5 py-1.5 text-[11px] font-medium text-ink-muted transition-colors hover:bg-surface-4 hover:text-ink"
-                        >
-                          Decline
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRespond(r, "accept")}
-                          className="rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-primary-hover"
-                        >
-                          Accept
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>

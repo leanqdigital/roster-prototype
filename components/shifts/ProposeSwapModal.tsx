@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
-import { useCompany } from "@/lib/company-data";
+import { useCompany, hasApprovedLeaveOn } from "@/lib/company-data";
 import type { Shift, SwapType } from "@/lib/company-data";
 import { useToast } from "@/lib/toast";
 import { localDateStr } from "@/lib/format";
+import { AlertTriangleIcon } from "@/components/ui/icons";
 
 function getEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(":").map(Number);
@@ -26,7 +27,8 @@ export default function ProposeSwapModal({
   personId,
   onClose,
 }: ProposeSwapModalProps) {
-  const { proposeSwap, getSwapableCoworkers, shiftAssignments, shifts } = useCompany();
+  const { proposeSwap, getSwapableCoworkers, shiftAssignments, shifts, leaveRequests } =
+    useCompany();
   const { pushToast } = useToast();
   const [swapType, setSwapType] = useState<SwapType>("giveaway");
   const [targetPersonId, setTargetPersonId] = useState("");
@@ -41,6 +43,11 @@ export default function ProposeSwapModal({
   );
 
   const today = localDateStr(new Date());
+
+  const targetLeaveConflict = useMemo(
+    () => (targetPersonId ? hasApprovedLeaveOn(targetPersonId, shift.date, leaveRequests) : undefined),
+    [targetPersonId, shift.date, leaveRequests],
+  );
 
   const targetShiftOptions = useMemo(() => {
     if (!targetPersonId) return [];
@@ -70,6 +77,10 @@ export default function ProposeSwapModal({
     }
     if (swapType === "trade" && !requestedShiftId) {
       setError("Choose one of their shifts to trade for.");
+      return;
+    }
+    if (targetLeaveConflict) {
+      setError("This coworker has approved leave that day — pick someone else.");
       return;
     }
     setSubmitting(true);
@@ -153,6 +164,13 @@ export default function ProposeSwapModal({
           </select>
           {coworkers.length === 0 && (
             <p className="mt-1 text-[11px] text-ink-faint">No eligible coworkers on this team.</p>
+          )}
+          {targetLeaveConflict && (
+            <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-danger">
+              <AlertTriangleIcon className="size-3" />
+              Approved {targetLeaveConflict.type} leave {targetLeaveConflict.startDate} –{" "}
+              {targetLeaveConflict.endDate}
+            </p>
           )}
         </div>
         {swapType === "trade" && targetPersonId && (

@@ -6,7 +6,7 @@ import { useCompany } from "@/lib/company-data";
 import { useLiveEntries } from "@/lib/company-data/useLiveEntries";
 import { minutesBetween } from "@/lib/company-data/business";
 import { localDateStr } from "@/lib/format";
-import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
+import { ClockIcon, AlertTriangleIcon, PauseIcon, CheckIcon } from "@/components/ui/icons";
 import Avatar from "@/components/people/Avatar";
 import { useTeamDetail } from "../team-detail-context";
 
@@ -24,12 +24,13 @@ function formatLateMinutes(minutes: number): string {
   return m === 0 ? `${h}h late` : `${h}h ${m}m late`;
 }
 
-type LiveStatus = "working" | "break" | "not_clocked_in";
+type LiveStatus = "working" | "break" | "clocked_out" | "not_clocked_in";
 
 interface PersonLiveStatus {
   personId: string;
   status: LiveStatus;
   lastIn?: ClockEntry;
+  lastOut?: ClockEntry;
   activeBreak?: BreakEntry;
   todayShift?: Shift;
   lateMinutes?: number;
@@ -72,6 +73,8 @@ export default function ManagerTeamLivePage() {
           (b) => b.clockEntryId === latest.id && b.breakOutAt === undefined,
         );
         status = activeBreak ? "break" : "working";
+      } else if (latest?.action === "out" && localDateStr(new Date(latest.at)) === today) {
+        status = "clocked_out";
       }
 
       let lateMinutes: number | undefined;
@@ -90,6 +93,7 @@ export default function ManagerTeamLivePage() {
         personId: person.id,
         status,
         lastIn: latest?.action === "in" ? latest : undefined,
+        lastOut: status === "clocked_out" ? latest : undefined,
         activeBreak,
         todayShift,
         lateMinutes,
@@ -105,6 +109,7 @@ export default function ManagerTeamLivePage() {
 
   const working = teamPeople.filter((p) => statusByPerson.get(p.id)?.status === "working");
   const onBreak = teamPeople.filter((p) => statusByPerson.get(p.id)?.status === "break");
+  const clockedOut = teamPeople.filter((p) => statusByPerson.get(p.id)?.status === "clocked_out");
   const notClockedIn = teamPeople.filter(
     (p) => statusByPerson.get(p.id)?.status === "not_clocked_in" && statusByPerson.get(p.id)?.todayShift,
   );
@@ -201,6 +206,36 @@ export default function ManagerTeamLivePage() {
                           {formatLateMinutes(s.lateMinutes)}
                         </span>
                       )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* Clocked out */}
+          <section className="rounded-xl border border-hairline bg-surface-2">
+            <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
+              <CheckIcon className="size-3.5 text-ink-subtle" />
+              <h2 className="text-[13px] font-semibold text-ink">Clocked out</h2>
+              <span className="text-[11px] text-ink-subtle">({clockedOut.length})</span>
+            </div>
+            {clockedOut.length === 0 ? (
+              <p className="px-4 py-6 text-center text-[12px] text-ink-muted">Nobody has clocked out today.</p>
+            ) : (
+              <ul className="divide-y divide-hairline/60">
+                {clockedOut.map((p) => {
+                  const s = statusByPerson.get(p.id);
+                  return (
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-ink">{p.name}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-subtle">
+                          <CheckIcon className="size-3" />
+                          Clocked out{s?.lastOut ? ` at ${new Date(s.lastOut.at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                        </p>
+                      </div>
                     </li>
                   );
                 })}

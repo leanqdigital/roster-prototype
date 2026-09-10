@@ -3,6 +3,7 @@
 import { requireRole } from "@/lib/supabase/dal";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { ActivityAction } from "@/lib/company-data";
 import {
   sendInviteEmail,
   sendShiftAssignedEmail,
@@ -359,5 +360,50 @@ export async function notifySwapReviewed(swapId: string): Promise<{ ok: boolean;
       }),
     ),
   );
+  return { ok: true };
+}
+
+// Inserts an activity_entries "notified" row for the other party of a
+// shift swap (proposer -> target, or target -> proposer on response/review).
+// Uses the admin client because activity_entries RLS only allows self-
+// inserts or manager/company_admin — a plain employee notifying the other
+// party of a swap they're involved in has no RLS path otherwise. Caller's
+// party-of-the-swap membership is verified via the RLS-scoped client first,
+// so this can't be used to spam arbitrary people.
+export async function logSwapActivity(
+  swapId: string,
+  targetPersonId: string,
+  action: ActivityAction,
+  message: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const profile = await requireRole(["employee", "manager", "company_admin"]);
+  if (!profile.companyId || !profile.personId) {
+    return { ok: false, error: "No company context." };
+  }
+
+  const supabase = await createClient();
+  const { data: swap } = await supabase
+    .from("shift_swap_requests")
+    .select("initiator_person_id, target_person_id, company_id")
+    .eq("id", swapId)
+    .single();
+  if (!swap) return { ok: false, error: "Swap request not found." };
+
+  const isParty =
+    (swap.initiator_person_id === profile.personId && swap.target_person_id === targetPersonId) ||
+    (swap.target_person_id === profile.personId && swap.initiator_person_id === targetPersonId);
+  const isManager = profile.role === "manager" || profile.role === "company_admin";
+  const targetInSwap =
+    targetPersonId === swap.initiator_person_id || targetPersonId === swap.target_person_id;
+  if (!isParty && !(isManager && targetInSwap)) return { ok: false, error: "Not authorized." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("activity_entries").insert({
+    company_id: swap.company_id,
+    person_id: targetPersonId,
+    action,
+    message,
+  });
+  if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

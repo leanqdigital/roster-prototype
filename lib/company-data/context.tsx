@@ -31,6 +31,7 @@ import {
   notifySwapProposed,
   notifySwapResponded,
   notifySwapReviewed,
+  logSwapActivity,
 } from "@/lib/supabase/actions";
 import {
   deleteAssignmentRow,
@@ -1644,7 +1645,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "addShiftSwapRequest", request });
 
         const initiator = state.people.find((p) => p.id === input.initiatorPersonId);
-        await logActivity(
+        await logSwapActivity(
+          request.id,
           input.targetPersonId,
           "notified",
           `${initiator?.name ?? "Someone"} proposed a shift ${
@@ -1669,7 +1671,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: errorMessage(e) };
       }
     },
-    [state.shifts, state.shiftAssignments, state.people, state.shiftSwapRequests, logActivity, logAudit],
+    [state.shifts, state.shiftAssignments, state.people, state.shiftSwapRequests, logAudit],
   );
 
   const respondToSwap = useCallback(
@@ -1766,7 +1768,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
 
       const responder = state.people.find((p) => p.id === respondingPersonId);
-      await logActivity(
+      await logSwapActivity(
+        request.id,
         request.initiatorPersonId,
         "notified",
         `${responder?.name ?? "Someone"} ${response === "accept" ? "accepted" : "declined"} your shift ${
@@ -1794,7 +1797,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       state.shiftAssignments,
       state.leaveRequests,
       state.people,
-      logActivity,
       logAudit,
     ],
   );
@@ -1857,14 +1859,16 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           return { ok: false, error: errorMessage(e) };
         }
-        await logActivity(
+        await logSwapActivity(
+          request.id,
           request.initiatorPersonId,
           "notified",
           `Your shift ${request.swapType} proposal for "${offeredShift?.title ?? "shift"}" was denied${
             reviewerComment ? ` — ${reviewerComment}` : ""
           }`,
         );
-        await logActivity(
+        await logSwapActivity(
+          request.id,
           request.targetPersonId,
           "notified",
           `The shift ${request.swapType} for "${offeredShift?.title ?? "shift"}" was denied by ${reviewedBy}`,
@@ -2004,12 +2008,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: errorMessage(e) };
       }
 
-      await logActivity(
+      await logSwapActivity(
+        request.id,
         request.initiatorPersonId,
         "notified",
         `Your shift ${request.swapType} proposal for "${offeredShift.title}" was approved`,
       );
-      await logActivity(
+      await logSwapActivity(
+        request.id,
         request.targetPersonId,
         "notified",
         `The shift ${request.swapType} for "${offeredShift.title}" was approved`,
@@ -2027,7 +2033,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
       return { ok: true };
     },
-    [state.shiftSwapRequests, state.shifts, state.shiftAssignments, state.leaveRequests, logActivity, logAudit],
+    [state.shiftSwapRequests, state.shifts, state.shiftAssignments, state.leaveRequests, logAudit],
   );
 
   const getSwapsInvolvingPerson = useCallback(

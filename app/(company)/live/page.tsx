@@ -9,7 +9,7 @@ import {
   type Punctuality,
 } from "@/lib/company-data/business";
 import { localDateStr } from "@/lib/format";
-import { ClockIcon, AlertTriangleIcon, PauseIcon } from "@/components/ui/icons";
+import { ClockIcon, AlertTriangleIcon, PauseIcon, CheckIcon } from "@/components/ui/icons";
 import PunctualityBadge from "@/components/timeclock/PunctualityBadge";
 import Avatar from "@/components/people/Avatar";
 
@@ -23,12 +23,13 @@ function formatClockTime(time: string): string {
   return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-type LiveStatus = "working" | "break" | "not_clocked_in";
+type LiveStatus = "working" | "break" | "clocked_out" | "not_clocked_in";
 
 interface PersonLiveStatus {
   personId: string;
   status: LiveStatus;
   lastIn?: ClockEntry;
+  lastOut?: ClockEntry;
   activeBreak?: BreakEntry;
   todayShift?: Shift;
   punctuality?: { label: Punctuality; deviationMinutes: number };
@@ -78,6 +79,8 @@ export default function CompanyLivePage() {
           (b) => b.clockEntryId === latest.id && b.breakOutAt === undefined,
         );
         status = activeBreak ? "break" : "working";
+      } else if (latest?.action === "out" && localDateStr(new Date(latest.at)) === today) {
+        status = "clocked_out";
       }
 
       let punctuality: PersonLiveStatus["punctuality"];
@@ -107,6 +110,7 @@ export default function CompanyLivePage() {
         personId: person.id,
         status,
         lastIn: latest?.action === "in" ? latest : undefined,
+        lastOut: status === "clocked_out" ? latest : undefined,
         activeBreak,
         todayShift,
         punctuality,
@@ -132,6 +136,9 @@ export default function CompanyLivePage() {
   );
   const onBreak = scopedPeople.filter(
     (p) => statusByPerson.get(p.id)?.status === "break",
+  );
+  const clockedOut = scopedPeople.filter(
+    (p) => statusByPerson.get(p.id)?.status === "clocked_out",
   );
   const notClockedIn = scopedPeople.filter(
     (p) =>
@@ -273,6 +280,50 @@ export default function CompanyLivePage() {
                           deviationMinutes={s.punctuality.deviationMinutes}
                         />
                       )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* Clocked out */}
+          <section className="rounded-xl border border-hairline bg-surface-2">
+            <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
+              <CheckIcon className="size-3.5 text-ink-subtle" />
+              <h2 className="text-[13px] font-semibold text-ink">
+                Clocked out
+              </h2>
+              <span className="text-[11px] text-ink-subtle">
+                ({clockedOut.length})
+              </span>
+            </div>
+            {clockedOut.length === 0 ? (
+              <p className="px-4 py-6 text-center text-[12px] text-ink-muted">
+                Nobody has clocked out today.
+              </p>
+            ) : (
+              <ul className="divide-y divide-hairline/60">
+                {clockedOut.map((p) => {
+                  const s = statusByPerson.get(p.id);
+                  return (
+                    <li
+                      key={p.id}
+                      className="flex items-center gap-3 px-4 py-2.5"
+                    >
+                      <Avatar name={p.name} src={p.avatarUrl} className="size-8 text-[11px] font-semibold" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-ink">
+                          {p.name}
+                        </p>
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-subtle">
+                          <CheckIcon className="size-3" />
+                          Clocked out
+                          {s?.lastOut
+                            ? ` at ${new Date(s.lastOut.at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+                            : ""}
+                        </p>
+                      </div>
                     </li>
                   );
                 })}
