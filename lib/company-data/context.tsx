@@ -32,6 +32,7 @@ import {
   notifySwapResponded,
   notifySwapReviewed,
   logSwapActivity,
+  notifyShiftAdjustmentReviewed,
 } from "@/lib/supabase/actions";
 import {
   deleteAssignmentRow,
@@ -56,6 +57,7 @@ import {
   fetchPeople,
   fetchPersonalNotes,
   fetchShiftAssignments,
+  fetchShiftAdjustmentRequests,
   fetchShifts,
   fetchShiftSwapRequests,
   fetchShiftTemplates,
@@ -76,6 +78,7 @@ import {
   insertPerson,
   insertPersonalNote,
   insertShift,
+  insertShiftAdjustmentRequest,
   insertShiftsMany,
   insertShiftSwapRequest,
   insertShiftTemplate,
@@ -91,6 +94,7 @@ import {
   updatePersonalNoteRow,
   updatePersonRow,
   updateShiftRow,
+  updateShiftAdjustmentRequestRow,
   updateShiftsByTemplate,
   updateShiftSwapRequestRow,
   updateShiftTemplateRow,
@@ -120,6 +124,8 @@ import type {
   Person,
   PersonalNote,
   Shift,
+  ShiftAdjustmentRequest,
+  ShiftAdjustmentType,
   ShiftAssignment,
   ShiftSwapRequest,
   ShiftTemplate,
@@ -160,6 +166,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           personalNotes,
           teamNotes,
           shiftSwapRequests,
+          shiftAdjustmentRequests,
         ] = await Promise.all([
           fetchPeople(),
           fetchTeams(),
@@ -177,6 +184,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           fetchPersonalNotes(),
           fetchTeamNotes(),
           fetchShiftSwapRequests(),
+          fetchShiftAdjustmentRequests(),
         ]);
         if (cancelled) return;
         dispatch({
@@ -198,6 +206,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             personalNotes,
             teamNotes,
             shiftSwapRequests,
+            shiftAdjustmentRequests,
           },
         });
       } finally {
@@ -2156,6 +2165,214 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     [state.shifts, state.people],
   );
 
+  // ---------------------------------------------------------------------
+  // shift adjustment requests (early out / late in)
+  // ---------------------------------------------------------------------
+
+  const requestShiftAdjustment = useCallback(
+    async (
+      personId: string,
+      input: {
+        adjustmentType: ShiftAdjustmentType;
+        date: string;
+        requestedTime: string;
+        reason?: string;
+      },
+    ): Promise<{ ok: boolean; error?: string }> => {
+      if (!input.date) return { ok: false, error: "Date is required." };
+      if (!input.requestedTime) return { ok: false, error: "Requested time is required." };
+      try {
+        const request = await insertShiftAdjustmentRequest({
+          personId,
+          adjustmentType: input.adjustmentType,
+          date: input.date,
+          requestedTime: input.requestedTime,
+          reason: input.reason,
+        });
+        dispatch({ type: "addShiftAdjustmentRequest", request });
+        const person = state.people.find((p) => p.id === personId);
+        const managerIds = new Set(
+          state.teams
+            .filter((t) => person?.teamIds.includes(t.id) && t.managerId)
+            .map((t) => t.managerId as string),
+        );
+        const message = `${person?.name ?? "Someone"} requested ${input.adjustmentType === "late_in" ? "late in" : "early out"} on ${input.date} at ${input.requestedTime}`;
+        for (const managerId of managerIds) {
+          await logActivity(managerId, "notified", message);
+        }
+        await logAudit({
+          action: "adjustment.create",
+          tone: "neutral",
+          resource: "ShiftAdjustmentRequest",
+          resourceId: request.id,
+          teamId: person?.teamIds[0] ?? undefined,
+          message,
+        });
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+    },
+    [state.people, state.teams, logActivity, logAudit],
+  );
+
+  const cancelShiftAdjustment = useCallback(async (id: string) => {
+    await updateShiftAdjustmentRequestRow(id, { status: "cancelled" });
+    dispatch({ type: "cancelShiftAdjustmentRequest", id });
+  }, []);
+
+  // The person's approved assignment for the adjustment's date, if any. A
+  // person could hold two shifts on one day — first match wins, good enough
+  // while requests aren't linked to a specific shift row.
+  const findAdjustmentAssignment = useCallback(
+    (request: ShiftAdjustmentRequest) =>
+      state.shiftAssignments.find(
+        (a) =>
+          a.personId === request.personId &&
+          a.status === "approved" &&
+          state.shifts.some((s) => s.id === a.shiftId && s.date === request.date),
+      ),
+    [state.shiftAssignments, state.shifts],
+  );
+
+  // Best-effort: the adjustment review has already persisted by this point —
+  // a failed assignment write must not surface as a review failure.
+  const applyAdjustmentToAssignment = useCallback(
+    async (request: ShiftAdjustmentRequest) => {
+      const assignment = findAdjustmentAssignment(request);
+      if (!assignment) return;
+      const patch =
+        request.adjustmentType === "early_out"
+          ? { adjustedEndTime: request.requestedTime, adjustedStartTime: undefined }
+          : { adjustedStartTime: request.requestedTime, adjustedEndTime: undefined };
+      try {
+        await updateAssignmentRow(assignment.id, patch);
+        dispatch({ type: "updateAssignment", id: assignment.id, patch });
+      } catch {
+        // leave assignment unchanged; review still stands
+      }
+    },
+    [findAdjustmentAssignment],
+  );
+
+  const reviewShiftAdjustment = useCallback(
+    async (
+      id: string,
+      status: "approved" | "denied",
+      reviewedBy: string,
+      reviewerComment?: string,
+    ): Promise<{ ok: boolean; error?: string }> => {
+      const reviewedAt = new Date().toISOString();
+      try {
+        await updateShiftAdjustmentRequestRow(id, {
+          status,
+          reviewerComment,
+          reviewedBy,
+          reviewedAt,
+        });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+      dispatch({
+        type: "reviewShiftAdjustmentRequest",
+        id,
+        status,
+        reviewerComment,
+        reviewedBy,
+        reviewedAt,
+      });
+      const request = state.shiftAdjustmentRequests.find((r) => r.id === id);
+      if (!request) return { ok: true };
+      if (status === "approved") await applyAdjustmentToAssignment(request);
+      const person = state.people.find((p) => p.id === request.personId);
+      const label = request.adjustmentType === "late_in" ? "late in" : "early out";
+      await logActivity(
+        request.personId,
+        "notified",
+        `Your ${label} request for ${request.date} was ${status}${
+          reviewerComment ? ` — ${reviewerComment}` : ""
+        }`,
+      );
+      await logAudit({
+        action: `adjustment.${status}`,
+        tone: status === "approved" ? "success" : "warning",
+        resource: "ShiftAdjustmentRequest",
+        resourceId: request.id,
+        teamId: person?.teamIds[0] ?? undefined,
+        message: `${reviewedBy} ${status} ${person?.name ?? "someone"}'s ${label} request for ${request.date}`,
+      });
+      notifyShiftAdjustmentReviewed(id).catch(() => {});
+      return { ok: true };
+    },
+    [
+      state.shiftAdjustmentRequests,
+      state.people,
+      logActivity,
+      logAudit,
+      applyAdjustmentToAssignment,
+    ],
+  );
+
+  const approveShiftAdjustment = useCallback(
+    (id: string, reviewedBy: string) => reviewShiftAdjustment(id, "approved", reviewedBy),
+    [reviewShiftAdjustment],
+  );
+
+  const denyShiftAdjustment = useCallback(
+    (id: string, reviewedBy: string, comment?: string) =>
+      reviewShiftAdjustment(id, "denied", reviewedBy, comment?.trim() || undefined),
+    [reviewShiftAdjustment],
+  );
+
+  const revertShiftAdjustmentApproval = useCallback(
+    async (id: string, revertedBy: string): Promise<{ ok: boolean; error?: string }> => {
+      const request = state.shiftAdjustmentRequests.find((r) => r.id === id);
+      if (!request || request.status !== "approved") {
+        return { ok: false, error: "Not approved." };
+      }
+      try {
+        await updateShiftAdjustmentRequestRow(id, { status: "pending" });
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+      dispatch({
+        type: "reviewShiftAdjustmentRequest",
+        id,
+        status: "pending",
+        reviewerComment: undefined,
+        reviewedBy: undefined,
+        reviewedAt: undefined,
+      });
+      const assignment = findAdjustmentAssignment(request);
+      if (assignment) {
+        const patch = { adjustedStartTime: undefined, adjustedEndTime: undefined };
+        try {
+          await updateAssignmentRow(assignment.id, patch);
+          dispatch({ type: "updateAssignment", id: assignment.id, patch });
+        } catch {
+          // schedule keeps adjusted times; reversion of the request stands
+        }
+      }
+      const person = state.people.find((p) => p.id === request.personId);
+      const label = request.adjustmentType === "late_in" ? "late in" : "early out";
+      await logActivity(
+        request.personId,
+        "notified",
+        `Your approved ${label} request for ${request.date} was reverted to pending by ${revertedBy}`,
+      );
+      await logAudit({
+        action: "adjustment.reverted",
+        tone: "warning",
+        resource: "ShiftAdjustmentRequest",
+        resourceId: request.id,
+        teamId: person?.teamIds[0] ?? undefined,
+        message: `${revertedBy} reverted approval for ${person?.name ?? "someone"}'s ${label} request for ${request.date}`,
+      });
+      return { ok: true };
+    },
+    [state.shiftAdjustmentRequests, state.people, logActivity, logAudit, findAdjustmentAssignment],
+  );
+
   const bulkAssign = useCallback(
     async (input: BulkAssignInput): Promise<BulkAssignResult> => {
       const eligible = state.shifts.filter(
@@ -2376,6 +2593,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       reviewSwap,
       getSwapsInvolvingPerson,
       getSwapableCoworkers,
+      requestShiftAdjustment,
+      cancelShiftAdjustment,
+      approveShiftAdjustment,
+      denyShiftAdjustment,
+      revertShiftAdjustmentApproval,
     }),
     [
       state,
@@ -2444,6 +2666,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       reviewSwap,
       getSwapsInvolvingPerson,
       getSwapableCoworkers,
+      requestShiftAdjustment,
+      cancelShiftAdjustment,
+      approveShiftAdjustment,
+      denyShiftAdjustment,
+      revertShiftAdjustmentApproval,
     ],
   );
 

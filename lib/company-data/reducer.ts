@@ -17,6 +17,7 @@ export const initialState: CompanyState = {
   personalNotes: [],
   teamNotes: [],
   shiftSwapRequests: [],
+  shiftAdjustmentRequests: [],
 };
 
 export function reducer(state: CompanyState, action: CompanyAction): CompanyState {
@@ -264,6 +265,13 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
         ...state,
         shiftAssignments: [...action.assignments, ...state.shiftAssignments],
       };
+    case "updateAssignment":
+      return {
+        ...state,
+        shiftAssignments: state.shiftAssignments.map((a) =>
+          a.id === action.id ? { ...a, ...action.patch } : a,
+        ),
+      };
     case "removeAssignment":
       return {
         ...state,
@@ -368,6 +376,41 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
                 approvedBy: action.approvedBy ?? a.approvedBy,
               }
             : a,
+        ),
+      };
+    case "addShiftAdjustmentRequest":
+      return {
+        ...state,
+        shiftAdjustmentRequests: [action.request, ...state.shiftAdjustmentRequests],
+      };
+    case "updateShiftAdjustmentRequest":
+      return {
+        ...state,
+        shiftAdjustmentRequests: state.shiftAdjustmentRequests.map((r) =>
+          r.id === action.id ? { ...r, ...action.patch } : r,
+        ),
+      };
+    case "cancelShiftAdjustmentRequest":
+      return {
+        ...state,
+        shiftAdjustmentRequests: state.shiftAdjustmentRequests.map((r) =>
+          r.id === action.id ? { ...r, status: "cancelled" as const } : r,
+        ),
+      };
+    case "reviewShiftAdjustmentRequest":
+      return {
+        ...state,
+        shiftAdjustmentRequests: state.shiftAdjustmentRequests.map((r) =>
+          r.id === action.id
+            ? {
+                ...r,
+                status: action.status,
+                reviewerComment: action.reviewerComment,
+                reviewedBy: action.reviewedBy,
+                reviewedAt: action.reviewedAt,
+                updatedAt: action.reviewedAt ?? r.updatedAt,
+              }
+            : r,
         ),
       };
   }

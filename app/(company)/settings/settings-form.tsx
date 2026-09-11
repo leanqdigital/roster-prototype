@@ -605,6 +605,7 @@ export default function SettingsForm() {
                 ["swapProposed", "Swap proposed", "When a shift swap is proposed to someone"],
                 ["swapResponded", "Swap responded", "When a coworker responds to a swap"],
                 ["swapReviewed", "Swap reviewed", "When a manager approves or denies a swap"],
+                ["shiftAdjustmentReviewed", "Adjustment reviewed", "When an early out or late in request is approved or denied"],
                 ["shiftReminder", "Shift reminder", "Reminder sent before a shift starts"],
                 ["forgotClockOut", "Forgot to clock out", "Alert when someone is still clocked in after their shift ends"],
               ] as [keyof EmailSettings, string, string][]

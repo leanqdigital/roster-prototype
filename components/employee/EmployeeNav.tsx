@@ -77,6 +77,7 @@ export default function EmployeeNav() {
     { href: "/employee/clock", label: "Clock In/Out", icon: ClockIcon },
     { href: "/employee/leave-requests", label: "Leave Requests", icon: CalendarOffIcon },
     { href: "/employee/shift-swaps", label: "Shift Swaps", icon: SwapIcon, badge: incomingSwapCount },
+    { href: "/employee/adjustments", label: "Adjustments", icon: ClockIcon },
     { href: "/employee/notes", label: "Notes", icon: NoteIcon },
     { href: "/employee/settings", label: "Settings", icon: SettingsIcon },
     { href: "/employee/profile", label: "Profile", icon: UsersIcon },

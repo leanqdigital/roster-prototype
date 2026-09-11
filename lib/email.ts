@@ -371,6 +371,72 @@ export async function sendLeaveReviewedEmail(
   });
 }
 
+const ADJUSTMENT_TYPE_LABELS: Record<string, string> = {
+  early_out: "early out",
+  late_in: "late in",
+};
+
+export async function sendShiftAdjustmentReviewedEmail(
+  to: string,
+  request: {
+    adjustmentType: string;
+    date: string;
+    requestedTime: string;
+    status: "approved" | "denied";
+    reviewerComment?: string | null;
+    companyName?: string | null;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const companyName = request.companyName || "Roster";
+  const typeLabel = ADJUSTMENT_TYPE_LABELS[request.adjustmentType] ?? request.adjustmentType;
+  const approved = request.status === "approved";
+  const accent = approved ? "#5e6ad2" : "#dc2626";
+  return sendMail({
+    to,
+    subject: `Your ${typeLabel} request was ${request.status}`,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: ${accent}; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Shift adjustment ${request.status}
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    Your ${typeLabel} request has been ${request.status}.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Date</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${formatShiftDate(request.date)}</td>
+                    </tr>
+                    ${detailRow("Requested time", request.requestedTime)}
+                    ${request.reviewerComment ? detailRow("Comment", request.reviewerComment, { muted: true }) : ""}
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  });
+}
+
 export async function sendShiftAssignedEmail(
   to: string,
   shift: {

@@ -24,6 +24,7 @@ export default function ManagerDashboardPage() {
     shiftTemplates,
     auditLog,
     leaveRequests,
+    shiftAdjustmentRequests,
   } = useCompany();
 
   const teamPeople = useMemo(
@@ -47,6 +48,13 @@ export default function ManagerDashboardPage() {
       (l) => memberIds.has(l.personId) && l.status === "pending",
     ).length;
   }, [leaveRequests, teamPeople]);
+
+  const pendingAdjustmentCount = useMemo(() => {
+    const memberIds = new Set(teamPeople.map((p) => p.id));
+    return shiftAdjustmentRequests.filter(
+      (r) => memberIds.has(r.personId) && r.status === "pending",
+    ).length;
+  }, [shiftAdjustmentRequests, teamPeople]);
 
   const pendingShiftRequestCount = useMemo(() => {
     const memberIds = new Set(teamPeople.map((p) => p.id));
@@ -230,6 +238,42 @@ export default function ManagerDashboardPage() {
         </div>
         <span className="shrink-0 text-xs font-medium text-primary">
           {pendingLeaveCount > 0 ? "Review →" : "View all"}
+        </span>
+      </Link>
+
+      <Link
+        href={`/manager/teams/${selectedTeam.id}/adjustments`}
+        className={`mt-4 flex items-center justify-between gap-4 rounded-xl border px-4 py-3 transition-colors ${
+          pendingAdjustmentCount > 0
+            ? "border-warning/25 bg-warning-weak hover:bg-warning-weak/70"
+            : "border-hairline bg-surface-2 hover:bg-surface-3/70"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span
+            className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+              pendingAdjustmentCount > 0
+                ? "bg-warning text-white"
+                : "bg-surface-3 text-ink-subtle"
+            }`}
+          >
+            <ClockIcon className="size-4" />
+          </span>
+          <div>
+            <p className="text-[13px] font-medium text-ink">
+              {pendingAdjustmentCount > 0
+                ? `${pendingAdjustmentCount} pending adjustment${pendingAdjustmentCount === 1 ? "" : "s"}`
+                : "No pending adjustments"}
+            </p>
+            <p className="text-xs text-ink-subtle">
+              {pendingAdjustmentCount > 0
+                ? "Review early out and late in requests"
+                : "All team adjustment requests are reviewed"}
+            </p>
+          </div>
+        </div>
+        <span className="shrink-0 text-xs font-medium text-primary">
+          {pendingAdjustmentCount > 0 ? "Review →" : "View all"}
         </span>
       </Link>
 

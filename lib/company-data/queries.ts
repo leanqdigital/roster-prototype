@@ -17,6 +17,7 @@ import {
   PERSON_COLUMNS,
   PERSONAL_NOTE_COLUMNS,
   SHIFT_ASSIGNMENT_COLUMNS,
+  SHIFT_ADJUSTMENT_REQUEST_COLUMNS,
   SHIFT_COLUMNS,
   SHIFT_SWAP_REQUEST_COLUMNS,
   SHIFT_TEMPLATE_COLUMNS,
@@ -33,6 +34,7 @@ import {
   fromPersonalNoteRow,
   fromPersonRow,
   fromShiftAssignmentRow,
+  fromShiftAdjustmentRequestRow,
   fromShiftRow,
   fromShiftSwapRequestRow,
   fromShiftTemplateRow,
@@ -64,6 +66,9 @@ import type {
   PersonRole,
   PersonStatus,
   Shift,
+  ShiftAdjustmentRequest,
+  ShiftAdjustmentStatus,
+  ShiftAdjustmentType,
   ShiftAssignment,
   ShiftStatus,
   ShiftSwapRequest,
@@ -887,6 +892,12 @@ export async function updateAssignmentRow(
   if (patch.approvedBy !== undefined) update.approved_by = patch.approvedBy ?? null;
   if (patch.cancelledAt !== undefined) update.cancelled_at = patch.cancelledAt ?? null;
   if (patch.personId !== undefined) update.person_id = patch.personId; // new
+  if (patch.adjustedStartTime !== undefined) {
+    update.adjusted_start_time = patch.adjustedStartTime ?? null;
+  }
+  if (patch.adjustedEndTime !== undefined) {
+    update.adjusted_end_time = patch.adjustedEndTime ?? null;
+  }
   const { data, error } = await supabase
     .from("shift_assignments")
     .update(update)
@@ -1112,4 +1123,62 @@ export async function updateShiftSwapRequestRow(
     .single();
   if (error || !data) fail(error, "updateShiftSwapRequestRow");
   return fromShiftSwapRequestRow(data);
+}
+
+// ---------------------------------------------------------------------------
+// shift_adjustment_requests
+// ---------------------------------------------------------------------------
+
+export async function fetchShiftAdjustmentRequests(): Promise<ShiftAdjustmentRequest[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("shift_adjustment_requests")
+    .select(SHIFT_ADJUSTMENT_REQUEST_COLUMNS)
+    .order("created_at", { ascending: false });
+  if (error) fail(error, "fetchShiftAdjustmentRequests");
+  return (data ?? []).map(fromShiftAdjustmentRequestRow);
+}
+
+export async function insertShiftAdjustmentRequest(input: {
+  personId: string;
+  adjustmentType: ShiftAdjustmentType;
+  date: string;
+  requestedTime: string;
+  reason?: string;
+}): Promise<ShiftAdjustmentRequest> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("shift_adjustment_requests")
+    .insert({
+      person_id: input.personId,
+      adjustment_type: input.adjustmentType,
+      date: input.date,
+      requested_time: input.requestedTime,
+      reason: input.reason?.trim() || null,
+      status: "pending" as ShiftAdjustmentStatus,
+    })
+    .select(SHIFT_ADJUSTMENT_REQUEST_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "insertShiftAdjustmentRequest");
+  return fromShiftAdjustmentRequestRow(data);
+}
+
+export async function updateShiftAdjustmentRequestRow(
+  id: string,
+  patch: Partial<ShiftAdjustmentRequest>,
+): Promise<ShiftAdjustmentRequest> {
+  const supabase = createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.status !== undefined) update.status = patch.status;
+  if (patch.reviewedBy !== undefined) update.reviewed_by = patch.reviewedBy ?? null;
+  if (patch.reviewedAt !== undefined) update.reviewed_at = patch.reviewedAt ?? null;
+  if (patch.reviewerComment !== undefined) update.reviewer_comment = patch.reviewerComment ?? null;
+  const { data, error } = await supabase
+    .from("shift_adjustment_requests")
+    .update(update)
+    .eq("id", id)
+    .select(SHIFT_ADJUSTMENT_REQUEST_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "updateShiftAdjustmentRequestRow");
+  return fromShiftAdjustmentRequestRow(data);
 }

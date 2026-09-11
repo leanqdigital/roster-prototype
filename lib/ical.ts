@@ -1,5 +1,6 @@
 import { createEvents, type DateArray, type EventAttributes } from "ics";
 import { zonedTimeToUtc } from "@/lib/timezone";
+import { effectiveAssignmentTimes } from "@/lib/company-data/business";
 import type {
   Location,
   Person,
@@ -66,7 +67,8 @@ export function buildIcsForPerson({
   const events: EventAttributes[] = upcomingShifts.map((shift) => {
     const assignment = assignmentByShiftId.get(shift.id)!;
     const team = teamMap.get(shift.teamId);
-    const startUtc = zonedTimeToUtc(shift.date, shift.startTime, person.timezone || "UTC");
+    const effective = effectiveAssignmentTimes(shift, assignment);
+    const startUtc = zonedTimeToUtc(shift.date, effective.startTime, person.timezone || "UTC");
     const location = resolveLocation(team, locations);
 
     const event: EventAttributes = {
@@ -74,7 +76,7 @@ export function buildIcsForPerson({
       start: toUtcDateArray(startUtc),
       startInputType: "utc",
       startOutputType: "utc",
-      duration: { minutes: shift.durationMinutes },
+      duration: { minutes: effective.durationMinutes },
       title: shift.title,
       status: "CONFIRMED",
     };
