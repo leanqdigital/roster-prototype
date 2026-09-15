@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import type { EmailTemplates } from "@/lib/email-templates";
 
 export interface BreakPolicy {
   enabled: boolean;
@@ -95,6 +96,7 @@ export interface CompanySettings {
   logoUrl: string | null;
   breakPolicy: BreakPolicy;
   emailSettings: EmailSettings;
+  emailTemplates: EmailTemplates;
   category: string | null;
   completedSetupAt: string | null;
 }
@@ -109,12 +111,13 @@ interface CompanyRow {
   logo_url: string | null;
   break_policy: BreakPolicy;
   email_settings: EmailSettings;
+  email_templates: EmailTemplates;
   category: string | null;
   completed_setup_at: string | null;
 }
 
 const COMPANY_COLUMNS =
-  "id, name, slug, timezone, locale, branding_color, logo_url, break_policy, category, completed_setup_at, email_settings";
+  "id, name, slug, timezone, locale, branding_color, logo_url, break_policy, category, completed_setup_at, email_settings, email_templates";
 
 function fromRow(row: CompanyRow): CompanySettings {
   return {
@@ -127,6 +130,7 @@ function fromRow(row: CompanyRow): CompanySettings {
     logoUrl: row.logo_url,
     breakPolicy: row.break_policy ?? DEFAULT_BREAK_POLICY,
     emailSettings: row.email_settings ?? DEFAULT_EMAIL_SETTINGS,
+    emailTemplates: row.email_templates ?? {},
     category: row.category,
     completedSetupAt: row.completed_setup_at,
   };
@@ -162,6 +166,7 @@ export interface CompanySettingsPatch {
   logoUrl?: string | null;
   breakPolicy?: BreakPolicy;
   emailSettings?: EmailSettings;
+  emailTemplates?: EmailTemplates;
   category?: string;
 }
 
@@ -184,6 +189,7 @@ export async function saveCompanySettings(
   if (patch.logoUrl !== undefined) update.logo_url = patch.logoUrl;
   if (patch.breakPolicy !== undefined) update.break_policy = patch.breakPolicy;
   if (patch.emailSettings !== undefined) update.email_settings = patch.emailSettings;
+  if (patch.emailTemplates !== undefined) update.email_templates = patch.emailTemplates;
   if (patch.category !== undefined) update.category = patch.category;
 
   const { data, error } = await supabase

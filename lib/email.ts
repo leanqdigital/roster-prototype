@@ -1,5 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { renderTemplate } from "./email-templates";
+import type { EmailTemplateOverride } from "./email-templates";
 
 // Server-only SMTP transport (nodemailer) — used instead of Supabase's
 // built-in Auth email so invite/account emails go out even without SMTP
@@ -167,8 +169,23 @@ export async function sendShiftReminderEmail(
     companyName?: string | null;
     description?: string | null;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = shift.companyName || "Roster";
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      shiftTitle: shift.title,
+      date: formatShiftDate(shift.date),
+      time: `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`,
+      description: shift.description ?? "",
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: `Reminder: ${shift.title} — ${formatShiftDate(shift.date)}, ${formatShiftTime(shift.date, shift.startTime)}`,
@@ -230,6 +247,7 @@ export async function sendForgotClockOutEmail(
     timezone: string;
     clockLink: string;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = info.companyName || "Roster";
   const fmt = (iso: string) =>
@@ -241,6 +259,20 @@ export async function sendForgotClockOutEmail(
       hour: "numeric",
       minute: "2-digit",
     }).format(new Date(iso));
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      clockInAt: fmt(info.clockInAt),
+      shiftTitle: info.shiftTitle ?? "",
+      shiftEndAt: info.shiftEndAt ? fmt(info.shiftEndAt) : "",
+      clockLink: info.clockLink,
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: "Did you forget to clock out?",
@@ -316,6 +348,7 @@ export async function sendLeaveReviewedEmail(
     reviewerComment?: string | null;
     companyName?: string | null;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = request.companyName || "Roster";
   const typeLabel = LEAVE_TYPE_LABELS[request.type] ?? request.type;
@@ -325,6 +358,20 @@ export async function sendLeaveReviewedEmail(
       : `${formatShiftDate(request.startDate)} – ${formatShiftDate(request.endDate)}`;
   const approved = request.status === "approved";
   const accent = approved ? "#5e6ad2" : "#dc2626";
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      type: typeLabel,
+      dateRange,
+      status: request.status,
+      comment: request.reviewerComment ?? "",
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: `Your ${typeLabel} leave request was ${request.status}`,
@@ -386,11 +433,27 @@ export async function sendShiftAdjustmentReviewedEmail(
     reviewerComment?: string | null;
     companyName?: string | null;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = request.companyName || "Roster";
   const typeLabel = ADJUSTMENT_TYPE_LABELS[request.adjustmentType] ?? request.adjustmentType;
   const approved = request.status === "approved";
   const accent = approved ? "#5e6ad2" : "#dc2626";
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      type: typeLabel,
+      date: formatShiftDate(request.date),
+      requestedTime: request.requestedTime,
+      status: request.status,
+      comment: request.reviewerComment ?? "",
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: `Your ${typeLabel} request was ${request.status}`,
@@ -447,8 +510,23 @@ export async function sendShiftAssignedEmail(
     companyName?: string | null;
     description?: string | null;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = shift.companyName || "Roster";
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      shiftTitle: shift.title,
+      date: formatShiftDate(shift.date),
+      time: `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`,
+      description: shift.description ?? "",
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: `New shift assigned: ${shift.title} — ${formatShiftDate(shift.date)}`,
@@ -508,9 +586,30 @@ export async function sendShiftSwapProposedEmail(
     offeredShift: SwapShiftInfo;
     requestedShift?: SwapShiftInfo | null;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = input.companyName || "Roster";
   const kind = input.swapType === "trade" ? "trade" : "give-away";
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      initiatorName: input.initiatorName,
+      swapType: input.swapType,
+      offeredShiftTitle: input.offeredShift.title,
+      offeredDate: formatShiftDate(input.offeredShift.date),
+      offeredTime: `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`,
+      requestedShiftTitle: input.requestedShift?.title ?? "",
+      requestedDate: input.requestedShift ? formatShiftDate(input.requestedShift.date) : "",
+      requestedTime: input.requestedShift
+        ? `${formatShiftTime(input.requestedShift.date, input.requestedShift.startTime)} – ${formatShiftTime(input.requestedShift.date, input.requestedShift.endTime)}`
+        : "",
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: `${input.initiatorName} proposed a shift ${kind}`,
@@ -571,10 +670,27 @@ export async function sendShiftSwapRespondedEmail(
     companyName?: string | null;
     offeredShift: SwapShiftInfo;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = input.companyName || "Roster";
   const accepted = input.response === "accepted";
   const accent = accepted ? "#5e6ad2" : "#dc2626";
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      responderName: input.responderName,
+      response: input.response,
+      swapType: input.swapType,
+      offeredShiftTitle: input.offeredShift.title,
+      offeredDate: formatShiftDate(input.offeredShift.date),
+      offeredTime: `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`,
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: `Your swap request was ${input.response}`,
@@ -630,10 +746,27 @@ export async function sendShiftSwapReviewedEmail(
     companyName?: string | null;
     offeredShift: SwapShiftInfo;
   },
+  customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const companyName = input.companyName || "Roster";
   const approved = input.status === "approved";
   const accent = approved ? "#5e6ad2" : "#dc2626";
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      status: input.status,
+      swapType: input.swapType,
+      offeredShiftTitle: input.offeredShift.title,
+      offeredDate: formatShiftDate(input.offeredShift.date),
+      offeredTime: `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`,
+      comment: input.reviewerComment ?? "",
+    };
+    return sendMail({
+      to,
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: renderTemplate(customTemplate.html, vars),
+    });
+  }
   return sendMail({
     to,
     subject: `Your shift swap was ${input.status}`,

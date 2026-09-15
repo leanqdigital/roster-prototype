@@ -16,10 +16,12 @@ import {
   slugify,
 } from "@/lib/company";
 import type { BreakPolicy, CompanySettings, EmailSettings } from "@/lib/company";
+import type { EmailTemplateKey, EmailTemplates } from "@/lib/email-templates";
 import { COMPANY_COLORS } from "@/lib/data";
 import { formatDurationMinutes } from "@/lib/format";
 import { useToast } from "@/lib/toast";
 import ChangePasswordCard from "@/components/settings/ChangePasswordCard";
+import EmailTemplateModal from "@/components/settings/EmailTemplateModal";
 import {
   BuildingIcon,
   CheckIcon,
@@ -67,6 +69,8 @@ export default function SettingsForm() {
   const [logoUrl, setLogoUrl] = useState("");
   const [breakPolicy, setBreakPolicy] = useState<BreakPolicy>(DEFAULT_BREAK_POLICY);
   const [emailSettings, setEmailSettings] = useState<EmailSettings>(DEFAULT_EMAIL_SETTINGS);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplates>({});
+  const [editingTemplateKey, setEditingTemplateKey] = useState<EmailTemplateKey | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -87,6 +91,7 @@ export default function SettingsForm() {
         setLogoUrl(result.logoUrl ?? "");
         setBreakPolicy(result.breakPolicy);
         setEmailSettings(result.emailSettings);
+        setEmailTemplates(result.emailTemplates);
       }
     });
     return () => {
@@ -105,7 +110,8 @@ export default function SettingsForm() {
       JSON.stringify(breakPolicy) !==
         JSON.stringify(setup?.breakPolicy ?? DEFAULT_BREAK_POLICY) ||
       JSON.stringify(emailSettings) !==
-        JSON.stringify(setup?.emailSettings ?? DEFAULT_EMAIL_SETTINGS));
+        JSON.stringify(setup?.emailSettings ?? DEFAULT_EMAIL_SETTINGS) ||
+      JSON.stringify(emailTemplates) !== JSON.stringify(setup?.emailTemplates ?? {}));
 
   const onLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -149,6 +155,7 @@ export default function SettingsForm() {
         logoUrl: logoUrl || null,
         breakPolicy,
         emailSettings,
+        emailTemplates,
       });
       if (!result) {
         setError("Couldn't save changes.");
@@ -618,11 +625,20 @@ export default function SettingsForm() {
                   <p className="text-[13px] font-medium text-ink">{title}</p>
                   <p className="text-[11px] text-ink-subtle">{description}</p>
                 </div>
-                <Switch
-                  checked={emailSettings[key] as boolean}
-                  onChange={(v) => setEmailSettings((s) => ({ ...s, [key]: v }))}
-                  label={title}
-                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTemplateKey(key as EmailTemplateKey)}
+                    className="h-7 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[11.5px] font-medium text-ink transition-colors hover:bg-surface-4"
+                  >
+                    {emailTemplates[key as EmailTemplateKey] ? "Edit template" : "Customize"}
+                  </button>
+                  <Switch
+                    checked={emailSettings[key] as boolean}
+                    onChange={(v) => setEmailSettings((s) => ({ ...s, [key]: v }))}
+                    label={title}
+                  />
+                </div>
               </div>
             ))}
             {emailSettings.shiftReminder && (
@@ -667,6 +683,24 @@ export default function SettingsForm() {
     <div className="mt-4">
       <ChangePasswordCard />
     </div>
+
+    {editingTemplateKey && (
+      <EmailTemplateModal
+        templateKey={editingTemplateKey}
+        override={emailTemplates[editingTemplateKey]}
+        onClose={() => setEditingTemplateKey(null)}
+        onSave={(override) =>
+          setEmailTemplates((t) => ({ ...t, [editingTemplateKey]: override }))
+        }
+        onResetToDefault={() =>
+          setEmailTemplates((t) => {
+            const next = { ...t };
+            delete next[editingTemplateKey];
+            return next;
+          })
+        }
+      />
+    )}
   </div>
   );
 }

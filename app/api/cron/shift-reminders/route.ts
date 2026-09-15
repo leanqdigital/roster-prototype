@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendShiftReminderEmail } from "@/lib/email";
 import { zonedTimeToUtc } from "@/lib/timezone";
 import type { EmailSettings } from "@/lib/company";
+import type { EmailTemplates } from "@/lib/email-templates";
 
 // Vercel Cron hits this route (see vercel.json) once a minute. Auth via
 // CRON_SECRET — Vercel auto-sends `Authorization: Bearer $CRON_SECRET` when
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
   const { data: shifts, error: shiftsError } = await supabase
     .from("shifts")
     .select(
-      "id, title, date, start_time, duration_minutes, description, companies(name, email_settings)",
+      "id, title, date, start_time, duration_minutes, description, companies(name, email_settings, email_templates)",
     )
     .eq("status", "published")
     .gte("date", startDate)
@@ -57,7 +58,11 @@ export async function GET(req: Request) {
     start_time: string;
     duration_minutes: number;
     description: string | null;
-    companies: { name: string; email_settings: EmailSettings | null } | null;
+    companies: {
+      name: string;
+      email_settings: EmailSettings | null;
+      email_templates: EmailTemplates | null;
+    } | null;
   };
 
   function endTime(startTime: string, durationMinutes: number): string {
@@ -141,14 +146,18 @@ export async function GET(req: Request) {
     } else {
       for (const assignee of [...due, ...late]) {
         const person = assignee.people!;
-        const result = await sendShiftReminderEmail(person.email, {
-          title: shiftRow.title,
-          date: shiftRow.date,
-          startTime: shiftRow.start_time,
-          endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
-          companyName: shiftRow.companies?.name ?? null,
-          description: shiftRow.description,
-        });
+        const result = await sendShiftReminderEmail(
+          person.email,
+          {
+            title: shiftRow.title,
+            date: shiftRow.date,
+            startTime: shiftRow.start_time,
+            endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
+            companyName: shiftRow.companies?.name ?? null,
+            description: shiftRow.description,
+          },
+          shiftRow.companies?.email_templates?.shiftReminder ?? null,
+        );
         if (result.ok) {
           sent += 1;
           sentIds.push(assignee.id);

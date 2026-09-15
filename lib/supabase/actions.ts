@@ -15,6 +15,7 @@ import {
 } from "@/lib/email";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { EmailSettings } from "@/lib/company";
+import type { EmailTemplates } from "@/lib/email-templates";
 
 // email_settings may be missing/partial on older rows before the column
 // backfilled or if a key was added later — default every key to enabled.
@@ -162,7 +163,7 @@ export async function notifyShiftAssigned(
   const { data: shift } = await supabase
     .from("shifts")
     .select(
-      "title, date, start_time, duration_minutes, description, companies(name, email_settings)",
+      "title, date, start_time, duration_minutes, description, companies(name, email_settings, email_templates)",
     )
     .eq("id", shiftId)
     .single();
@@ -174,19 +175,27 @@ export async function notifyShiftAssigned(
     start_time: string;
     duration_minutes: number;
     description: string | null;
-    companies: { name: string; email_settings: EmailSettings | null } | null;
+    companies: {
+      name: string;
+      email_settings: EmailSettings | null;
+      email_templates: EmailTemplates | null;
+    } | null;
   };
   const shiftRow = shift as unknown as ShiftRow;
   if (!emailEnabled(shiftRow.companies?.email_settings, "shiftAssigned")) return { ok: true };
 
-  return sendShiftAssignedEmail(person.email, {
-    title: shiftRow.title,
-    date: shiftRow.date,
-    startTime: shiftRow.start_time,
-    endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
-    companyName: shiftRow.companies?.name ?? null,
-    description: shiftRow.description,
-  });
+  return sendShiftAssignedEmail(
+    person.email,
+    {
+      title: shiftRow.title,
+      date: shiftRow.date,
+      startTime: shiftRow.start_time,
+      endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
+      companyName: shiftRow.companies?.name ?? null,
+      description: shiftRow.description,
+    },
+    shiftRow.companies?.email_templates?.shiftAssigned ?? null,
+  );
 }
 
 // Best-effort notification after a reviewLeave() approve/deny call. Same
@@ -218,19 +227,24 @@ export async function notifyLeaveReviewed(
 
   const { data: company } = await supabase
     .from("companies")
-    .select("name, email_settings")
+    .select("name, email_settings, email_templates")
     .eq("id", profile.companyId)
     .single();
   if (!emailEnabled(company?.email_settings, "leaveReviewed")) return { ok: true };
+  const companyEmailTemplates = company?.email_templates as EmailTemplates | null | undefined;
 
-  return sendLeaveReviewedEmail(person.email, {
-    type: request.type,
-    startDate: request.start_date,
-    endDate: request.end_date,
-    status: request.status,
-    reviewerComment: request.reviewer_comment,
-    companyName: company?.name ?? null,
-  });
+  return sendLeaveReviewedEmail(
+    person.email,
+    {
+      type: request.type,
+      startDate: request.start_date,
+      endDate: request.end_date,
+      status: request.status,
+      reviewerComment: request.reviewer_comment,
+      companyName: company?.name ?? null,
+    },
+    companyEmailTemplates?.leaveReviewed ?? null,
+  );
 }
 
 // Best-effort notification after a reviewShiftAdjustment() approve/deny call.
@@ -262,20 +276,25 @@ export async function notifyShiftAdjustmentReviewed(
 
   const { data: company } = await supabase
     .from("companies")
-    .select("name, email_settings")
+    .select("name, email_settings, email_templates")
     .eq("id", profile.companyId)
     .single();
   const key: BooleanEmailSettingKey = "shiftAdjustmentReviewed";
   if (!emailEnabled(company?.email_settings, key)) return { ok: true };
+  const companyEmailTemplates = company?.email_templates as EmailTemplates | null | undefined;
 
-  return sendShiftAdjustmentReviewedEmail(person.email, {
-    adjustmentType: request.adjustment_type,
-    date: request.date,
-    requestedTime: request.requested_time,
-    status: request.status,
-    reviewerComment: request.reviewer_comment,
-    companyName: company?.name ?? null,
-  });
+  return sendShiftAdjustmentReviewedEmail(
+    person.email,
+    {
+      adjustmentType: request.adjustment_type,
+      date: request.date,
+      requestedTime: request.requested_time,
+      status: request.status,
+      reviewerComment: request.reviewer_comment,
+      companyName: company?.name ?? null,
+    },
+    companyEmailTemplates?.shiftAdjustmentReviewed ?? null,
+  );
 }
 
 type SwapShiftRow = {
@@ -283,7 +302,11 @@ type SwapShiftRow = {
   date: string;
   start_time: string;
   duration_minutes: number;
-  companies: { name: string; email_settings: EmailSettings | null } | null;
+  companies: {
+    name: string;
+    email_settings: EmailSettings | null;
+    email_templates: EmailTemplates | null;
+  } | null;
 };
 
 async function fetchSwapShiftInfo(
@@ -297,12 +320,13 @@ async function fetchSwapShiftInfo(
       endTime: string;
       companyName: string | null;
       companyEmailSettings: EmailSettings | null;
+      companyEmailTemplates: EmailTemplates | null;
     }
   | null
 > {
   const { data: shift } = await supabase
     .from("shifts")
-    .select("title, date, start_time, duration_minutes, companies(name, email_settings)")
+    .select("title, date, start_time, duration_minutes, companies(name, email_settings, email_templates)")
     .eq("id", shiftId)
     .single();
   if (!shift) return null;
@@ -314,6 +338,7 @@ async function fetchSwapShiftInfo(
     endTime: endTime(shiftRow.start_time, shiftRow.duration_minutes),
     companyName: shiftRow.companies?.name ?? null,
     companyEmailSettings: shiftRow.companies?.email_settings ?? null,
+    companyEmailTemplates: shiftRow.companies?.email_templates ?? null,
   };
 }
 
@@ -352,13 +377,17 @@ export async function notifySwapProposed(swapId: string): Promise<{ ok: boolean;
     ? await fetchSwapShiftInfo(supabase, swap.requested_shift_id)
     : null;
 
-  return sendShiftSwapProposedEmail(target.email, {
-    swapType: swap.swap_type,
-    initiatorName: initiator?.name ?? "A coworker",
-    companyName: offeredShift.companyName,
-    offeredShift,
-    requestedShift,
-  });
+  return sendShiftSwapProposedEmail(
+    target.email,
+    {
+      swapType: swap.swap_type,
+      initiatorName: initiator?.name ?? "A coworker",
+      companyName: offeredShift.companyName,
+      offeredShift,
+      requestedShift,
+    },
+    offeredShift.companyEmailTemplates?.swapProposed ?? null,
+  );
 }
 
 // Best-effort notification after respondToSwap(). Same broad role list as
@@ -393,13 +422,17 @@ export async function notifySwapResponded(swapId: string): Promise<{ ok: boolean
   if (!offeredShift) return { ok: true };
   if (!emailEnabled(offeredShift.companyEmailSettings, "swapResponded")) return { ok: true };
 
-  return sendShiftSwapRespondedEmail(initiatorPerson.email, {
-    swapType: swap.swap_type,
-    response: swap.status === "accepted_pending_manager" ? "accepted" : "declined",
-    responderName: responder?.name ?? "Your coworker",
-    companyName: offeredShift.companyName,
-    offeredShift,
-  });
+  return sendShiftSwapRespondedEmail(
+    initiatorPerson.email,
+    {
+      swapType: swap.swap_type,
+      response: swap.status === "accepted_pending_manager" ? "accepted" : "declined",
+      responderName: responder?.name ?? "Your coworker",
+      companyName: offeredShift.companyName,
+      offeredShift,
+    },
+    offeredShift.companyEmailTemplates?.swapResponded ?? null,
+  );
 }
 
 // Best-effort notification after reviewSwap(). Manager-only, mirrors
@@ -429,13 +462,17 @@ export async function notifySwapReviewed(swapId: string): Promise<{ ok: boolean;
   const recipients = (people ?? []).filter((p) => p.email && p.status === "active");
   await Promise.all(
     recipients.map((p) =>
-      sendShiftSwapReviewedEmail(p.email, {
-        swapType: swap.swap_type,
-        status: swap.status as "approved" | "denied",
-        reviewerComment: swap.reviewer_comment,
-        companyName: offeredShift.companyName,
-        offeredShift,
-      }),
+      sendShiftSwapReviewedEmail(
+        p.email,
+        {
+          swapType: swap.swap_type,
+          status: swap.status as "approved" | "denied",
+          reviewerComment: swap.reviewer_comment,
+          companyName: offeredShift.companyName,
+          offeredShift,
+        },
+        offeredShift.companyEmailTemplates?.swapReviewed ?? null,
+      ),
     ),
   );
   return { ok: true };

@@ -5,6 +5,7 @@ import { sendForgotClockOutEmail } from "@/lib/email";
 import { zonedTimeToUtc } from "@/lib/timezone";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { EmailSettings } from "@/lib/company";
+import type { EmailTemplates } from "@/lib/email-templates";
 
 // Vercel Cron hits this route once every 15 minutes. Auth via CRON_SECRET —
 // same bearer-check as app/api/cron/shift-reminders/route.ts.
@@ -116,10 +117,15 @@ export async function GET(req: Request) {
   const companyIds = [...new Set(openSessions.map((e) => e.company_id))];
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, name, email_settings")
+    .select("id, name, email_settings, email_templates")
     .in("id", companyIds);
 
-  type CompanyRow = { id: string; name: string; email_settings: EmailSettings | null };
+  type CompanyRow = {
+    id: string;
+    name: string;
+    email_settings: EmailSettings | null;
+    email_templates: EmailTemplates | null;
+  };
   const companiesById = new Map(
     ((companies ?? []) as CompanyRow[]).map((c) => [c.id, c]),
   );
@@ -163,14 +169,18 @@ export async function GET(req: Request) {
     const company = companiesById.get(session.company_id);
     if (company?.email_settings?.forgotClockOut === false) continue; // opted out
 
-    const result = await sendForgotClockOutEmail(person.email, {
-      clockInAt: session.at,
-      shiftTitle: shift.title,
-      shiftEndAt: shiftEndUtc.toISOString(),
-      companyName: company?.name ?? null,
-      timezone: tz,
-      clockLink: `${getSiteOrigin()}/employee/clock`,
-    });
+    const result = await sendForgotClockOutEmail(
+      person.email,
+      {
+        clockInAt: session.at,
+        shiftTitle: shift.title,
+        shiftEndAt: shiftEndUtc.toISOString(),
+        companyName: company?.name ?? null,
+        timezone: tz,
+        clockLink: `${getSiteOrigin()}/employee/clock`,
+      },
+      company?.email_templates?.forgotClockOut ?? null,
+    );
 
     if (result.ok) {
       sent += 1;
