@@ -159,6 +159,10 @@ export interface ShiftAssignment {
   approvedAt?: string;
   approvedBy?: string;
   cancelledAt?: string;
+  /** "HH:MM" — approved late_in request applied to this person's assignment. */
+  adjustedStartTime?: string;
+  /** "HH:MM" — approved early_out request applied to this person's assignment. */
+  adjustedEndTime?: string;
   createdAt: string;
 }
 
@@ -184,6 +188,28 @@ export interface ShiftSwapRequest {
   reviewedBy?: string;
   reviewedAt?: string;
   reviewerComment?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ShiftAdjustmentType = "early_out" | "late_in";
+export type ShiftAdjustmentStatus =
+  | "pending"
+  | "approved"
+  | "denied"
+  | "cancelled";
+
+export interface ShiftAdjustmentRequest {
+  id: string;
+  personId: string;
+  adjustmentType: ShiftAdjustmentType;
+  date: string;
+  requestedTime: string;
+  reason?: string;
+  status: ShiftAdjustmentStatus;
+  reviewerComment?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -272,6 +298,7 @@ export interface CompanyState {
   personalNotes: PersonalNote[];
   teamNotes: TeamNote[];
   shiftSwapRequests: ShiftSwapRequest[];
+  shiftAdjustmentRequests: ShiftAdjustmentRequest[];
 }
 
 export type CompanyAction =
@@ -325,6 +352,7 @@ export type CompanyAction =
     }
   | { type: "addAssignment"; assignment: ShiftAssignment }
   | { type: "addAssignments"; assignments: ShiftAssignment[] }
+  | { type: "updateAssignment"; id: string; patch: Partial<ShiftAssignment> }
   | { type: "removeAssignment"; id: string }
   | {
       type: "cancelAssignment";
@@ -354,6 +382,17 @@ export type CompanyAction =
       personId: string;
       approvedAt?: string;
       approvedBy?: string;
+    }
+  | { type: "addShiftAdjustmentRequest"; request: ShiftAdjustmentRequest }
+  | { type: "updateShiftAdjustmentRequest"; id: string; patch: Partial<ShiftAdjustmentRequest> }
+  | { type: "cancelShiftAdjustmentRequest"; id: string }
+  | {
+      type: "reviewShiftAdjustmentRequest";
+      id: string;
+      status: ShiftAdjustmentStatus;
+      reviewerComment?: string;
+      reviewedBy?: string;
+      reviewedAt?: string;
     };
 
 export interface InviteInput {
@@ -550,4 +589,18 @@ export interface CompanyContextValue extends CompanyState {
   ) => Promise<{ ok: boolean; error?: string; conflict?: boolean }>;
   getSwapsInvolvingPerson: (personId: string) => ShiftSwapRequest[];
   getSwapableCoworkers: (personId: string, shiftId: string) => Person[];
+  requestShiftAdjustment: (personId: string, input: {
+    adjustmentType: ShiftAdjustmentType;
+    date: string;
+    requestedTime: string;
+    reason?: string;
+  }) => Promise<{ ok: boolean; error?: string }>;
+  cancelShiftAdjustment: (id: string) => Promise<void>;
+  approveShiftAdjustment: (id: string, reviewedBy: string) => Promise<{ ok: boolean; error?: string }>;
+  denyShiftAdjustment: (
+    id: string,
+    reviewedBy: string,
+    comment?: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  revertShiftAdjustmentApproval: (id: string, revertedBy: string) => Promise<{ ok: boolean; error?: string }>;
 }

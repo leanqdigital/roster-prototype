@@ -39,6 +39,7 @@ const NAV_ITEMS = [
   { href: "/reports", label: "Reports", icon: FilterIcon, soon: false },
   { href: "/shift-requests", label: "Shift Requests", icon: BellIcon, soon: false },
   { href: "/leave-requests", label: "Leave Requests", icon: CalendarOffIcon, soon: false },
+  { href: "/adjustments", label: "Adjustments", icon: ClockIcon, soon: false },
   { href: "/holidays", label: "Holidays", icon: CalendarIcon, soon: false },
   { href: "/locations", label: "Locations", icon: MapPinIcon, soon: false },
   { href: "/notes", label: "Notes", icon: NoteIcon, soon: false },

@@ -28,6 +28,7 @@ export interface EmailSettings {
   swapProposed: boolean;
   swapResponded: boolean;
   swapReviewed: boolean;
+  shiftAdjustmentReviewed: boolean;
   shiftReminder: boolean;
   shiftReminderMinutesBefore: number;
   forgotClockOut: boolean;
@@ -39,6 +40,7 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   swapProposed: true,
   swapResponded: true,
   swapReviewed: true,
+  shiftAdjustmentReviewed: true,
   shiftReminder: true,
   shiftReminderMinutesBefore: 10,
   forgotClockOut: true,

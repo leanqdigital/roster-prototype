@@ -53,6 +53,14 @@ export default function ShiftDetailsPanel({
     [assignments, shift.id, personMap],
   );
 
+  const assignmentByPerson = useMemo(() => {
+    const map = new Map<string, ShiftAssignment>();
+    for (const a of assignments) {
+      if (a.shiftId === shift.id) map.set(a.personId, a);
+    }
+    return map;
+  }, [assignments, shift.id]);
+
   const shiftDate = new Date(shift.date + "T12:00:00");
   const dateLabel =
     DAY_NAMES[shiftDate.getDay()] +
@@ -105,29 +113,42 @@ export default function ShiftDetailsPanel({
               Assigned team members
             </p>
             <div className="space-y-1.5">
-              {assignedPeople.map((person) => (
-                <div
-                  key={person.id}
-                  className="flex items-center gap-2.5 rounded-lg border border-hairline bg-surface-1 px-3 py-2"
-                >
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
-                    {person.name
-                      .split(/\s+/)
-                      .map((w) => w[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-ink">
-                      {person.name}
-                    </p>
-                    <p className="truncate text-[11px] text-ink-subtle">
-                      {person.email}
-                    </p>
+              {assignedPeople.map((person) => {
+                const assignment = assignmentByPerson.get(person.id);
+                const chip = assignment?.adjustedEndTime
+                  ? `until ${assignment.adjustedEndTime}`
+                  : assignment?.adjustedStartTime
+                    ? `from ${assignment.adjustedStartTime}`
+                    : null;
+                return (
+                  <div
+                    key={person.id}
+                    className="flex items-center gap-2.5 rounded-lg border border-hairline bg-surface-1 px-3 py-2"
+                  >
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-4 text-[11px] font-semibold text-ink">
+                      {person.name
+                        .split(/\s+/)
+                        .map((w) => w[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-medium text-ink">
+                        {person.name}
+                      </p>
+                      <p className="truncate text-[11px] text-ink-subtle">
+                        {person.email}
+                      </p>
+                    </div>
+                    {chip && (
+                      <span className="shrink-0 rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                        {chip}
+                      </span>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

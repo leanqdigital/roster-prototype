@@ -17,6 +17,7 @@ import type {
   ComplianceViolationType,
   LeaveRequest,
   Shift,
+  ShiftAssignment,
 } from "./types";
 
 // Client-side placeholder id for objects that aren't persisted yet (e.g.
@@ -78,6 +79,33 @@ export function hasApprovedLeaveOn(
 
 export function minutesBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
+}
+
+export interface EffectiveAssignmentTimes {
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+}
+
+function addMinutesToTime(hhmm: string, minutes: number): string {
+  const total = (timeToMinutes(hhmm) + minutes + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+// Wall-clock times for one person's assignment: shift defaults, overridden at
+// the assignment boundary that an approved adjustment wrote (early_out →
+// adjustedEndTime, late_in → adjustedStartTime). The shared shift row never
+// changes — other assignees still see the original shift times.
+export function effectiveAssignmentTimes(
+  shift: Shift,
+  assignment?: ShiftAssignment | null,
+): EffectiveAssignmentTimes {
+  const startTime = assignment?.adjustedStartTime || shift.startTime;
+  const endTime =
+    assignment?.adjustedEndTime || addMinutesToTime(shift.startTime, shift.durationMinutes);
+  let durationMinutes = timeToMinutes(endTime) - timeToMinutes(startTime);
+  if (durationMinutes <= 0) durationMinutes += 1440; // overnight wrap
+  return { startTime, endTime, durationMinutes };
 }
 
 export type Punctuality =

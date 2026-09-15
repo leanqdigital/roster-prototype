@@ -7,14 +7,17 @@ import type { Shift } from "@/lib/company-data";
 import { useToast } from "@/lib/toast";
 import { formatTime, initials, localDateStr } from "@/lib/format";
 import { buildIcsForPerson, downloadIcsFile } from "@/lib/ical";
+import { effectiveAssignmentTimes } from "@/lib/company-data/business";
 import Modal from "@/components/ui/Modal";
 import MonthCalendar from "@/components/schedule/MonthCalendar";
 import DayCalendar from "@/components/schedule/DayCalendar";
 import ProposeSwapModal from "@/components/shifts/ProposeSwapModal";
+import RequestAdjustmentModal from "@/components/adjustments/RequestAdjustmentModal";
 import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockIcon,
   DownloadIcon,
   PrinterIcon,
   TrashIcon,
@@ -94,6 +97,7 @@ export default function EmployeeSchedulePage() {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<Shift | null>(null);
   const [swapShift, setSwapShift] = useState<Shift | null>(null);
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
 
   const myPerson = useMemo(
     () =>
@@ -176,8 +180,20 @@ export default function EmployeeSchedulePage() {
           s.date >= viewStartStr &&
           s.date <= viewEndStr,
       )
+      .map((s) => {
+        const assignment = myAssignmentMap.get(s.id);
+        if (!assignment) return s;
+        const effective = effectiveAssignmentTimes(s, assignment);
+        if (
+          effective.startTime === s.startTime &&
+          effective.durationMinutes === s.durationMinutes
+        ) {
+          return s;
+        }
+        return { ...s, startTime: effective.startTime, durationMinutes: effective.durationMinutes };
+      })
       .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
-  }, [shifts, myAssignmentShiftIds, viewStartStr, viewEndStr]);
+  }, [shifts, myAssignmentShiftIds, myAssignmentMap, viewStartStr, viewEndStr]);
 
   const teamMap = useMemo(() => {
     const map = new Map<string, (typeof teams)[0]>();
@@ -389,6 +405,16 @@ export default function EmployeeSchedulePage() {
               </button>
             </div>
             <div className="ml-auto flex items-center gap-2 print:hidden">
+              {myPerson && (
+                <button
+                  type="button"
+                  onClick={() => setAdjustmentOpen(true)}
+                  className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+                >
+                  <ClockIcon className="size-3.5" />
+                  Adjustment
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleExportIcs}
@@ -722,6 +748,16 @@ export default function EmployeeSchedulePage() {
           shift={swapShift}
           personId={myPerson.id}
           onClose={() => setSwapShift(null)}
+        />
+      )}
+
+      {myPerson && (
+        <RequestAdjustmentModal
+          key={dateKey(view === "day" ? selectedDate : new Date())}
+          open={adjustmentOpen}
+          personId={myPerson.id}
+          initialDate={dateKey(view === "day" ? selectedDate : new Date())}
+          onClose={() => setAdjustmentOpen(false)}
         />
       )}
 

@@ -67,6 +67,7 @@ export default function ManagerNav() {
         { href: `/manager/teams/${selectedTeam.id}/shift-requests`, label: "Shift Requests", icon: BellIcon },
         { href: `/manager/teams/${selectedTeam.id}/shift-swaps`, label: "Shift Swaps", icon: SwapIcon },
         { href: `/manager/teams/${selectedTeam.id}/leave-requests`, label: "Leave Requests", icon: CalendarOffIcon },
+        { href: `/manager/teams/${selectedTeam.id}/adjustments`, label: "Adjustments", icon: ClockIcon },
         { href: `/manager/teams/${selectedTeam.id}/audit`, label: "Audit", icon: ActivityIcon },
       ]
     : [];

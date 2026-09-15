@@ -28,6 +28,9 @@ import type {
   PersonRole,
   PersonStatus,
   Shift,
+  ShiftAdjustmentRequest,
+  ShiftAdjustmentStatus,
+  ShiftAdjustmentType,
   ShiftAssignment,
   ShiftSwapRequest,
   ShiftSwapStatus,
@@ -391,11 +394,13 @@ export interface ShiftAssignmentRow {
   approved_at: string | null;
   approved_by: string | null;
   cancelled_at: string | null;
+  adjusted_start_time: string | null;
+  adjusted_end_time: string | null;
   created_at: string;
 }
 
 export const SHIFT_ASSIGNMENT_COLUMNS =
-  "id, shift_id, person_id, status, requested_at, approved_at, approved_by, cancelled_at, created_at";
+  "id, shift_id, person_id, status, requested_at, approved_at, approved_by, cancelled_at, adjusted_start_time, adjusted_end_time, created_at";
 
 export function fromShiftAssignmentRow(row: ShiftAssignmentRow): ShiftAssignment {
   return {
@@ -407,6 +412,8 @@ export function fromShiftAssignmentRow(row: ShiftAssignmentRow): ShiftAssignment
     approvedAt: row.approved_at ?? undefined,
     approvedBy: row.approved_by ?? undefined,
     cancelledAt: row.cancelled_at ?? undefined,
+    adjustedStartTime: row.adjusted_start_time ?? undefined,
+    adjustedEndTime: row.adjusted_end_time ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -532,6 +539,47 @@ export function fromShiftSwapRequestRow(row: ShiftSwapRequestRow): ShiftSwapRequ
     reviewedBy: row.reviewed_by ?? undefined,
     reviewedAt: row.reviewed_at ?? undefined,
     reviewerComment: row.reviewer_comment ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// shift_adjustment_requests
+// ---------------------------------------------------------------------------
+
+export interface ShiftAdjustmentRequestRow {
+  id: string;
+  person_id: string;
+  adjustment_type: ShiftAdjustmentType;
+  date: string;
+  requested_time: string;
+  reason: string | null;
+  status: ShiftAdjustmentStatus;
+  reviewer_comment: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const SHIFT_ADJUSTMENT_REQUEST_COLUMNS =
+  "id, person_id, adjustment_type, date, requested_time, reason, status, reviewer_comment, reviewed_by, reviewed_at, created_at, updated_at";
+
+export function fromShiftAdjustmentRequestRow(
+  row: ShiftAdjustmentRequestRow,
+): ShiftAdjustmentRequest {
+  return {
+    id: row.id,
+    personId: row.person_id,
+    adjustmentType: row.adjustment_type,
+    date: row.date,
+    requestedTime: row.requested_time,
+    reason: row.reason ?? undefined,
+    status: row.status,
+    reviewerComment: row.reviewer_comment ?? undefined,
+    reviewedBy: row.reviewed_by ?? undefined,
+    reviewedAt: row.reviewed_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

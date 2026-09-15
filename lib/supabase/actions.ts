@@ -8,6 +8,7 @@ import {
   sendInviteEmail,
   sendShiftAssignedEmail,
   sendLeaveReviewedEmail,
+  sendShiftAdjustmentReviewedEmail,
   sendShiftSwapProposedEmail,
   sendShiftSwapRespondedEmail,
   sendShiftSwapReviewedEmail,
@@ -226,6 +227,51 @@ export async function notifyLeaveReviewed(
     type: request.type,
     startDate: request.start_date,
     endDate: request.end_date,
+    status: request.status,
+    reviewerComment: request.reviewer_comment,
+    companyName: company?.name ?? null,
+  });
+}
+
+// Best-effort notification after a reviewShiftAdjustment() approve/deny call.
+// Same no-op-on-{ ok: true } contract as notifyLeaveReviewed — an email hiccup
+// must never surface as a failure for a review that already succeeded.
+export async function notifyShiftAdjustmentReviewed(
+  adjustmentRequestId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const profile = await requireRole(["manager", "company_admin"]);
+  if (!profile.companyId) return { ok: false, error: "No company context." };
+
+  const supabase = await createClient(); // RLS-scoped — cross-company id silently returns null, safe no-op
+
+  const { data: request } = await supabase
+    .from("shift_adjustment_requests")
+    .select("person_id, adjustment_type, date, requested_time, status, reviewer_comment")
+    .eq("id", adjustmentRequestId)
+    .single();
+  if (!request || (request.status !== "approved" && request.status !== "denied")) {
+    return { ok: true };
+  }
+
+  const { data: person } = await supabase
+    .from("people")
+    .select("email, status")
+    .eq("id", request.person_id)
+    .single();
+  if (!person?.email || person.status !== "active") return { ok: true };
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("name, email_settings")
+    .eq("id", profile.companyId)
+    .single();
+  const key: BooleanEmailSettingKey = "shiftAdjustmentReviewed";
+  if (!emailEnabled(company?.email_settings, key)) return { ok: true };
+
+  return sendShiftAdjustmentReviewedEmail(person.email, {
+    adjustmentType: request.adjustment_type,
+    date: request.date,
+    requestedTime: request.requested_time,
     status: request.status,
     reviewerComment: request.reviewer_comment,
     companyName: company?.name ?? null,
