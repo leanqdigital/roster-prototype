@@ -20,13 +20,16 @@ import type { EmailTemplateKey, EmailTemplates } from "@/lib/email-templates";
 import { COMPANY_COLORS } from "@/lib/data";
 import { formatDurationMinutes } from "@/lib/format";
 import { useToast } from "@/lib/toast";
+import { previewEmailTemplate } from "@/lib/supabase/actions";
 import ChangePasswordCard from "@/components/settings/ChangePasswordCard";
 import EmailTemplateModal from "@/components/settings/EmailTemplateModal";
+import EmailTemplatePreviewModal from "@/components/settings/EmailTemplatePreviewModal";
 import {
   BuildingIcon,
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  EyeIcon,
   ImageIcon,
   MailIcon,
   PaletteIcon,
@@ -71,6 +74,8 @@ export default function SettingsForm() {
   const [emailSettings, setEmailSettings] = useState<EmailSettings>(DEFAULT_EMAIL_SETTINGS);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplates>({});
   const [editingTemplateKey, setEditingTemplateKey] = useState<EmailTemplateKey | null>(null);
+  const [previewingKey, setPreviewingKey] = useState<EmailTemplateKey | null>(null);
+  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -132,6 +137,17 @@ export default function SettingsForm() {
     reader.onload = () => setLogoUrl(reader.result as string);
     reader.onerror = () => setError("Couldn't read that file.");
     reader.readAsDataURL(file);
+  };
+
+  const openPreview = async (key: EmailTemplateKey) => {
+    setPreviewingKey(key);
+    try {
+      const result = await previewEmailTemplate(key, emailTemplates[key] ?? null);
+      if (result.ok) setPreview({ subject: result.subject, html: result.html });
+      else pushToast({ tone: "danger", message: result.error });
+    } finally {
+      setPreviewingKey(null);
+    }
   };
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -628,6 +644,19 @@ export default function SettingsForm() {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
+                    aria-label={`Preview ${title} email`}
+                    onClick={() => openPreview(key as EmailTemplateKey)}
+                    disabled={previewingKey === key}
+                    className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {previewingKey === key ? (
+                      <Spinner className="size-3.5" />
+                    ) : (
+                      <EyeIcon className="size-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setEditingTemplateKey(key as EmailTemplateKey)}
                     className="h-7 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[11.5px] font-medium text-ink transition-colors hover:bg-surface-4"
                   >
@@ -689,16 +718,33 @@ export default function SettingsForm() {
         templateKey={editingTemplateKey}
         override={emailTemplates[editingTemplateKey]}
         onClose={() => setEditingTemplateKey(null)}
-        onSave={(override) =>
-          setEmailTemplates((t) => ({ ...t, [editingTemplateKey]: override }))
-        }
-        onResetToDefault={() =>
-          setEmailTemplates((t) => {
-            const next = { ...t };
-            delete next[editingTemplateKey];
-            return next;
-          })
-        }
+        onSave={async (override) => {
+          const next = { ...emailTemplates, [editingTemplateKey]: override };
+          const result = await saveCompanySettings({ emailTemplates: next });
+          if (!result) return false;
+          setEmailTemplates(next);
+          setSetup(result);
+          pushToast({ tone: "success", message: "Template saved" });
+          return true;
+        }}
+        onResetToDefault={async () => {
+          const next = { ...emailTemplates };
+          delete next[editingTemplateKey];
+          const result = await saveCompanySettings({ emailTemplates: next });
+          if (!result) return false;
+          setEmailTemplates(next);
+          setSetup(result);
+          pushToast({ tone: "success", message: "Reset to default" });
+          return true;
+        }}
+      />
+    )}
+
+    {preview && (
+      <EmailTemplatePreviewModal
+        subject={preview.subject}
+        html={preview.html}
+        onClose={() => setPreview(null)}
       />
     )}
   </div>

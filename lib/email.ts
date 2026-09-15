@@ -159,18 +159,23 @@ function detailRow(
   `;
 }
 
-export async function sendShiftReminderEmail(
-  to: string,
-  shift: {
-    title: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    companyName?: string | null;
-    description?: string | null;
-  },
+type RenderedEmail = { subject: string; html: string };
+
+// --- Shift reminder ---------------------------------------------------
+
+export interface ShiftReminderInput {
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  companyName?: string | null;
+  description?: string | null;
+}
+
+export function renderShiftReminderEmail(
+  shift: ShiftReminderInput,
   customTemplate?: EmailTemplateOverride | null,
-): Promise<{ ok: boolean; error?: string }> {
+): RenderedEmail {
   const companyName = shift.companyName || "Roster";
   if (customTemplate) {
     const vars = {
@@ -180,14 +185,12 @@ export async function sendShiftReminderEmail(
       time: `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`,
       description: shift.description ?? "",
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: `Reminder: ${shift.title} — ${formatShiftDate(shift.date)}, ${formatShiftTime(shift.date, shift.startTime)}`,
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -234,21 +237,33 @@ export async function sendShiftReminderEmail(
         </tr>
       </table>
     `,
-  });
+  };
 }
 
-export async function sendForgotClockOutEmail(
+export async function sendShiftReminderEmail(
   to: string,
-  info: {
-    clockInAt: string; // ISO instant
-    shiftTitle?: string | null;
-    shiftEndAt?: string | null; // ISO instant, if matched to a shift
-    companyName?: string | null;
-    timezone: string;
-    clockLink: string;
-  },
+  shift: ShiftReminderInput,
   customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderShiftReminderEmail(shift, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
+// --- Forgot to clock out ------------------------------------------------
+
+export interface ForgotClockOutInput {
+  clockInAt: string; // ISO instant
+  shiftTitle?: string | null;
+  shiftEndAt?: string | null; // ISO instant, if matched to a shift
+  companyName?: string | null;
+  timezone: string;
+  clockLink: string;
+}
+
+export function renderForgotClockOutEmail(
+  info: ForgotClockOutInput,
+  customTemplate?: EmailTemplateOverride | null,
+): RenderedEmail {
   const companyName = info.companyName || "Roster";
   const fmt = (iso: string) =>
     new Intl.DateTimeFormat("en-US", {
@@ -267,14 +282,12 @@ export async function sendForgotClockOutEmail(
       shiftEndAt: info.shiftEndAt ? fmt(info.shiftEndAt) : "",
       clockLink: info.clockLink,
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: "Did you forget to clock out?",
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -327,8 +340,19 @@ export async function sendForgotClockOutEmail(
         </tr>
       </table>
     `,
-  });
+  };
 }
+
+export async function sendForgotClockOutEmail(
+  to: string,
+  info: ForgotClockOutInput,
+  customTemplate?: EmailTemplateOverride | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderForgotClockOutEmail(info, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
+// --- Leave reviewed -------------------------------------------------------
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
   vacation: "Vacation",
@@ -338,18 +362,19 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-export async function sendLeaveReviewedEmail(
-  to: string,
-  request: {
-    type: string;
-    startDate: string;
-    endDate: string;
-    status: "approved" | "denied";
-    reviewerComment?: string | null;
-    companyName?: string | null;
-  },
+export interface LeaveReviewedInput {
+  type: string;
+  startDate: string;
+  endDate: string;
+  status: "approved" | "denied";
+  reviewerComment?: string | null;
+  companyName?: string | null;
+}
+
+export function renderLeaveReviewedEmail(
+  request: LeaveReviewedInput,
   customTemplate?: EmailTemplateOverride | null,
-): Promise<{ ok: boolean; error?: string }> {
+): RenderedEmail {
   const companyName = request.companyName || "Roster";
   const typeLabel = LEAVE_TYPE_LABELS[request.type] ?? request.type;
   const dateRange =
@@ -366,14 +391,12 @@ export async function sendLeaveReviewedEmail(
       status: request.status,
       comment: request.reviewerComment ?? "",
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: `Your ${typeLabel} leave request was ${request.status}`,
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -415,26 +438,38 @@ export async function sendLeaveReviewedEmail(
         </tr>
       </table>
     `,
-  });
+  };
 }
+
+export async function sendLeaveReviewedEmail(
+  to: string,
+  request: LeaveReviewedInput,
+  customTemplate?: EmailTemplateOverride | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderLeaveReviewedEmail(request, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
+// --- Shift adjustment reviewed --------------------------------------------
 
 const ADJUSTMENT_TYPE_LABELS: Record<string, string> = {
   early_out: "early out",
   late_in: "late in",
 };
 
-export async function sendShiftAdjustmentReviewedEmail(
-  to: string,
-  request: {
-    adjustmentType: string;
-    date: string;
-    requestedTime: string;
-    status: "approved" | "denied";
-    reviewerComment?: string | null;
-    companyName?: string | null;
-  },
+export interface ShiftAdjustmentReviewedInput {
+  adjustmentType: string;
+  date: string;
+  requestedTime: string;
+  status: "approved" | "denied";
+  reviewerComment?: string | null;
+  companyName?: string | null;
+}
+
+export function renderShiftAdjustmentReviewedEmail(
+  request: ShiftAdjustmentReviewedInput,
   customTemplate?: EmailTemplateOverride | null,
-): Promise<{ ok: boolean; error?: string }> {
+): RenderedEmail {
   const companyName = request.companyName || "Roster";
   const typeLabel = ADJUSTMENT_TYPE_LABELS[request.adjustmentType] ?? request.adjustmentType;
   const approved = request.status === "approved";
@@ -448,14 +483,12 @@ export async function sendShiftAdjustmentReviewedEmail(
       status: request.status,
       comment: request.reviewerComment ?? "",
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: `Your ${typeLabel} request was ${request.status}`,
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -497,21 +530,33 @@ export async function sendShiftAdjustmentReviewedEmail(
         </tr>
       </table>
     `,
-  });
+  };
 }
 
-export async function sendShiftAssignedEmail(
+export async function sendShiftAdjustmentReviewedEmail(
   to: string,
-  shift: {
-    title: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    companyName?: string | null;
-    description?: string | null;
-  },
+  request: ShiftAdjustmentReviewedInput,
   customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderShiftAdjustmentReviewedEmail(request, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
+// --- Shift assigned ---------------------------------------------------
+
+export interface ShiftAssignedInput {
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  companyName?: string | null;
+  description?: string | null;
+}
+
+export function renderShiftAssignedEmail(
+  shift: ShiftAssignedInput,
+  customTemplate?: EmailTemplateOverride | null,
+): RenderedEmail {
   const companyName = shift.companyName || "Roster";
   if (customTemplate) {
     const vars = {
@@ -521,14 +566,12 @@ export async function sendShiftAssignedEmail(
       time: `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`,
       description: shift.description ?? "",
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: `New shift assigned: ${shift.title} — ${formatShiftDate(shift.date)}`,
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -572,22 +615,34 @@ export async function sendShiftAssignedEmail(
         </tr>
       </table>
     `,
-  });
+  };
 }
+
+export async function sendShiftAssignedEmail(
+  to: string,
+  shift: ShiftAssignedInput,
+  customTemplate?: EmailTemplateOverride | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderShiftAssignedEmail(shift, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
+// --- Shift swap: proposed / responded / reviewed --------------------------
 
 type SwapShiftInfo = { title: string; date: string; startTime: string; endTime: string };
 
-export async function sendShiftSwapProposedEmail(
-  to: string,
-  input: {
-    swapType: "giveaway" | "trade";
-    initiatorName: string;
-    companyName?: string | null;
-    offeredShift: SwapShiftInfo;
-    requestedShift?: SwapShiftInfo | null;
-  },
+export interface SwapProposedInput {
+  swapType: "giveaway" | "trade";
+  initiatorName: string;
+  companyName?: string | null;
+  offeredShift: SwapShiftInfo;
+  requestedShift?: SwapShiftInfo | null;
+}
+
+export function renderShiftSwapProposedEmail(
+  input: SwapProposedInput,
   customTemplate?: EmailTemplateOverride | null,
-): Promise<{ ok: boolean; error?: string }> {
+): RenderedEmail {
   const companyName = input.companyName || "Roster";
   const kind = input.swapType === "trade" ? "trade" : "give-away";
   if (customTemplate) {
@@ -604,14 +659,12 @@ export async function sendShiftSwapProposedEmail(
         ? `${formatShiftTime(input.requestedShift.date, input.requestedShift.startTime)} – ${formatShiftTime(input.requestedShift.date, input.requestedShift.endTime)}`
         : "",
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: `${input.initiatorName} proposed a shift ${kind}`,
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -658,20 +711,30 @@ export async function sendShiftSwapProposedEmail(
         </tr>
       </table>
     `,
-  });
+  };
 }
 
-export async function sendShiftSwapRespondedEmail(
+export async function sendShiftSwapProposedEmail(
   to: string,
-  input: {
-    swapType: "giveaway" | "trade";
-    response: "accepted" | "declined";
-    responderName: string;
-    companyName?: string | null;
-    offeredShift: SwapShiftInfo;
-  },
+  input: SwapProposedInput,
   customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderShiftSwapProposedEmail(input, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
+export interface SwapRespondedInput {
+  swapType: "giveaway" | "trade";
+  response: "accepted" | "declined";
+  responderName: string;
+  companyName?: string | null;
+  offeredShift: SwapShiftInfo;
+}
+
+export function renderShiftSwapRespondedEmail(
+  input: SwapRespondedInput,
+  customTemplate?: EmailTemplateOverride | null,
+): RenderedEmail {
   const companyName = input.companyName || "Roster";
   const accepted = input.response === "accepted";
   const accent = accepted ? "#5e6ad2" : "#dc2626";
@@ -685,14 +748,12 @@ export async function sendShiftSwapRespondedEmail(
       offeredDate: formatShiftDate(input.offeredShift.date),
       offeredTime: `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`,
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: `Your swap request was ${input.response}`,
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -734,20 +795,30 @@ export async function sendShiftSwapRespondedEmail(
         </tr>
       </table>
     `,
-  });
+  };
 }
 
-export async function sendShiftSwapReviewedEmail(
+export async function sendShiftSwapRespondedEmail(
   to: string,
-  input: {
-    swapType: "giveaway" | "trade";
-    status: "approved" | "denied";
-    reviewerComment?: string | null;
-    companyName?: string | null;
-    offeredShift: SwapShiftInfo;
-  },
+  input: SwapRespondedInput,
   customTemplate?: EmailTemplateOverride | null,
 ): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderShiftSwapRespondedEmail(input, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
+export interface SwapReviewedInput {
+  swapType: "giveaway" | "trade";
+  status: "approved" | "denied";
+  reviewerComment?: string | null;
+  companyName?: string | null;
+  offeredShift: SwapShiftInfo;
+}
+
+export function renderShiftSwapReviewedEmail(
+  input: SwapReviewedInput,
+  customTemplate?: EmailTemplateOverride | null,
+): RenderedEmail {
   const companyName = input.companyName || "Roster";
   const approved = input.status === "approved";
   const accent = approved ? "#5e6ad2" : "#dc2626";
@@ -761,14 +832,12 @@ export async function sendShiftSwapReviewedEmail(
       offeredTime: `${formatShiftTime(input.offeredShift.date, input.offeredShift.startTime)} – ${formatShiftTime(input.offeredShift.date, input.offeredShift.endTime)}`,
       comment: input.reviewerComment ?? "",
     };
-    return sendMail({
-      to,
+    return {
       subject: renderTemplate(customTemplate.subject, vars),
       html: renderTemplate(customTemplate.html, vars),
-    });
+    };
   }
-  return sendMail({
-    to,
+  return {
     subject: `Your shift swap was ${input.status}`,
     html: `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
@@ -811,5 +880,14 @@ export async function sendShiftSwapReviewedEmail(
         </tr>
       </table>
     `,
-  });
+  };
+}
+
+export async function sendShiftSwapReviewedEmail(
+  to: string,
+  input: SwapReviewedInput,
+  customTemplate?: EmailTemplateOverride | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderShiftSwapReviewedEmail(input, customTemplate);
+  return sendMail({ to, subject, html });
 }

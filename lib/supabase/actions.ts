@@ -12,10 +12,18 @@ import {
   sendShiftSwapProposedEmail,
   sendShiftSwapRespondedEmail,
   sendShiftSwapReviewedEmail,
+  renderShiftAssignedEmail,
+  renderShiftReminderEmail,
+  renderLeaveReviewedEmail,
+  renderShiftAdjustmentReviewedEmail,
+  renderShiftSwapProposedEmail,
+  renderShiftSwapRespondedEmail,
+  renderShiftSwapReviewedEmail,
+  renderForgotClockOutEmail,
 } from "@/lib/email";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { EmailSettings } from "@/lib/company";
-import type { EmailTemplates } from "@/lib/email-templates";
+import type { EmailTemplateKey, EmailTemplateOverride, EmailTemplates } from "@/lib/email-templates";
 
 // email_settings may be missing/partial on older rows before the column
 // backfilled or if a key was added later — default every key to enabled.
@@ -521,4 +529,148 @@ export async function logSwapActivity(
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+// Sample data used to render a preview of an email template (custom draft or
+// hardcoded default) without actually sending anything. company_admin-only —
+// same audience as the settings page this is called from.
+const PREVIEW_DATE = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+function previewShiftInfo(title: string) {
+  return { title, date: PREVIEW_DATE, startTime: "09:00", endTime: "17:00" };
+}
+
+export async function previewEmailTemplate(
+  key: EmailTemplateKey,
+  draft: EmailTemplateOverride | null,
+): Promise<{ ok: true; subject: string; html: string } | { ok: false; error: string }> {
+  const profile = await requireRole(["company_admin"]);
+  if (!profile.companyId) return { ok: false, error: "No company context." };
+
+  const supabase = await createClient();
+  const { data: company } = await supabase
+    .from("companies")
+    .select("name")
+    .eq("id", profile.companyId)
+    .single();
+  const companyName = company?.name ?? "Roster";
+
+  // Blank draft (not yet written) previews as the default template instead.
+  const custom = draft && draft.subject.trim() && draft.html.trim() ? draft : null;
+
+  switch (key) {
+    case "shiftAssigned":
+      return {
+        ok: true,
+        ...renderShiftAssignedEmail(
+          {
+            ...previewShiftInfo("Evening Shift"),
+            companyName,
+            description: "Cover the front register and assist with closing.",
+          },
+          custom,
+        ),
+      };
+    case "shiftReminder":
+      return {
+        ok: true,
+        ...renderShiftReminderEmail(
+          {
+            ...previewShiftInfo("Evening Shift"),
+            companyName,
+            description: "Cover the front register and assist with closing.",
+          },
+          custom,
+        ),
+      };
+    case "leaveReviewed":
+      return {
+        ok: true,
+        ...renderLeaveReviewedEmail(
+          {
+            type: "vacation",
+            startDate: PREVIEW_DATE,
+            endDate: PREVIEW_DATE,
+            status: "approved",
+            reviewerComment: "Enjoy your time off!",
+            companyName,
+          },
+          custom,
+        ),
+      };
+    case "shiftAdjustmentReviewed":
+      return {
+        ok: true,
+        ...renderShiftAdjustmentReviewedEmail(
+          {
+            adjustmentType: "early_out",
+            date: PREVIEW_DATE,
+            requestedTime: "15:30",
+            status: "approved",
+            reviewerComment: "Approved, drive safe.",
+            companyName,
+          },
+          custom,
+        ),
+      };
+    case "swapProposed":
+      return {
+        ok: true,
+        ...renderShiftSwapProposedEmail(
+          {
+            swapType: "trade",
+            initiatorName: "Jamie Smith",
+            companyName,
+            offeredShift: previewShiftInfo("Evening Shift"),
+            requestedShift: previewShiftInfo("Morning Shift"),
+          },
+          custom,
+        ),
+      };
+    case "swapResponded":
+      return {
+        ok: true,
+        ...renderShiftSwapRespondedEmail(
+          {
+            swapType: "trade",
+            response: "accepted",
+            responderName: "Jamie Smith",
+            companyName,
+            offeredShift: previewShiftInfo("Evening Shift"),
+          },
+          custom,
+        ),
+      };
+    case "swapReviewed":
+      return {
+        ok: true,
+        ...renderShiftSwapReviewedEmail(
+          {
+            swapType: "trade",
+            status: "approved",
+            reviewerComment: "Approved.",
+            companyName,
+            offeredShift: previewShiftInfo("Evening Shift"),
+          },
+          custom,
+        ),
+      };
+    case "forgotClockOut": {
+      const now = Date.now();
+      return {
+        ok: true,
+        ...renderForgotClockOutEmail(
+          {
+            clockInAt: new Date(now - 9 * 60 * 60 * 1000).toISOString(),
+            shiftTitle: "Evening Shift",
+            shiftEndAt: new Date(now - 60 * 60 * 1000).toISOString(),
+            companyName,
+            timezone: "America/New_York",
+            clockLink: `${getSiteOrigin()}/employee/clock`,
+          },
+          custom,
+        ),
+      };
+    }
+  }
 }
