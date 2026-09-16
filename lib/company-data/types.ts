@@ -333,6 +333,7 @@ export interface CompanyState {
   teamNotes: TeamNote[];
   shiftSwapRequests: ShiftSwapRequest[];
   shiftAdjustmentRequests: ShiftAdjustmentRequest[];
+  hrProfiles: HrProfile[];
 }
 
 export type CompanyAction =
@@ -356,6 +357,7 @@ export type CompanyAction =
   | { type: "addBreakEntry"; entry: BreakEntry }
   | { type: "endBreakEntry"; id: string; breakOutAt: string; durationMinutes: number }
   | { type: "addComplianceViolation"; violation: ComplianceViolation }
+  | { type: "updateComplianceViolation"; id: string; patch: Partial<ComplianceViolation> }
   | { type: "markActivityRead"; id: string }
   | { type: "markAllActivityRead"; personId: string }
   | { type: "addLeaveRequest"; request: LeaveRequest }
@@ -432,11 +434,18 @@ export type CompanyAction =
       reviewedAt?: string;
     };
 
+export interface HrProfile {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface InviteInput {
   name: string;
   email: string;
   phone?: string;
-  role: PersonRole;
+  role: PersonRole | "hr";
   teamIds: string[];
   locationId: string | null;
   timezone: string;
@@ -507,6 +516,7 @@ export interface CompanyContextValue extends CompanyState {
   getBreaksForClockEntry: (clockEntryId: string) => BreakEntry[];
   getViolationsForClockEntry: (clockEntryId: string) => ComplianceViolation[];
   getBreakPolicyForPerson: (personId: string) => Promise<BreakPolicy>;
+  updateComplianceViolation: (id: string, patch: { status: ComplianceViolationStatus }) => Promise<{ ok: boolean; error?: string }>;
   requestLeave: (
     personId: string,
     input: {

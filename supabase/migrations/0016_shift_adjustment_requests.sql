@@ -21,7 +21,7 @@ create table shift_adjustment_requests (
 create index idx_shift_adjustment_requests_company on shift_adjustment_requests(company_id);
 create index idx_shift_adjustment_requests_person on shift_adjustment_requests(person_id);
 
-create trigger set_updated_at before update on shift_adjustment_requestsu
+create trigger set_updated_at before update on shift_adjustment_requests
   for each row execute function public.set_updated_at();
 
 create trigger set_company_id before insert on shift_adjustment_requests

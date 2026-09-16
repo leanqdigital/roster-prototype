@@ -40,8 +40,8 @@ function emailEnabled(
 
 export interface InviteEmployeeInput {
   email: string;
-  personId: string;
-  role: "employee" | "manager";
+  personId: string | null;
+  role: "employee" | "manager" | "hr";
 }
 
 // Real email invite. Verifies the caller's role/company via the regular
@@ -55,7 +55,7 @@ export interface InviteEmployeeInput {
 export async function inviteEmployee(
   input: InviteEmployeeInput,
 ): Promise<{ ok: boolean; error?: string }> {
-  const profile = await requireRole(["manager", "company_admin"]);
+  const profile = await requireRole(input.role === "hr" ? ["company_admin"] : ["manager", "company_admin"]);
   if (!profile.companyId) {
     return { ok: false, error: "No company context for this account." };
   }
@@ -70,6 +70,24 @@ export async function inviteEmployee(
     .single();
 
   const admin = createAdminClient();
+
+  // HR invites have no people row, so the trigger can't email-match.
+  // Mint a pending_invites row server-side — the trigger validates and
+  // consumes it on auth.users INSERT.
+  if (input.role === "hr") {
+    const { error: inviteError } = await admin
+      .from("pending_invites")
+      .insert({
+        company_id: profile.companyId,
+        email: input.email,
+        intended_role: "hr",
+        created_by: profile.id,
+      });
+    if (inviteError) {
+      return { ok: false, error: inviteError.message };
+    }
+  }
+
   const linkOptions = {
     redirectTo: `${origin}/auth/callback?next=/accept-invite`,
     data: {
@@ -113,6 +131,15 @@ export async function inviteEmployee(
         .eq("id", data.user.id);
       if (profileError) {
         return { ok: false, error: profileError.message };
+      }
+      // Recovery path skips the trigger, so the pending_invites row minted
+      // above is never consumed — clean it up.
+      if (input.role === "hr") {
+        await admin
+          .from("pending_invites")
+          .delete()
+          .eq("email", input.email)
+          .eq("company_id", profile.companyId);
       }
     }
   }

@@ -162,7 +162,7 @@ export default function TeamDetailPage() {
       email: input.email.trim().toLowerCase(),
       personId: result.personId,
       name: input.name.trim(),
-      role: input.role,
+      role: input.role as "employee" | "manager",
     });
     if (!account.ok) {
       return { ok: false, error: account.error };

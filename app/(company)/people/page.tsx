@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
-import type { Person } from "@/lib/company-data";
+import type { Person, PersonRole } from "@/lib/company-data";
 import { useToast } from "@/lib/toast";
 import Modal from "@/components/ui/Modal";
 import { PlusIcon } from "@/components/ui/icons";
@@ -13,7 +13,7 @@ import PersonFormModal from "@/components/people/PersonFormModal";
 import type { PersonFormInput } from "@/components/people/PersonFormModal";
 
 export default function PeoplePage() {
-  const { teams, people, locations, invitePerson, updatePerson, resendInvite, deletePerson } =
+  const { teams, people, locations, hrProfiles, invitePerson, updatePerson, resendInvite, deletePerson } =
     useCompany();
   const { registerEmployee } = useAuth();
   const { pushToast } = useToast();
@@ -59,7 +59,7 @@ export default function PeoplePage() {
       await updatePerson(editing.id, {
         name: input.name,
         phone: input.phone,
-        role: input.role,
+        role: input.role as PersonRole,
         teamIds: input.teamIds,
         locationId: input.locationId,
         timezone: input.timezone,
@@ -77,17 +77,22 @@ export default function PeoplePage() {
         timezone: input.timezone,
         designation: input.designation,
       });
-      if (!result.ok || !result.personId) {
+      if (!result.ok) {
         return { ok: false, error: result.error };
       }
-      const account = await registerEmployee({
-        email: input.email.trim().toLowerCase(),
-        personId: result.personId,
-        name: input.name.trim(),
-        role: input.role,
-      });
-      if (!account.ok) {
-        return { ok: false, error: account.error };
+      if (input.role !== "hr") {
+        if (!result.personId) {
+          return { ok: false, error: "Invite failed — no account was created." };
+        }
+        const account = await registerEmployee({
+          email: input.email.trim().toLowerCase(),
+          personId: result.personId,
+          name: input.name.trim(),
+role: input.role as PersonRole,
+        });
+        if (!account.ok) {
+          return { ok: false, error: account.error };
+        }
       }
     }
     setFormOpen(false);
@@ -149,6 +154,38 @@ export default function PeoplePage() {
           onClose={() => setFormOpen(false)}
           onSave={handleSave}
         />
+      )}
+
+      {hrProfiles.length > 0 && (
+        <div className="mt-8">
+          <div>
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink">
+              HR accounts
+            </h2>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              Read-only staff with company-wide access. They aren{"'"}t on the
+              schedule and can{"'"}t approve requests.
+            </p>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-xl border border-hairline bg-surface-2">
+            <ul className="divide-y divide-hairline">
+              {hrProfiles.map((h) => (
+                <li key={h.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-ink">{h.name}</p>
+                    <p className="truncate text-xs text-ink-muted">{h.email}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-ink-subtle">
+                    joined {new Date(h.createdAt).toLocaleDateString()}
+                  </span>
+                  <span className="shrink-0 rounded-md border border-primary/25 bg-primary-weak px-2 py-0.5 text-xs font-medium text-primary">
+                    HR
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
 
       {confirmDelete && (

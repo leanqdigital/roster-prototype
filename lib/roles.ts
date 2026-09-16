@@ -3,11 +3,12 @@
 // be imported from Server Components/Actions without crossing the client
 // boundary.
 
-export type AuthRole = "super_admin" | "company_admin" | "manager" | "employee";
+export type AuthRole = "super_admin" | "company_admin" | "manager" | "employee" | "hr";
 
 export function homeForRole(role: string | undefined): string {
   if (role === "super_admin") return "/admin";
   if (role === "manager") return "/manager/dashboard";
   if (role === "employee") return "/employee/dashboard";
+  if (role === "hr") return "/hr/dashboard";
   return "/dashboard";
 }

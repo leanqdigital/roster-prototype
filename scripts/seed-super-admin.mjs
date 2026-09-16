@@ -38,7 +38,7 @@ const { data, error } = await admin.auth.admin.createUser({
   email,
   password,
   email_confirm: true,
-  user_metadata: { intended_role: "super_admin", name },
+  user_metadata: { name },
 });
 
 if (error) {
@@ -46,4 +46,21 @@ if (error) {
   process.exit(1);
 }
 
-console.log(`Super admin created: ${data.user?.email} (${data.user?.id})`);
+// Insert profile directly — handle_new_user() no longer handles
+// super_admin (blocks self-registration to prevent privilege escalation).
+const userId = data.user?.id;
+if (!userId) {
+  console.error("User created but no ID returned.");
+  process.exit(1);
+}
+
+const { error: profileError } = await admin
+  .from("profiles")
+  .insert({ id: userId, role: "super_admin", company_id: null, person_id: null, email, name });
+
+if (profileError) {
+  console.error("Failed to create profile:", profileError.message);
+  process.exit(1);
+}
+
+console.log(`Super admin created: ${email} (${userId})`);

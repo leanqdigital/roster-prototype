@@ -20,6 +20,7 @@ export const initialState: CompanyState = {
   teamNotes: [],
   shiftSwapRequests: [],
   shiftAdjustmentRequests: [],
+  hrProfiles: [],
 };
 
 export function reducer(state: CompanyState, action: CompanyAction): CompanyState {
@@ -172,6 +173,14 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
       return {
         ...state,
         complianceViolations: [action.violation, ...state.complianceViolations],
+      };
+
+    case "updateComplianceViolation":
+      return {
+        ...state,
+        complianceViolations: state.complianceViolations.map((v) =>
+          v.id === action.id ? { ...v, ...action.patch } : v,
+        ),
       };
     case "addLeaveRequest":
       return { ...state, leaveRequests: [action.request, ...state.leaveRequests] };

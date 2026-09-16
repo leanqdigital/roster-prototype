@@ -28,7 +28,7 @@ export interface PersonFormInput {
   name: string;
   email: string;
   phone?: string;
-  role: PersonRole;
+  role: PersonRole | "hr";
   teamIds: string[];
   locationId: string | null;
   timezone: string;
@@ -61,7 +61,8 @@ export default function PersonFormModal({
   const [email, setEmail] = useState(person?.email ?? "");
   const [phone, setPhone] = useState(person?.phone ?? "");
   const [designation, setDesignation] = useState(person?.designation ?? "");
-  const [role, setRole] = useState<PersonRole>(person?.role ?? "employee");
+  const [role, setRole] = useState<PersonRole | "hr">(person?.role ?? "employee");
+  const isHr = role === "hr";
   const [teamIds, setTeamIds] = useState<string[]>(
     person?.teamIds ?? defaultTeamIds ?? [],
   );
@@ -179,6 +180,7 @@ export default function PersonFormModal({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          {!isHr && (
           <div>
             <label
               htmlFor="person-phone"
@@ -196,6 +198,7 @@ export default function PersonFormModal({
               className={inputClass}
             />
           </div>
+          )}
           <div>
             <label
               htmlFor="person-role"
@@ -207,15 +210,17 @@ export default function PersonFormModal({
               <select
                 id="person-role"
                 value={role}
-                onChange={(e) => setRole(e.target.value as PersonRole)}
+                onChange={(e) => setRole(e.target.value as PersonRole | "hr")}
                 className={selectClass}
               >
                 <option value="employee">Employee</option>
                 <option value="manager">Manager</option>
+                <option value="hr">HR (read-only)</option>
               </select>
               <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
             </div>
           </div>
+          {!isHr && (
           <div>
             <label
               htmlFor="person-designation"
@@ -239,67 +244,80 @@ export default function PersonFormModal({
               ))}
             </datalist>
           </div>
+          )}
         </div>
 
-        <div>
-          <label
-            htmlFor="person-location"
-            className="block text-xs font-medium text-ink-muted"
-          >
-            Location
-          </label>
-          <div className="relative">
-            <select
-              id="person-location"
-              value={locationId ?? ""}
-              onChange={(e) => {
-                const nextLoc = e.target.value || null;
-                setLocationId(nextLoc);
-                setTeamIds((prev) =>
-                  prev.filter(
-                    (id) => teams.find((t) => t.id === id)?.locationId === nextLoc,
-                  ),
-                );
-              }}
-              className={selectClass}
-            >
-              <option value="">Unassigned</option>
-              {locations.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
-          </div>
-        </div>
+        {!isHr && (
+          <>
+            <div>
+              <label
+                htmlFor="person-location"
+                className="block text-xs font-medium text-ink-muted"
+              >
+                Location
+              </label>
+              <div className="relative">
+                <select
+                  id="person-location"
+                  value={locationId ?? ""}
+                  onChange={(e) => {
+                    const nextLoc = e.target.value || null;
+                    setLocationId(nextLoc);
+                    setTeamIds((prev) =>
+                      prev.filter(
+                        (id) => teams.find((t) => t.id === id)?.locationId === nextLoc,
+                      ),
+                    );
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">Unassigned</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
+              </div>
+            </div>
 
-        <div>
-          <label className="block text-xs font-medium text-ink-muted">
-            Teams
-          </label>
-          <TeamMultiSelect
-            teams={teams}
-            locationId={locationId}
-            selectedTeamIds={teamIds}
-            onChange={setTeamIds}
-          />
-        </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-muted">
+                Teams
+              </label>
+              <TeamMultiSelect
+                teams={teams}
+                locationId={locationId}
+                selectedTeamIds={teamIds}
+                onChange={setTeamIds}
+              />
+            </div>
 
-        <div>
-          <label
-            htmlFor="person-timezone"
-            className="block text-xs font-medium text-ink-muted"
-          >
-            Timezone
-          </label>
-          <TimezoneSelect
-            id="person-timezone"
-            value={timezone}
-            onChange={setTimezone}
-            className="mt-1.5"
-          />
-        </div>
+            <div>
+              <label
+                htmlFor="person-timezone"
+                className="block text-xs font-medium text-ink-muted"
+              >
+                Timezone
+              </label>
+              <TimezoneSelect
+                id="person-timezone"
+                value={timezone}
+                onChange={setTimezone}
+                className="mt-1.5"
+              />
+            </div>
+          </>
+        )}
+
+        {isHr && (
+          <p className="rounded-lg border border-hairline bg-surface-2 px-3 py-2.5 text-xs leading-relaxed text-ink-muted">
+            HR accounts get read-only access to the whole company — rosters,
+            time tracking, leave, reports, and compliance. They are not added
+            to the schedule and cannot approve requests.
+          </p>
+        )}
 
         {error && (
           <p className="rounded-lg border border-danger/30 bg-danger-weak px-3 py-2 text-[13px] font-medium text-danger">

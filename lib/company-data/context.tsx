@@ -53,6 +53,7 @@ import {
   fetchClockEntries,
   fetchCompanyHolidays,
   fetchComplianceViolations,
+  fetchHrProfiles,
   fetchLeaveRequests,
   fetchLeaveTypes,
   fetchLocations,
@@ -76,6 +77,7 @@ import {
   insertCompanyHoliday,
   insertCompanyHolidaysMany,
   insertComplianceViolation,
+  updateComplianceViolationRow,
   insertLeaveRequest,
   insertLeaveType,
   insertLocation,
@@ -122,6 +124,7 @@ import type {
   CompanyHoliday,
   CompanyHolidayInput,
   ComplianceViolation,
+  ComplianceViolationStatus,
   InviteInput,
   LeaveRequest,
   LeaveType,
@@ -177,6 +180,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           teamNotes,
           shiftSwapRequests,
           shiftAdjustmentRequests,
+          hrProfiles,
         ] = await Promise.all([
           fetchPeople(),
           fetchTeams(),
@@ -197,6 +201,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           fetchTeamNotes(),
           fetchShiftSwapRequests(),
           fetchShiftAdjustmentRequests(),
+          fetchHrProfiles(),
         ]);
         if (cancelled) return;
         dispatch({
@@ -221,6 +226,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             teamNotes,
             shiftSwapRequests,
             shiftAdjustmentRequests,
+            hrProfiles,
           },
         });
       } finally {
@@ -329,6 +335,21 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           ok: false,
           error: "Someone with that email is already in this company.",
         };
+      }
+      if (input.role === "hr") {
+        // HR accounts have no people row — invite directly. The action is
+        // company_admin-only (HR sees the whole company, beyond any single
+        // manager's scope).
+        try {
+          const result = await inviteEmployee({
+            email,
+            personId: null,
+            role: "hr",
+          });
+          return result.ok ? { ok: true } : { ok: false, error: result.error };
+        } catch (e) {
+          return { ok: false, error: errorMessage(e) };
+        }
       }
       try {
         const person = await insertPerson({
@@ -605,6 +626,19 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
     },
     [state, logActivity, logAudit],
+  );
+
+  const updateComplianceViolation = useCallback(
+    async (id: string, patch: { status: ComplianceViolationStatus }) => {
+      try {
+        const updated = await updateComplianceViolationRow(id, patch);
+        dispatch({ type: "updateComplianceViolation", id, patch: updated });
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+    },
+    [],
   );
 
   const editClockEntry = useCallback(
@@ -2668,6 +2702,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       getBreaksForClockEntry,
       getViolationsForClockEntry,
       getBreakPolicyForPerson,
+      updateComplianceViolation,
       requestLeave,
       updateLeaveRequest,
       cancelLeaveRequest,
@@ -2745,6 +2780,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       getBreaksForClockEntry,
       getViolationsForClockEntry,
       getBreakPolicyForPerson,
+      updateComplianceViolation,
       requestLeave,
       updateLeaveRequest,
       cancelLeaveRequest,

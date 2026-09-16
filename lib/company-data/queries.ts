@@ -61,6 +61,7 @@ import type {
   ComplianceViolationSeverity,
   ComplianceViolationStatus,
   ComplianceViolationType,
+  HrProfile,
   LeaveRequest,
   LeaveStatus,
   LeaveType,
@@ -161,6 +162,22 @@ export async function deletePersonRow(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("people").delete().eq("id", id);
   if (error) fail(error, "deletePersonRow");
+}
+
+export async function fetchHrProfiles(): Promise<HrProfile[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, name, created_at")
+    .eq("role", "hr")
+    .order("created_at", { ascending: false });
+  if (error) fail(error, "fetchHrProfiles");
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    email: r.email,
+    name: r.name,
+    createdAt: r.created_at,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -653,6 +670,21 @@ export async function insertComplianceViolation(input: {
     .select(COMPLIANCE_VIOLATION_COLUMNS)
     .single();
   if (error || !data) fail(error, "insertComplianceViolation");
+  return fromComplianceViolationRow(data);
+}
+
+export async function updateComplianceViolationRow(
+  id: string,
+  patch: { status: ComplianceViolationStatus },
+): Promise<ComplianceViolation> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("compliance_violations")
+    .update({ status: patch.status })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) fail(error, "updateComplianceViolationRow");
   return fromComplianceViolationRow(data);
 }
 
