@@ -161,6 +161,44 @@ function detailRow(
 
 type RenderedEmail = { subject: string; html: string };
 
+// Wraps a custom (admin-edited) template's inner HTML in the same header
+// bar / card / footer shell used by the default templates, so edited
+// templates look consistent with the built-in ones instead of rendering
+// as bare, unstyled HTML.
+function wrapCustomEmailBody(
+  companyName: string,
+  accent: string,
+  innerHtml: string,
+): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+            <tr>
+              <td style="background-color: ${accent}; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                ${innerHtml}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 32px 0; text-align: center;">
+                <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                  Sent by ${companyName} via Roster.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
 // --- Shift reminder ---------------------------------------------------
 
 export interface ShiftReminderInput {
@@ -187,7 +225,7 @@ export function renderShiftReminderEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, "#5e6ad2", renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
@@ -284,7 +322,7 @@ export function renderForgotClockOutEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, "#dc2626", renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
@@ -393,7 +431,7 @@ export function renderLeaveReviewedEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, accent, renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
@@ -485,7 +523,7 @@ export function renderShiftAdjustmentReviewedEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, accent, renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
@@ -568,7 +606,7 @@ export function renderShiftAssignedEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, "#5e6ad2", renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
@@ -661,7 +699,7 @@ export function renderShiftSwapProposedEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, "#5e6ad2", renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
@@ -750,7 +788,7 @@ export function renderShiftSwapRespondedEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, accent, renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
@@ -834,7 +872,7 @@ export function renderShiftSwapReviewedEmail(
     };
     return {
       subject: renderTemplate(customTemplate.subject, vars),
-      html: renderTemplate(customTemplate.html, vars),
+      html: wrapCustomEmailBody(companyName, accent, renderTemplate(customTemplate.html, vars)),
     };
   }
   return {
