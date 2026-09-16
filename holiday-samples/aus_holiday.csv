@@ -1,0 +1,95 @@
+name,start_date,end_date,is_active
+New Year's Day,2026-01-01,2026-01-01,True
+Australia Day,2026-01-26,2026-01-26,True
+Good Friday,2026-04-03,2026-04-03,True
+Easter Saturday,2026-04-04,2026-04-04,True
+Easter Sunday,2026-04-05,2026-04-05,True
+Easter Monday,2026-04-06,2026-04-06,True
+Anzac Day,2026-04-25,2026-04-25,True
+Christmas Day,2026-12-25,2026-12-25,True
+Boxing Day,2026-12-26,2026-12-26,True
+Boxing Day observed,2026-12-28,2026-12-28,True
+Devonport Cup (TAS),2026-01-07,2026-01-07,True
+Royal Hobart Regatta (TAS),2026-02-01,2026-02-01,True
+Chinese New Year Day 1 (Christmas Island),2026-02-17,2026-02-17,True
+Chinese New Year Day 2 (Christmas Island),2026-02-18,2026-02-18,True
+Launceston Cup (TAS),2026-02-25,2026-02-25,True
+Labour Day (WA),2026-03-02,2026-03-02,True
+King Island Show (TAS),2026-03-03,2026-03-03,True
+Foundation Day (Norfolk Island),2026-03-06,2026-03-06,True
+Canberra Day (ACT),2026-03-09,2026-03-09,True
+Adelaide Cup Day (SA),2026-03-09,2026-03-09,True
+Eight Hours Day (TAS),2026-03-09,2026-03-09,True
+Labour Day (VIC),2026-03-09,2026-03-09,True
+Hari Raya Puasa (Christmas & Cocos Islands),2026-03-20,2026-03-20,True
+Labour Day (Christmas Island),2026-03-23,2026-03-23,True
+Easter Tuesday (TAS),2026-04-07,2026-04-07,True
+Act of Self Determination Day (Cocos Islands),2026-04-07,2026-04-07,True
+May Day (NT),2026-05-04,2026-05-04,True
+Labour Day (QLD),2026-05-04,2026-05-04,True
+AGFEST (TAS),2026-05-08,2026-05-08,True
+Hari Raya Haji (Christmas & Cocos Islands),2026-05-27,2026-05-27,True
+Reconciliation Day (ACT),2026-06-01,2026-06-01,True
+Western Australia Day (WA),2026-06-01,2026-06-01,True
+King's Birthday (ACT, NSW, NT, SA, TAS, VIC),2026-06-08,2026-06-08,True
+Bounty Day (Norfolk Island),2026-06-08,2026-06-08,True
+Alice Springs Show Day (NT),2026-07-03,2026-07-03,True
+Tennant Creek Show Day (NT),2026-07-10,2026-07-10,True
+Katherine Show Day (NT),2026-07-17,2026-07-17,True
+Darwin Show Day (NT),2026-07-24,2026-07-24,True
+Picnic Day (NT),2026-08-03,2026-08-03,True
+Royal Queensland Show (Brisbane, QLD),2026-08-12,2026-08-12,True
+Borroloola Show Day (NT),2026-08-21,2026-08-21,True
+Hari Maulaud Nabi (Cocos Islands),2026-08-26,2026-08-26,True
+King's Birthday (WA),2026-09-28,2026-09-28,True
+Burnie Show (TAS),2026-10-02,2026-10-02,True
+Labour Day (ACT, NSW, SA),2026-10-05,2026-10-05,True
+King's Birthday (QLD),2026-10-05,2026-10-05,True
+Territory Day (Christmas Island),2026-10-05,2026-10-05,True
+Royal Launceston Show (TAS),2026-10-08,2026-10-08,True
+Flinders Island Show (TAS),2026-10-16,2026-10-16,True
+Royal Hobart Show (TAS),2026-10-22,2026-10-22,True
+Recreation Day (TAS),2026-11-02,2026-11-02,True
+Melbourne Cup Day (VIC),2026-11-03,2026-11-03,True
+Thanksgiving Day (Norfolk Island),2026-11-25,2026-11-25,True
+Devonport Show (TAS),2026-11-27,2026-11-27,True
+New Year's Day,2027-01-01,2027-01-01,True
+Australia Day,2027-01-26,2027-01-26,True
+Good Friday,2027-03-26,2027-03-26,True
+Easter Saturday,2027-03-27,2027-03-27,True
+Easter Sunday,2027-03-28,2027-03-28,True
+Easter Monday,2027-03-29,2027-03-29,True
+Anzac Day,2027-04-25,2027-04-25,True
+Anzac Day observed,2027-04-26,2027-04-26,True
+Christmas Day,2027-12-25,2027-12-25,True
+Boxing Day / Proclamation Day,2027-12-26,2027-12-26,True
+Christmas Day observed,2027-12-27,2027-12-27,True
+Boxing Day observed,2027-12-28,2027-12-28,True
+Devonport Cup (TAS),2027-01-06,2027-01-06,True
+Royal Hobart Regatta (TAS),2027-02-08,2027-02-08,True
+Launceston Cup (TAS),2027-02-24,2027-02-24,True
+Labour Day (WA),2027-03-01,2027-03-01,True
+King Island Show (TAS),2027-03-02,2027-03-02,True
+Canberra Day (ACT),2027-03-08,2027-03-08,True
+Adelaide Cup Day (SA),2027-03-08,2027-03-08,True
+Eight Hours Day (TAS),2027-03-08,2027-03-08,True
+Labour Day (VIC),2027-03-08,2027-03-08,True
+Easter Tuesday (TAS),2027-03-30,2027-03-30,True
+May Day (NT),2027-05-03,2027-05-03,True
+Labour Day (QLD),2027-05-03,2027-05-03,True
+AGFEST (TAS),2027-05-07,2027-05-07,True
+Reconciliation Day (ACT),2027-05-31,2027-05-31,True
+Western Australia Day (WA),2027-06-07,2027-06-07,True
+King's Birthday (ACT, NSW, NT, SA, TAS, VIC),2027-06-14,2027-06-14,True
+Picnic Day (NT),2027-08-02,2027-08-02,True
+Royal Queensland Show (Brisbane, QLD),2027-08-11,2027-08-11,True
+King's Birthday (WA),2027-09-27,2027-09-27,True
+Burnie Show (TAS),2027-10-01,2027-10-01,True
+Labour Day (ACT, NSW, SA),2027-10-04,2027-10-04,True
+King's Birthday (QLD),2027-10-04,2027-10-04,True
+Royal Launceston Show (TAS),2027-10-07,2027-10-07,True
+Flinders Island Show (TAS),2027-10-15,2027-10-15,True
+Royal Hobart Show (TAS),2027-10-21,2027-10-21,True
+Recreation Day (TAS),2027-11-01,2027-11-01,True
+Melbourne Cup Day (VIC),2027-11-02,2027-11-02,True
+Devonport Show (TAS),2027-11-26,2027-11-26,True
