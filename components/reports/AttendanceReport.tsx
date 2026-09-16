@@ -58,7 +58,13 @@ const STATUS_META: Record<
   off: { label: "Off", className: "text-ink-subtle" },
 };
 
-export default function AttendanceReport({ filters }: { filters: ReportFilters }) {
+export default function AttendanceReport({
+  filters,
+  lockedPersonId,
+}: {
+  filters: ReportFilters;
+  lockedPersonId?: string;
+}) {
   const {
     people,
     clockEntries,
@@ -67,8 +73,13 @@ export default function AttendanceReport({ filters }: { filters: ReportFilters }
     shiftAssignments,
     leaveRequests,
   } = useCompany();
-  const [personFilter, setPersonFilter] = useState<string>("all");
+  const [personFilter, setPersonFilter] = useState<string>(
+    lockedPersonId ?? "all",
+  );
   const [page, setPage] = useState(1);
+
+  // When locked, the viewer can only see their own rows.
+  const effectivePersonFilter = lockedPersonId ?? personFilter;
 
   const inRangePeople = useMemo(
     () =>
@@ -205,10 +216,10 @@ export default function AttendanceReport({ filters }: { filters: ReportFilters }
 
   const filteredRows = useMemo(
     () =>
-      personFilter === "all"
+      effectivePersonFilter === "all"
         ? rows
-        : rows.filter((r) => r.person.id === personFilter),
-    [rows, personFilter],
+        : rows.filter((r) => r.person.id === effectivePersonFilter),
+    [rows, effectivePersonFilter],
   );
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
@@ -224,21 +235,23 @@ export default function AttendanceReport({ filters }: { filters: ReportFilters }
         <p className="text-sm text-ink-muted">
           {filteredRows.length} day record{filteredRows.length === 1 ? "" : "s"}
         </p>
-        <select
-          value={personFilter}
-          onChange={(e) => {
-            setPersonFilter(e.target.value);
-            setPage(1);
-          }}
-          className="h-9 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary sm:h-8"
-        >
-          <option value="all">All people</option>
-          {inRangePeople.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        {!lockedPersonId && (
+          <select
+            value={personFilter}
+            onChange={(e) => {
+              setPersonFilter(e.target.value);
+              setPage(1);
+            }}
+            className="h-9 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary sm:h-8"
+          >
+            <option value="all">All people</option>
+            {inRangePeople.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {filteredRows.length === 0 ? (
