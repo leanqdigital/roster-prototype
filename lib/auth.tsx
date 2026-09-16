@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { homeForRole } from "@/lib/roles";
 import type { AuthRole } from "@/lib/roles";
+import type { PersonStatus } from "@/lib/company-data/types";
 import { inviteEmployee as inviteEmployeeAction } from "@/lib/supabase/actions";
 import { requestPasswordReset as requestPasswordResetAction } from "@/lib/supabase/public-actions";
 
@@ -27,6 +28,8 @@ export interface AuthUser {
   personId: string | null;
   /** Company display name, joined from companies.name. Undefined for super_admin. */
   company?: string;
+  /** people.status for employee/manager accounts. Undefined for roles with no person_id. */
+  personStatus?: PersonStatus;
 }
 
 export interface SignInResult {
@@ -97,7 +100,7 @@ async function loadAuthUser(): Promise<AuthUser | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, company_id, person_id, role, email, name, companies(name)")
+    .select("id, company_id, person_id, role, email, name, companies(name), people(status)")
     .eq("id", user.id)
     .single();
 
@@ -111,7 +114,24 @@ async function loadAuthUser(): Promise<AuthUser | null> {
     companyId: profile.company_id,
     personId: profile.person_id,
     company: (profile.companies as { name?: string } | null)?.name,
+    personStatus: (profile.people as { status?: PersonStatus } | null)?.status,
   };
+}
+
+// Wraps loadAuthUser() with the inactive-account check. Any code path that
+// resolves "who is signed in" (mount, onAuthStateChange, signIn) must go
+// through this — otherwise a deactivated person can flash through as a
+// valid user for one render, which races the login page's own-user
+// redirect against AuthGuard's kick-out and produces a silent reload loop
+// instead of the login error.
+async function resolveActiveUser(): Promise<AuthUser | null> {
+  const nextUser = await loadAuthUser();
+  if (nextUser?.personStatus === "inactive") {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    return null;
+  }
+  return nextUser;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -123,14 +143,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = createClient();
 
     let cancelled = false;
-    loadAuthUser().then((u) => {
+    resolveActiveUser().then((u) => {
       if (cancelled) return;
       setUser(u);
       setReady(true);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      loadAuthUser().then((u) => {
+      resolveActiveUser().then((u) => {
         if (!cancelled) setUser(u);
       });
     });
@@ -151,10 +171,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false, error: "Invalid email or password." };
     }
     const nextUser = await loadAuthUser();
-    setUser(nextUser);
     if (!nextUser) {
+      setUser(null);
       return { ok: false, error: "Signed in, but no profile found for this account." };
     }
+    if (nextUser.personStatus === "inactive") {
+      await supabase.auth.signOut();
+      setUser(null);
+      return { ok: false, error: "Your account has been deactivated. Contact your admin." };
+    }
+    setUser(nextUser);
     return { ok: true, user: nextUser };
   }, []);
 

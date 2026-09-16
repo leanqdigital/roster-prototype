@@ -77,5 +77,14 @@ export async function requireRole(allowedRoles: AuthRole[]): Promise<Profile> {
       .single();
     if (company?.status === "suspended") redirect("/login");
   }
+  if (profile.personId) {
+    const supabase = await createClient();
+    const { data: person } = await supabase
+      .from("people")
+      .select("status")
+      .eq("id", profile.personId)
+      .single();
+    if (person?.status === "inactive") redirect("/login");
+  }
   return profile;
 }

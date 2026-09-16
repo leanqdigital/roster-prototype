@@ -17,7 +17,7 @@ export default function AuthGuard({
   allowedRoles,
   redirectTo = "/login",
 }: AuthGuardProps) {
-  const { user, ready } = useAuth();
+  const { user, ready, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,13 +26,18 @@ export default function AuthGuard({
       router.replace(redirectTo);
       return;
     }
+    if (user.personStatus === "inactive") {
+      signOut().then(() => router.replace("/login"));
+      return;
+    }
     if (allowedRoles && !allowedRoles.includes(user.role)) {
       router.replace(homeForRole(user.role));
     }
-  }, [ready, user, router, allowedRoles, redirectTo]);
+  }, [ready, user, router, allowedRoles, redirectTo, signOut]);
 
   if (!ready) return null;
   if (!user) return null;
+  if (user.personStatus === "inactive") return null;
   if (allowedRoles && !allowedRoles.includes(user.role)) return null;
 
   return <>{children}</>;

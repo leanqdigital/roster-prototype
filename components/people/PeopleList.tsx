@@ -9,7 +9,9 @@ import {
   ChevronDownIcon,
   MailIcon,
   MapPinIcon,
+  PauseIcon,
   PencilIcon,
+  PlayIcon,
   SearchIcon,
   TrashIcon,
   UsersIcon,
@@ -29,6 +31,8 @@ interface PeopleListProps {
   onEdit: (person: Person) => void;
   onDelete: (person: Person) => void;
   onResend: (person: Person) => void;
+  onDeactivate: (person: Person) => void;
+  onReactivate: (person: Person) => void;
 }
 
 export default function PeopleList({
@@ -39,6 +43,8 @@ export default function PeopleList({
   onEdit,
   onDelete,
   onResend,
+  onDeactivate,
+  onReactivate,
 }: PeopleListProps) {
   const [teamFilter, setTeamFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -207,6 +213,28 @@ export default function PeopleList({
                       <MailIcon className="size-3.5" />
                     </button>
                   )}
+                  {person.status === "active" && (
+                    <button
+                      type="button"
+                      onClick={() => onDeactivate(person)}
+                      title="Deactivate person"
+                      aria-label={`Deactivate ${person.name}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-danger"
+                    >
+                      <PauseIcon className="size-3.5" />
+                    </button>
+                  )}
+                  {person.status === "inactive" && (
+                    <button
+                      type="button"
+                      onClick={() => onReactivate(person)}
+                      title="Reactivate person"
+                      aria-label={`Reactivate ${person.name}`}
+                      className="rounded-md p-2.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-success"
+                    >
+                      <PlayIcon className="size-3.5" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => onEdit(person)}
@@ -272,6 +300,28 @@ export default function PeopleList({
                       className="rounded-md p-1.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-ink"
                     >
                       <MailIcon className="size-3.5" />
+                    </button>
+                  )}
+                  {person.status === "active" && (
+                    <button
+                      type="button"
+                      onClick={() => onDeactivate(person)}
+                      title="Deactivate person"
+                      aria-label={`Deactivate ${person.name}`}
+                      className="rounded-md p-1.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-danger"
+                    >
+                      <PauseIcon className="size-3.5" />
+                    </button>
+                  )}
+                  {person.status === "inactive" && (
+                    <button
+                      type="button"
+                      onClick={() => onReactivate(person)}
+                      title="Reactivate person"
+                      aria-label={`Reactivate ${person.name}`}
+                      className="rounded-md p-1.5 text-ink-subtle transition-colors hover:bg-surface-3 hover:text-success"
+                    >
+                      <PlayIcon className="size-3.5" />
                     </button>
                   )}
                   <button

@@ -23,7 +23,9 @@ import {
   ListIcon,
   MailIcon,
   MapPinIcon,
+  PauseIcon,
   PencilIcon,
+  PlayIcon,
   TrashIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -82,6 +84,8 @@ export default function PersonDetailPage() {
     updatePerson,
     resendInvite,
     deletePerson,
+    deactivatePerson,
+    reactivatePerson,
   } = useCompany();
   const { pushToast } = useToast();
 
@@ -89,6 +93,7 @@ export default function PersonDetailPage() {
 
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [form, setForm] = useState<EditForm>({
     name: "",
     phone: "",
@@ -204,6 +209,14 @@ export default function PersonDetailPage() {
     }
   };
 
+  const handleReactivate = async () => {
+    const ok = await reactivatePerson(person.id);
+    pushToast({
+      tone: ok ? "success" : "danger",
+      message: ok ? "Person reactivated" : "Couldn't reactivate person.",
+    });
+  };
+
   return (
     <div>
       <Link
@@ -257,6 +270,24 @@ export default function PersonDetailPage() {
             >
               <MailIcon className="size-3.5" />
               Resend invite
+            </button>
+          )}
+          {person.status === "active" && (
+            <button
+              onClick={() => setConfirmDeactivate(true)}
+              className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink-muted transition-colors hover:border-danger/40 hover:text-danger"
+            >
+              <PauseIcon className="size-3.5" />
+              Deactivate
+            </button>
+          )}
+          {person.status === "inactive" && (
+            <button
+              onClick={handleReactivate}
+              className="flex h-8 items-center gap-2 rounded-lg border border-hairline bg-surface-2 px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-3"
+            >
+              <PlayIcon className="size-3.5" />
+              Reactivate
             </button>
           )}
           <button
@@ -749,6 +780,23 @@ export default function PersonDetailPage() {
           deletePerson(person.id);
           pushToast({ tone: "success", message: "Person deleted" });
           router.push("/people");
+        }}
+      />
+
+      <Modal
+        open={confirmDeactivate}
+        tone="danger"
+        title={`Deactivate ${person.name}?`}
+        description="They'll be signed out and won't be able to log in until reactivated."
+        confirmLabel="Deactivate"
+        onClose={() => setConfirmDeactivate(false)}
+        onConfirm={async () => {
+          const ok = await deactivatePerson(person.id);
+          setConfirmDeactivate(false);
+          pushToast({
+            tone: ok ? "success" : "danger",
+            message: ok ? "Person deactivated" : "Couldn't deactivate person.",
+          });
         }}
       />
     </div>

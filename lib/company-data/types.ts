@@ -42,7 +42,13 @@ export interface Person {
   updatedAt: string;
 }
 
-export type ActivityAction = "invited" | "updated" | "resent" | "notified";
+export type ActivityAction =
+  | "invited"
+  | "updated"
+  | "resent"
+  | "notified"
+  | "deactivated"
+  | "reactivated";
 
 export interface ActivityEntry {
   id: string;
@@ -490,6 +496,8 @@ export interface CompanyContextValue extends CompanyState {
   updatePerson: (id: string, patch: Partial<Person>) => Promise<boolean>;
   resendInvite: (id: string) => Promise<{ ok: boolean; error?: string }>;
   deletePerson: (id: string) => Promise<void>;
+  deactivatePerson: (id: string) => Promise<boolean>;
+  reactivatePerson: (id: string) => Promise<boolean>;
   createLocation: (input: LocationInput) => Promise<Location | null>;
   updateLocation: (id: string, patch: Partial<Location>) => Promise<boolean>;
   deleteLocation: (id: string) => Promise<void>;

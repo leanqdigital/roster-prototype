@@ -13,13 +13,24 @@ import PersonFormModal from "@/components/people/PersonFormModal";
 import type { PersonFormInput } from "@/components/people/PersonFormModal";
 
 export default function PeoplePage() {
-  const { teams, people, locations, hrProfiles, invitePerson, updatePerson, resendInvite, deletePerson } =
-    useCompany();
+  const {
+    teams,
+    people,
+    locations,
+    hrProfiles,
+    invitePerson,
+    updatePerson,
+    resendInvite,
+    deletePerson,
+    deactivatePerson,
+    reactivatePerson,
+  } = useCompany();
   const { registerEmployee } = useAuth();
   const { pushToast } = useToast();
   const [editing, setEditing] = useState<Person | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Person | null>(null);
+  const [confirmDeactivate, setConfirmDeactivate] = useState<Person | null>(null);
   const [saved, setSaved] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
 
@@ -40,6 +51,14 @@ export default function PeoplePage() {
     } else {
       pushToast({ tone: "success", message: "Invite resent" });
     }
+  };
+
+  const handleReactivate = async (person: Person) => {
+    const ok = await reactivatePerson(person.id);
+    pushToast({
+      tone: ok ? "success" : "danger",
+      message: ok ? "Person reactivated" : `Couldn't reactivate ${person.name}.`,
+    });
   };
 
   const openInvite = () => {
@@ -142,6 +161,8 @@ role: input.role as PersonRole,
           onEdit={openEdit}
           onDelete={setConfirmDelete}
           onResend={handleResend}
+          onDeactivate={setConfirmDeactivate}
+          onReactivate={handleReactivate}
         />
       )}
 
@@ -201,6 +222,25 @@ role: input.role as PersonRole,
             setConfirmDelete(null);
             flashSaved();
             pushToast({ tone: "success", message: "Person deleted" });
+          }}
+        />
+      )}
+
+      {confirmDeactivate && (
+        <Modal
+          open
+          title={`Deactivate ${confirmDeactivate.name}?`}
+          description="They'll be signed out and won't be able to log in until reactivated."
+          tone="danger"
+          confirmLabel="Deactivate"
+          onClose={() => setConfirmDeactivate(null)}
+          onConfirm={async () => {
+            const ok = await deactivatePerson(confirmDeactivate.id);
+            setConfirmDeactivate(null);
+            pushToast({
+              tone: ok ? "success" : "danger",
+              message: ok ? "Person deactivated" : `Couldn't deactivate ${confirmDeactivate.name}.`,
+            });
           }}
         />
       )}

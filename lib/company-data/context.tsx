@@ -439,6 +439,40 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "deletePerson", id });
   }, []);
 
+  const deactivatePerson = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const updated = await updatePersonRow(id, { status: "inactive" });
+        dispatch({ type: "updatePerson", id, patch: updated });
+        // an inactive manager shouldn't stay as a team's active lead
+        const ledTeams = state.teams.filter((t) => t.managerId === id);
+        for (const t of ledTeams) {
+          const updatedTeam = await updateTeamRow(t.id, { managerId: null });
+          dispatch({ type: "updateTeam", id: t.id, patch: updatedTeam });
+        }
+        await logActivity(id, "deactivated", "Account deactivated");
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [state.teams, logActivity],
+  );
+
+  const reactivatePerson = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const updated = await updatePersonRow(id, { status: "active" });
+        dispatch({ type: "updatePerson", id, patch: updated });
+        await logActivity(id, "reactivated", "Account reactivated");
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [logActivity],
+  );
+
   // ---------------------------------------------------------------------
   // locations
   // ---------------------------------------------------------------------
@@ -2686,6 +2720,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       updatePerson,
       resendInvite,
       deletePerson,
+      deactivatePerson,
+      reactivatePerson,
       createLocation,
       updateLocation,
       deleteLocation,
@@ -2764,6 +2800,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       updatePerson,
       resendInvite,
       deletePerson,
+      deactivatePerson,
+      reactivatePerson,
       createLocation,
       updateLocation,
       deleteLocation,
