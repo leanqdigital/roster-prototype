@@ -20,6 +20,7 @@ import {
   renderShiftSwapRespondedEmail,
   renderShiftSwapReviewedEmail,
   renderForgotClockOutEmail,
+  renderUnderstaffedShiftEmail,
 } from "@/lib/email";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { EmailSettings } from "@/lib/company";
@@ -699,5 +700,19 @@ export async function previewEmailTemplate(
         ),
       };
     }
+    case "understaffedShift":
+      return {
+        ok: true,
+        ...renderUnderstaffedShiftEmail(
+          {
+            ...previewShiftInfo("Evening Shift"),
+            teamName: "Floor Team",
+            staffedCount: 1,
+            requiredCount: 3,
+            companyName,
+          },
+          custom,
+        ),
+      };
   }
 }

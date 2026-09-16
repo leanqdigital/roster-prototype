@@ -631,6 +631,7 @@ export default function SettingsForm() {
                 ["shiftAdjustmentReviewed", "Adjustment reviewed", "When an early out or late in request is approved or denied"],
                 ["shiftReminder", "Shift reminder", "Reminder sent before a shift starts"],
                 ["forgotClockOut", "Forgot to clock out", "Alert when someone is still clocked in after their shift ends"],
+                ["understaffedShift", "Understaffed shift", "Alert when a shift is short-staffed a day ahead"],
               ] as [keyof EmailSettings, string, string][]
             ).map(([key, title, description]) => (
               <div

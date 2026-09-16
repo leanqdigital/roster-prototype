@@ -33,6 +33,7 @@ export interface EmailSettings {
   shiftReminder: boolean;
   shiftReminderMinutesBefore: number;
   forgotClockOut: boolean;
+  understaffedShift: boolean;
 }
 
 export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
@@ -45,6 +46,7 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   shiftReminder: true,
   shiftReminderMinutesBefore: 10,
   forgotClockOut: true,
+  understaffedShift: true,
 };
 
 export const DEFAULT_TIMEZONE = "America/New_York";
