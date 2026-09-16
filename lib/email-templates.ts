@@ -6,7 +6,8 @@ export type EmailTemplateKey =
   | "swapReviewed"
   | "shiftAdjustmentReviewed"
   | "shiftReminder"
-  | "forgotClockOut";
+  | "forgotClockOut"
+  | "understaffedShift";
 
 export interface EmailTemplateOverride {
   subject: string;
@@ -73,6 +74,19 @@ export const EMAIL_TEMPLATE_META: Record<EmailTemplateKey, { title: string; vari
   forgotClockOut: {
     title: "Forgot to clock out",
     variables: ["companyName", "clockInAt", "shiftTitle", "shiftEndAt", "clockLink"],
+  },
+  understaffedShift: {
+    title: "Understaffed shift",
+    variables: [
+      "companyName",
+      "shiftTitle",
+      "date",
+      "time",
+      "teamName",
+      "staffedCount",
+      "requiredCount",
+      "shortage",
+    ],
   },
 };
 

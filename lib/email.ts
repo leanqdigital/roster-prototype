@@ -287,6 +287,101 @@ export async function sendShiftReminderEmail(
   return sendMail({ to, subject, html });
 }
 
+// --- Understaffed shift ------------------------------------------------
+
+export interface UnderstaffedShiftInput {
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  teamName?: string | null;
+  staffedCount: number;
+  requiredCount: number;
+  companyName?: string | null;
+}
+
+export function renderUnderstaffedShiftEmail(
+  shift: UnderstaffedShiftInput,
+  customTemplate?: EmailTemplateOverride | null,
+): RenderedEmail {
+  const companyName = shift.companyName || "Roster";
+  const shortage = shift.requiredCount - shift.staffedCount;
+  if (customTemplate) {
+    const vars = {
+      companyName,
+      shiftTitle: shift.title,
+      date: formatShiftDate(shift.date),
+      time: `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`,
+      teamName: shift.teamName ?? "",
+      staffedCount: String(shift.staffedCount),
+      requiredCount: String(shift.requiredCount),
+      shortage: String(shortage),
+    };
+    return {
+      subject: renderTemplate(customTemplate.subject, vars),
+      html: wrapCustomEmailBody(companyName, "#dc2626", renderTemplate(customTemplate.html, vars)),
+    };
+  }
+  return {
+    subject: `Understaffed: ${shift.title} — ${formatShiftDate(shift.date)}`,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; width: 100%;">
+              <tr>
+                <td style="background-color: #dc2626; padding: 20px 32px; border-radius: 8px 8px 0 0;">
+                  <span style="font-family: ${EMAIL_FONT}; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em;">${companyName}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <h1 style="margin: 0 0 8px; font-family: ${EMAIL_FONT}; font-size: 20px; font-weight: 700; color: #111827;">
+                    Shift is understaffed
+                  </h1>
+                  <p style="margin: 0 0 24px; font-family: ${EMAIL_FONT}; font-size: 14px; line-height: 22px; color: #4b5563;">
+                    Tomorrow's shift still needs more staff. Only ${shift.staffedCount} of ${shift.requiredCount} people are assigned.
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 13px; color: #6b7280; white-space: nowrap;">Date</td>
+                      <td style="padding: 16px 20px; font-family: ${EMAIL_FONT}; font-size: 14px; font-weight: 600; color: #111827; text-align: right;">${formatShiftDate(shift.date)}</td>
+                    </tr>
+                    ${detailRow("Time", `${formatShiftTime(shift.date, shift.startTime)} – ${formatShiftTime(shift.date, shift.endTime)}`)}
+                    ${detailRow("Shift", shift.title)}
+                    ${shift.teamName ? detailRow("Team", shift.teamName) : ""}
+                    ${detailRow("Staffed", `${shift.staffedCount} of ${shift.requiredCount}`)}
+                    ${shortage > 0 ? detailRow("Still needed", `${shortage} more`, { muted: true }) : ""}
+                  </table>
+                  <p style="margin: 24px 0 0; font-family: ${EMAIL_FONT}; font-size: 13px; line-height: 20px; color: #6b7280;">
+                    Please review the schedule and fill this shift as soon as possible.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 0; text-align: center;">
+                  <p style="margin: 0; font-family: ${EMAIL_FONT}; font-size: 12px; line-height: 18px; color: #9ca3af;">
+                    Sent by ${companyName} via Roster.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  };
+}
+
+export async function sendUnderstaffedShiftEmail(
+  to: string,
+  shift: UnderstaffedShiftInput,
+  customTemplate?: EmailTemplateOverride | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const { subject, html } = renderUnderstaffedShiftEmail(shift, customTemplate);
+  return sendMail({ to, subject, html });
+}
+
 // --- Forgot to clock out ------------------------------------------------
 
 export interface ForgotClockOutInput {
