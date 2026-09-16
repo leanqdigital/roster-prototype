@@ -6,6 +6,7 @@ import type { LeaveType } from "@/lib/company-data";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
 import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import Pagination from "@/components/ui/Pagination";
+import ExportCsvButton from "./ExportCsvButton";
 import type { ReportFilters } from "./types";
 
 const PAGE_SIZE = 15;
@@ -107,7 +108,8 @@ export default function LeaveReport({ filters }: { filters: ReportFilters }) {
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-ink-muted">{filtered.length} request{filtered.length === 1 ? "" : "s"}</p>
-        <div className="flex items-center gap-1 rounded-lg border border-hairline bg-surface-3 p-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-hairline bg-surface-3 p-1">
           {["all", "pending", "approved", "denied", "cancelled"].map((s) => (
             <button
               key={s}
@@ -125,6 +127,28 @@ export default function LeaveReport({ filters }: { filters: ReportFilters }) {
               {s}
             </button>
           ))}
+        </div>
+        <ExportCsvButton
+            filename={`leave-${filters.rangeStart}-to-${filters.rangeEnd}.csv`}
+            rows={filtered}
+            columns={[
+              { header: "Person", accessor: (l) => personById.get(l.personId)?.name ?? "Unknown" },
+              {
+                header: "Team",
+                accessor: (l) =>
+                  (personById.get(l.personId)?.teamIds ?? [])
+                    .map((id) => teamById.get(id)?.name)
+                    .filter(Boolean)
+                    .join(", "),
+              },
+              { header: "Type", accessor: (l) => typeLabel(l.type) },
+              { header: "Start", accessor: (l) => l.startDate },
+              { header: "End", accessor: (l) => l.endDate },
+              { header: "Days", accessor: (l) => days(l.startDate, l.endDate) },
+              { header: "Status", accessor: (l) => l.status },
+              { header: "Reviewed by", accessor: (l) => l.reviewedBy ?? "" },
+            ]}
+          />
         </div>
       </div>
 

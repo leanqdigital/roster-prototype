@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import Pagination from "@/components/ui/Pagination";
+import ExportCsvButton from "./ExportCsvButton";
 import type { ReportFilters } from "./types";
 
 const PAGE_SIZE = 15;
@@ -82,22 +83,36 @@ export default function CoverageReport({ filters }: { filters: ReportFilters }) 
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          ["Fill rate", fillRate],
-          ["Seats required", String(totals.required)],
-          ["Seats filled", String(totals.assigned)],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            className="rounded-lg border border-hairline bg-surface-2 px-3 py-2"
-          >
-            <p className="text-[11px] uppercase tracking-wide text-ink-subtle">
-              {label}
-            </p>
-            <p className="text-[15px] font-semibold text-ink">{value}</p>
-          </div>
-        ))}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            ["Fill rate", fillRate],
+            ["Seats required", String(totals.required)],
+            ["Seats filled", String(totals.assigned)],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-lg border border-hairline bg-surface-2 px-3 py-2"
+            >
+              <p className="text-[11px] uppercase tracking-wide text-ink-subtle">
+                {label}
+              </p>
+              <p className="text-[15px] font-semibold text-ink">{value}</p>
+            </div>
+          ))}
+        </div>
+        <ExportCsvButton
+          filename={`coverage-${filters.rangeStart}-to-${filters.rangeEnd}.csv`}
+          rows={rows}
+          columns={[
+            { header: "Date", accessor: (r) => r.date },
+            { header: "Team", accessor: (r) => r.teamName },
+            { header: "Shifts", accessor: (r) => r.shifts },
+            { header: "Seats required", accessor: (r) => r.required },
+            { header: "Seats filled", accessor: (r) => r.assigned },
+            { header: "Unfilled", accessor: (r) => r.unfilled },
+          ]}
+        />
       </div>
 
       {rows.length === 0 ? (

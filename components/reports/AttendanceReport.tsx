@@ -5,6 +5,7 @@ import { useCompany } from "@/lib/company-data";
 import type { Person } from "@/lib/company-data";
 import { localDateStr } from "@/lib/format";
 import Pagination from "@/components/ui/Pagination";
+import ExportCsvButton from "./ExportCsvButton";
 import type { ReportFilters } from "./types";
 
 const PAGE_SIZE = 15;
@@ -235,23 +236,39 @@ export default function AttendanceReport({
         <p className="text-sm text-ink-muted">
           {filteredRows.length} day record{filteredRows.length === 1 ? "" : "s"}
         </p>
-        {!lockedPersonId && (
-          <select
-            value={personFilter}
-            onChange={(e) => {
-              setPersonFilter(e.target.value);
-              setPage(1);
-            }}
-            className="h-9 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary sm:h-8"
-          >
-            <option value="all">All people</option>
-            {inRangePeople.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {!lockedPersonId && (
+            <select
+              value={personFilter}
+              onChange={(e) => {
+                setPersonFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-9 rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary sm:h-8"
+            >
+              <option value="all">All people</option>
+              {inRangePeople.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <ExportCsvButton
+            filename={`attendance-${filters.rangeStart}-to-${filters.rangeEnd}.csv`}
+            rows={filteredRows}
+            columns={[
+              { header: "Person", accessor: (r) => r.person.name },
+              { header: "Date", accessor: (r) => r.date },
+              { header: "Shift", accessor: (r) => r.shiftTitle ?? "" },
+              { header: "In", accessor: (r) => r.firstIn ?? "" },
+              { header: "Out", accessor: (r) => r.lastOut ?? "" },
+              { header: "Worked", accessor: (r) => fmtHours(r.workedMinutes) },
+              { header: "Break", accessor: (r) => fmtHours(r.breakMinutes) },
+              { header: "Status", accessor: (r) => STATUS_META[r.status].label },
+            ]}
+          />
+        </div>
       </div>
 
       {filteredRows.length === 0 ? (
