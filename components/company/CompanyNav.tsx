@@ -15,6 +15,7 @@ import Avatar from "@/components/people/Avatar";
 import {
   ActivityIcon,
   BellIcon,
+  BriefcaseIcon,
   CalendarIcon,
   CalendarOffIcon,
   ChevronDownIcon,
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
   { href: "/leave-requests", label: "Leave Requests", icon: CalendarOffIcon, soon: false },
   { href: "/adjustments", label: "Adjustments", icon: ClockIcon, soon: false },
   { href: "/holidays", label: "Holidays", icon: CalendarIcon, soon: false },
+  { href: "/leave-types", label: "Leave Types", icon: BriefcaseIcon, soon: false },
   { href: "/locations", label: "Locations", icon: MapPinIcon, soon: false },
   { href: "/notes", label: "Notes", icon: NoteIcon, soon: false },
   { href: "/notifications", label: "Notifications", icon: BellIcon, soon: false },

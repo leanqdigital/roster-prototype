@@ -98,7 +98,9 @@ export interface ComplianceViolation {
   status: ComplianceViolationStatus;
 }
 
-export type LeaveType = "vacation" | "sick" | "personal" | "bereavement" | "other";
+// Free-form key referencing leave_types.key — soft reference, not a FK, so
+// historical requests keep working if a type is renamed/deactivated.
+export type LeaveType = string;
 export type LeaveStatus = "pending" | "approved" | "denied" | "cancelled";
 
 export interface LeaveRequest {
@@ -112,6 +114,36 @@ export interface LeaveRequest {
   reviewerComment?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaveTypeDef {
+  id: string;
+  name: string;
+  key: string;
+  tracksBalance: boolean;
+  defaultBalanceDays: number;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaveTypeInput {
+  name: string;
+  key: string;
+  tracksBalance: boolean;
+  defaultBalanceDays: number;
+  isActive: boolean;
+  sortOrder?: number;
+}
+
+export interface PersonLeaveBalance {
+  id: string;
+  personId: string;
+  leaveTypeId: string;
+  balanceDays: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -291,6 +323,8 @@ export interface CompanyState {
   breakEntries: BreakEntry[];
   complianceViolations: ComplianceViolation[];
   leaveRequests: LeaveRequest[];
+  leaveTypes: LeaveTypeDef[];
+  personLeaveBalances: PersonLeaveBalance[];
   shiftTemplates: ShiftTemplate[];
   shifts: Shift[];
   shiftAssignments: ShiftAssignment[];
@@ -335,6 +369,9 @@ export type CompanyAction =
       reviewedBy?: string;
       reviewedAt?: string;
     }
+  | { type: "addLeaveType"; leaveType: LeaveTypeDef }
+  | { type: "updateLeaveType"; id: string; patch: Partial<LeaveTypeDef> }
+  | { type: "upsertPersonLeaveBalance"; balance: PersonLeaveBalance }
   | { type: "createShiftTemplate"; template: ShiftTemplate }
   | { type: "updateShiftTemplate"; id: string; patch: Partial<ShiftTemplate> }
   | { type: "deleteShiftTemplate"; id: string }
@@ -488,6 +525,16 @@ export interface CompanyContextValue extends CompanyState {
     comment?: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   revertLeaveApproval: (id: string, revertedBy: string) => Promise<{ ok: boolean; error?: string }>;
+  createLeaveType: (
+    input: LeaveTypeInput,
+  ) => Promise<{ ok: boolean; error?: string; leaveType?: LeaveTypeDef }>;
+  updateLeaveType: (id: string, patch: Partial<LeaveTypeInput>) => Promise<boolean>;
+  setPersonLeaveBalance: (
+    personId: string,
+    leaveTypeId: string,
+    balanceDays: number,
+  ) => Promise<boolean>;
+  getPersonLeaveBalance: (personId: string, leaveTypeId: string) => number;
   markActivityRead: (id: string) => Promise<void>;
   markAllActivityRead: (personId: string) => Promise<void>;
   createShiftTemplate: (input: ShiftTemplateInput) => Promise<{

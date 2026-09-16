@@ -22,8 +22,10 @@ import type {
   LeaveRequest,
   LeaveStatus,
   LeaveType,
+  LeaveTypeDef,
   Location,
   Person,
+  PersonLeaveBalance,
   PersonalNote,
   PersonRole,
   PersonStatus,
@@ -609,6 +611,66 @@ export function fromCompanyHolidayRow(row: CompanyHolidayRow): CompanyHoliday {
     startDate: row.start_date,
     endDate: row.end_date,
     isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// leave_types
+// ---------------------------------------------------------------------------
+
+export interface LeaveTypeRow {
+  id: string;
+  name: string;
+  key: string;
+  tracks_balance: boolean;
+  default_balance_days: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const LEAVE_TYPE_COLUMNS =
+  "id, name, key, tracks_balance, default_balance_days, is_active, sort_order, created_at, updated_at";
+
+export function fromLeaveTypeRow(row: LeaveTypeRow): LeaveTypeDef {
+  return {
+    id: row.id,
+    name: row.name,
+    key: row.key,
+    tracksBalance: row.tracks_balance,
+    defaultBalanceDays: row.default_balance_days,
+    isActive: row.is_active,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// person_leave_balances
+// ---------------------------------------------------------------------------
+
+export interface PersonLeaveBalanceRow {
+  id: string;
+  person_id: string;
+  leave_type_id: string;
+  balance_days: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PERSON_LEAVE_BALANCE_COLUMNS =
+  "id, person_id, leave_type_id, balance_days, created_at, updated_at";
+
+export function fromPersonLeaveBalanceRow(row: PersonLeaveBalanceRow): PersonLeaveBalance {
+  return {
+    id: row.id,
+    personId: row.person_id,
+    leaveTypeId: row.leave_type_id,
+    balanceDays: row.balance_days,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

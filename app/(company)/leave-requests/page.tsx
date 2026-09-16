@@ -6,10 +6,10 @@ import { useAuth } from "@/lib/auth";
 import type { LeaveRequest, LeaveStatus } from "@/lib/company-data";
 import Modal from "@/components/ui/Modal";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
-import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
-import { CalendarOffIcon } from "@/components/ui/icons";
+import { AlertTriangleIcon, CalendarOffIcon } from "@/components/ui/icons";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/lib/toast";
+import { daysInclusive } from "@/lib/company-data/business";
 
 const PAGE_SIZE = 10;
 
@@ -26,12 +26,9 @@ function formatShortDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function typeLabel(type: string): string {
-  return LEAVE_TYPES.find((t) => t.value === type)?.label ?? type;
-}
-
 export default function CompanyLeaveRequestsPage() {
-  const { leaveRequests, people, teams, approveLeave, denyLeave, revertLeaveApproval } = useCompany();
+  const { leaveRequests, people, teams, leaveTypes, approveLeave, denyLeave, revertLeaveApproval, getPersonLeaveBalance } =
+    useCompany();
   const { user } = useAuth();
   const { pushToast } = useToast();
   const [statusFilter, setStatusFilter] = useState<LeaveStatus | "all">("all");
@@ -74,6 +71,8 @@ export default function CompanyLeaveRequestsPage() {
 
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const personById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+  const leaveTypeByKey = useMemo(() => new Map(leaveTypes.map((t) => [t.key, t])), [leaveTypes]);
+  const typeLabel = (key: string) => leaveTypeByKey.get(key)?.name ?? key;
 
   // Who owns the decision: the leave approver of any team the requester
   // belongs to or manages (falls back to that team's manager, then company
@@ -110,6 +109,18 @@ export default function CompanyLeaveRequestsPage() {
     () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [filtered, currentPage],
   );
+
+  const balanceOverageByLeaveId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of leaveRequests) {
+      const leaveType = leaveTypeByKey.get(l.type);
+      if (!leaveType || !leaveType.tracksBalance) continue;
+      const balance = getPersonLeaveBalance(l.personId, leaveType.id);
+      const requested = daysInclusive(l.startDate, l.endDate);
+      if (requested > balance) map.set(l.id, requested - balance);
+    }
+    return map;
+  }, [leaveRequests, leaveTypeByKey, getPersonLeaveBalance]);
 
   const pendingCount = leaveRequests.filter((l) => l.status === "pending").length;
 
@@ -197,8 +208,14 @@ export default function CompanyLeaveRequestsPage() {
                     <dt className="text-ink-subtle">Type</dt>
                     <dd className="text-ink-muted">{typeLabel(l.type)}</dd>
                     <dt className="text-ink-subtle">Dates</dt>
-                    <dd className="text-ink-muted">
+                    <dd className="flex items-center gap-1 text-ink-muted">
                       {formatShortDate(l.startDate)} – {formatShortDate(l.endDate)}
+                      {balanceOverageByLeaveId.has(l.id) && (
+                        <AlertTriangleIcon
+                          className="size-3.5 shrink-0 text-danger"
+                          aria-label={`Exceeds balance by ${balanceOverageByLeaveId.get(l.id)} day(s)`}
+                        />
+                      )}
                     </dd>
                     <dt className="text-ink-subtle">Responsible</dt>
                     <dd className="text-ink-muted">{responsibleFor(l.personId)}</dd>
@@ -291,7 +308,22 @@ export default function CompanyLeaveRequestsPage() {
                       {typeLabel(l.type)}
                     </td>
                     <td className="px-4 py-3 text-ink-subtle">
-                      {formatShortDate(l.startDate)} – {formatShortDate(l.endDate)}
+                      <div className="flex items-center gap-1.5">
+                        <span>
+                          {formatShortDate(l.startDate)} – {formatShortDate(l.endDate)}
+                        </span>
+                        {balanceOverageByLeaveId.has(l.id) && (
+                          <span className="group/tip relative shrink-0">
+                            <span className="flex items-center text-danger">
+                              <AlertTriangleIcon className="size-3.5" />
+                            </span>
+                            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden w-max max-w-[220px] -translate-x-1/2 rounded-md border border-hairline bg-surface-1 px-2 py-1.5 text-[11px] leading-snug text-ink shadow-md group-hover/tip:block">
+                              Exceeds balance by {balanceOverageByLeaveId.get(l.id)} day
+                              {balanceOverageByLeaveId.get(l.id) === 1 ? "" : "s"}
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="max-w-48 px-4 py-3">
                       <p className="truncate text-ink-muted">{l.reason ?? "—"}</p>

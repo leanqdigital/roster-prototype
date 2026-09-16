@@ -5,8 +5,8 @@ import { useAuth } from "@/lib/auth";
 import { useCompany } from "@/lib/company-data";
 import RequestLeaveModal from "@/components/leave/RequestLeaveModal";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
-import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
-import { CalendarOffIcon, PlusIcon } from "@/components/ui/icons";
+import StatCard from "@/components/ui/StatCard";
+import { CalendarIcon, CalendarOffIcon, PlusIcon } from "@/components/ui/icons";
 import { useToast } from "@/lib/toast";
 
 function formatShortDate(dateStr: string): string {
@@ -14,13 +14,10 @@ function formatShortDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function typeLabel(type: string): string {
-  return LEAVE_TYPES.find((t) => t.value === type)?.label ?? type;
-}
-
 export default function EmployeeLeaveRequestsPage() {
   const { user } = useAuth();
-  const { people, leaveRequests, cancelLeaveRequest } = useCompany();
+  const { people, leaveRequests, leaveTypes, cancelLeaveRequest, getPersonLeaveBalance } =
+    useCompany();
   const { pushToast } = useToast();
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
 
@@ -40,6 +37,23 @@ export default function EmployeeLeaveRequestsPage() {
   }, [leaveRequests, myPerson]);
 
   const pendingCount = myLeaveRequests.filter((l) => l.status === "pending").length;
+
+  const leaveTypeByKey = useMemo(() => new Map(leaveTypes.map((t) => [t.key, t])), [leaveTypes]);
+  const typeLabel = (key: string) => leaveTypeByKey.get(key)?.name ?? key;
+
+  const trackedBalances = useMemo(
+    () =>
+      myPerson
+        ? leaveTypes
+            .filter((t) => t.tracksBalance && t.isActive)
+            .map((t) => ({
+              name: t.name,
+              days: getPersonLeaveBalance(myPerson.id, t.id),
+              total: t.defaultBalanceDays,
+            }))
+        : [],
+    [leaveTypes, myPerson, getPersonLeaveBalance],
+  );
 
   return (
     <div>
@@ -65,6 +79,19 @@ export default function EmployeeLeaveRequestsPage() {
           </button>
         )}
       </div>
+
+      {myPerson && trackedBalances.length > 0 && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {trackedBalances.map((b) => (
+            <StatCard
+              key={b.name}
+              label={`${b.name} remaining`}
+              value={`${b.days}/${b.total} days`}
+              icon={<CalendarIcon className="size-4" />}
+            />
+          ))}
+        </div>
+      )}
 
       {!myPerson ? (
         <div className="mt-8 rounded-xl border border-hairline bg-surface-2 p-10 text-center">

@@ -1,18 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { useCompany } from "@/lib/company-data";
 import { useToast } from "@/lib/toast";
-import type { LeaveType } from "@/lib/company-data";
-
-export const LEAVE_TYPES: { value: LeaveType; label: string }[] = [
-  { value: "vacation", label: "Vacation" },
-  { value: "sick", label: "Sick" },
-  { value: "personal", label: "Personal" },
-  { value: "bereavement", label: "Bereavement" },
-  { value: "other", label: "Other" },
-];
+import { daysInclusive } from "@/lib/company-data/business";
 
 interface RequestLeaveModalProps {
   open: boolean;
@@ -25,14 +17,32 @@ export default function RequestLeaveModal({
   personId,
   onClose,
 }: RequestLeaveModalProps) {
-  const { requestLeave } = useCompany();
+  const { requestLeave, leaveTypes, getPersonLeaveBalance } = useCompany();
   const { pushToast } = useToast();
-  const [type, setType] = useState<LeaveType>("vacation");
+
+  const activeLeaveTypes = useMemo(
+    () => leaveTypes.filter((t) => t.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
+    [leaveTypes],
+  );
+
+  const [type, setType] = useState<string>(() => activeLeaveTypes[0]?.key ?? "");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const selectedLeaveType = activeLeaveTypes.find((t) => t.key === type);
+  const balanceDays = selectedLeaveType
+    ? getPersonLeaveBalance(personId, selectedLeaveType.id)
+    : 0;
+
+  const requestedDays = useMemo(
+    () => (startDate && endDate && endDate >= startDate ? daysInclusive(startDate, endDate) : null),
+    [startDate, endDate],
+  );
+  const exceedsBalance =
+    !!selectedLeaveType?.tracksBalance && requestedDays !== null && requestedDays > balanceDays;
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -43,7 +53,7 @@ export default function RequestLeaveModal({
         setError(result.error ?? "Couldn't submit the request.");
         return;
       }
-      setType("vacation");
+      setType(activeLeaveTypes[0]?.key ?? "");
       setStartDate("");
       setEndDate("");
       setReason("");
@@ -72,12 +82,12 @@ export default function RequestLeaveModal({
           </label>
           <select
             value={type}
-            onChange={(e) => setType(e.target.value as LeaveType)}
+            onChange={(e) => setType(e.target.value)}
             className="h-8 w-full rounded-lg border border-hairline bg-surface-3 px-2.5 text-[13px] text-ink outline-none focus:border-primary"
           >
-            {LEAVE_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
+            {activeLeaveTypes.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.name}
               </option>
             ))}
           </select>
@@ -118,6 +128,15 @@ export default function RequestLeaveModal({
             className="w-full resize-none rounded-lg border border-hairline bg-surface-3 px-2.5 py-2 text-[13px] text-ink outline-none placeholder:text-ink-faint focus:border-primary"
           />
         </div>
+        {selectedLeaveType?.tracksBalance && requestedDays !== null && (
+          <p
+            className={`text-[11px] font-medium ${exceedsBalance ? "text-danger" : "text-ink-subtle"}`}
+          >
+            {requestedDays} day{requestedDays === 1 ? "" : "s"} requested — {balanceDays}{" "}
+            day{balanceDays === 1 ? "" : "s"} available
+            {exceedsBalance ? " (exceeds balance)" : ""}
+          </p>
+        )}
         {error && (
           <p className="rounded-lg border border-danger/25 bg-danger-weak px-3 py-2 text-xs font-medium text-danger">
             {error}

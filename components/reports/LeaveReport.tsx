@@ -4,16 +4,11 @@ import { useMemo, useState } from "react";
 import { useCompany } from "@/lib/company-data";
 import type { LeaveType } from "@/lib/company-data";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
-import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import Pagination from "@/components/ui/Pagination";
 import ExportCsvButton from "./ExportCsvButton";
 import type { ReportFilters } from "./types";
 
 const PAGE_SIZE = 15;
-
-function typeLabel(type: LeaveType): string {
-  return LEAVE_TYPES.find((t) => t.value === type)?.label ?? type;
-}
 
 function days(start: string, end: string): number {
   const ms =
@@ -32,9 +27,12 @@ function overlaps(
 }
 
 export default function LeaveReport({ filters }: { filters: ReportFilters }) {
-  const { leaveRequests, people, teams } = useCompany();
+  const { leaveRequests, people, teams, leaveTypes } = useCompany();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
+
+  const leaveTypeByKey = useMemo(() => new Map(leaveTypes.map((t) => [t.key, t])), [leaveTypes]);
+  const typeLabel = (type: LeaveType) => leaveTypeByKey.get(type)?.name ?? type;
 
   const personById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
@@ -90,8 +88,8 @@ export default function LeaveReport({ filters }: { filters: ReportFilters }) {
         {[
           ["Approved days", String(summary.totalDays)],
           ["Pending", String(summary.pending)],
-          ...LEAVE_TYPES.map(
-            (t) => [t.label, String(summary.byType.get(t.value) ?? 0)] as const,
+          ...leaveTypes.map(
+            (t) => [t.name, String(summary.byType.get(t.key) ?? 0)] as const,
           ),
         ].map(([label, value]) => (
           <div

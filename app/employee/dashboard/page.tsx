@@ -8,7 +8,6 @@ import { useEmployeeTeam } from "@/lib/employee-team";
 import { localDateStr } from "@/lib/format";
 import RequestLeaveModal from "@/components/leave/RequestLeaveModal";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
-import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import {
   ArrowRightIcon,
   BellIcon,
@@ -58,15 +57,14 @@ function formatShortDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function typeLabel(type: string): string {
-  return LEAVE_TYPES.find((t) => t.value === type)?.label ?? type;
-}
-
 export default function EmployeeDashboardPage() {
   const { user } = useAuth();
-  const { shifts, shiftAssignments, clockEntries, leaveRequests, cancelLeaveRequest } = useCompany();
+  const { shifts, shiftAssignments, clockEntries, leaveRequests, leaveTypes, cancelLeaveRequest } = useCompany();
   const { myPerson, myTeams } = useEmployeeTeam();
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+
+  const leaveTypeByKey = useMemo(() => new Map(leaveTypes.map((t) => [t.key, t])), [leaveTypes]);
+  const typeLabel = (type: string) => leaveTypeByKey.get(type)?.name ?? type;
 
   const today = localDateStr(new Date());
 

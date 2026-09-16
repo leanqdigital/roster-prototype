@@ -6,23 +6,29 @@ import { useManager } from "@/lib/manager-team";
 import type { LeaveRequest, Shift } from "@/lib/company-data";
 import Modal from "@/components/ui/Modal";
 import LeaveStatusBadge from "@/components/leave/LeaveStatusBadge";
-import { LEAVE_TYPES } from "@/components/leave/RequestLeaveModal";
 import { AlertTriangleIcon } from "@/components/ui/icons";
 import { useTeamDetail } from "../team-detail-context";
 import { useToast } from "@/lib/toast";
+import { daysInclusive } from "@/lib/company-data/business";
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function typeLabel(type: string): string {
-  return LEAVE_TYPES.find((t) => t.value === type)?.label ?? type;
-}
-
 export default function ManagerTeamLeaveRequestsPage() {
   const { team, teamPeople } = useTeamDetail();
-  const { leaveRequests, people, approveLeave, denyLeave, revertLeaveApproval, shifts, shiftAssignments } = useCompany();
+  const {
+    leaveRequests,
+    people,
+    leaveTypes,
+    approveLeave,
+    denyLeave,
+    revertLeaveApproval,
+    shifts,
+    shiftAssignments,
+    getPersonLeaveBalance,
+  } = useCompany();
   const { myPerson } = useManager();
   const { pushToast } = useToast();
   const [denyTarget, setDenyTarget] = useState<LeaveRequest | null>(null);
@@ -43,6 +49,9 @@ export default function ManagerTeamLeaveRequestsPage() {
     return map;
   }, [people, teamPeople]);
 
+  const leaveTypeByKey = useMemo(() => new Map(leaveTypes.map((t) => [t.key, t])), [leaveTypes]);
+  const typeLabel = (key: string) => leaveTypeByKey.get(key)?.name ?? key;
+
   const conflictsByLeaveId = useMemo(() => {
     const map = new Map<string, Shift[]>();
     for (const l of teamLeave) {
@@ -58,6 +67,18 @@ export default function ManagerTeamLeaveRequestsPage() {
     }
     return map;
   }, [teamLeave, shiftAssignments, shifts]);
+
+  const balanceOverageByLeaveId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of teamLeave) {
+      const leaveType = leaveTypeByKey.get(l.type);
+      if (!leaveType || !leaveType.tracksBalance) continue;
+      const balance = getPersonLeaveBalance(l.personId, leaveType.id);
+      const requested = daysInclusive(l.startDate, l.endDate);
+      if (requested > balance) map.set(l.id, requested - balance);
+    }
+    return map;
+  }, [teamLeave, leaveTypeByKey, getPersonLeaveBalance]);
 
   const pendingCount = teamLeave.filter((l) => l.status === "pending").length;
 
@@ -122,6 +143,12 @@ export default function ManagerTeamLeaveRequestsPage() {
                             .get(l.id)!
                             .map((s) => `${s.title} (${s.date})`)
                             .join(", ")}`}
+                        />
+                      )}
+                      {balanceOverageByLeaveId.has(l.id) && (
+                        <AlertTriangleIcon
+                          className="size-3.5 shrink-0 text-danger"
+                          aria-label={`Exceeds balance by ${balanceOverageByLeaveId.get(l.id)} day(s)`}
                         />
                       )}
                     </dd>
@@ -223,6 +250,17 @@ export default function ManagerTeamLeaveRequestsPage() {
                                 .get(l.id)!
                                 .map((s) => `${s.title} (${s.date})`)
                                 .join(", ")}
+                            </span>
+                          </span>
+                        )}
+                        {balanceOverageByLeaveId.has(l.id) && (
+                          <span className="group/tip relative shrink-0">
+                            <span className="flex items-center text-danger">
+                              <AlertTriangleIcon className="size-3.5" />
+                            </span>
+                            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden w-max max-w-[220px] -translate-x-1/2 rounded-md border border-hairline bg-surface-1 px-2 py-1.5 text-[11px] leading-snug text-ink shadow-md group-hover/tip:block">
+                              Exceeds balance by {balanceOverageByLeaveId.get(l.id)} day
+                              {balanceOverageByLeaveId.get(l.id) === 1 ? "" : "s"}
                             </span>
                           </span>
                         )}

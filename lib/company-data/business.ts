@@ -81,6 +81,13 @@ export function minutesBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
 }
 
+// Inclusive day count between two YYYY-MM-DD date strings.
+export function daysInclusive(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
 export interface EffectiveAssignmentTimes {
   startTime: string;
   endTime: string;

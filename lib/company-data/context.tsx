@@ -14,6 +14,7 @@ import { RRule } from "rrule";
 import { formatDateTime, formatDurationMinutes, localDateStr } from "@/lib/format";
 import type { BreakPolicy } from "@/lib/company";
 import {
+  daysInclusive,
   evaluateBreakCompliance,
   hasApprovedLeaveOn,
   inferBreakType,
@@ -53,9 +54,11 @@ import {
   fetchCompanyHolidays,
   fetchComplianceViolations,
   fetchLeaveRequests,
+  fetchLeaveTypes,
   fetchLocations,
   fetchPeople,
   fetchPersonalNotes,
+  fetchPersonLeaveBalances,
   fetchShiftAssignments,
   fetchShiftAdjustmentRequests,
   fetchShifts,
@@ -74,6 +77,7 @@ import {
   insertCompanyHolidaysMany,
   insertComplianceViolation,
   insertLeaveRequest,
+  insertLeaveType,
   insertLocation,
   insertPerson,
   insertPersonalNote,
@@ -90,6 +94,7 @@ import {
   updateClockEntryRow,
   updateCompanyHolidayRow,
   updateLeaveRequestRow,
+  updateLeaveTypeRow,
   updateLocationRow,
   updatePersonalNoteRow,
   updatePersonRow,
@@ -100,6 +105,7 @@ import {
   updateShiftTemplateRow,
   updateTeamNoteRow,
   updateTeamRow,
+  upsertPersonLeaveBalanceRow,
 } from "./queries";
 import type {
   ActivityAction,
@@ -119,6 +125,8 @@ import type {
   InviteInput,
   LeaveRequest,
   LeaveType,
+  LeaveTypeDef,
+  LeaveTypeInput,
   Location,
   LocationInput,
   Person,
@@ -159,6 +167,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           breakEntries,
           complianceViolations,
           leaveRequests,
+          leaveTypes,
+          personLeaveBalances,
           shiftTemplates,
           shifts,
           shiftAssignments,
@@ -177,6 +187,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           fetchBreakEntries(),
           fetchComplianceViolations(),
           fetchLeaveRequests(),
+          fetchLeaveTypes(),
+          fetchPersonLeaveBalances(),
           fetchShiftTemplates(),
           fetchShifts(),
           fetchShiftAssignments(),
@@ -199,6 +211,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             breakEntries,
             complianceViolations,
             leaveRequests,
+            leaveTypes,
+            personLeaveBalances,
             shiftTemplates,
             shifts,
             shiftAssignments,
@@ -789,8 +803,87 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   );
 
   // ---------------------------------------------------------------------
+  // leave types
+  // ---------------------------------------------------------------------
+
+  const createLeaveType = useCallback(
+    async (
+      input: LeaveTypeInput,
+    ): Promise<{ ok: boolean; error?: string; leaveType?: LeaveTypeDef }> => {
+      try {
+        const leaveType = await insertLeaveType(input);
+        dispatch({ type: "addLeaveType", leaveType });
+        return { ok: true, leaveType };
+      } catch (e) {
+        return { ok: false, error: errorMessage(e) };
+      }
+    },
+    [],
+  );
+
+  const updateLeaveType = useCallback(
+    async (id: string, patch: Partial<LeaveTypeInput>): Promise<boolean> => {
+      try {
+        const updated = await updateLeaveTypeRow(id, patch);
+        dispatch({ type: "updateLeaveType", id, patch: updated });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  const getPersonLeaveBalance = useCallback(
+    (personId: string, leaveTypeId: string): number => {
+      const explicit = state.personLeaveBalances.find(
+        (b) => b.personId === personId && b.leaveTypeId === leaveTypeId,
+      );
+      if (explicit) return explicit.balanceDays;
+      return state.leaveTypes.find((t) => t.id === leaveTypeId)?.defaultBalanceDays ?? 0;
+    },
+    [state.personLeaveBalances, state.leaveTypes],
+  );
+
+  const setPersonLeaveBalance = useCallback(
+    async (personId: string, leaveTypeId: string, balanceDays: number): Promise<boolean> => {
+      try {
+        const updated = await upsertPersonLeaveBalanceRow(personId, leaveTypeId, balanceDays);
+        dispatch({ type: "upsertPersonLeaveBalance", balance: updated });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  // ---------------------------------------------------------------------
   // leave requests
   // ---------------------------------------------------------------------
+
+  // Best-effort balance adjustment — never blocks the leave status change
+  // that triggered it. Allowed to go negative (manager overrode a warning).
+  // No-ops for untracked/unknown leave types.
+  const adjustLeaveBalance = useCallback(
+    async (personId: string, leaveTypeKey: string, deltaDays: number) => {
+      if (deltaDays === 0) return;
+      const leaveType = state.leaveTypes.find((t) => t.key === leaveTypeKey);
+      if (!leaveType || !leaveType.tracksBalance) return;
+      const current = getPersonLeaveBalance(personId, leaveType.id);
+      try {
+        const updated = await upsertPersonLeaveBalanceRow(
+          personId,
+          leaveType.id,
+          current + deltaDays,
+        );
+        dispatch({ type: "upsertPersonLeaveBalance", balance: updated });
+      } catch {
+        // best-effort — don't block the leave status change on this
+      }
+    },
+    [state.leaveTypes, getPersonLeaveBalance],
+  );
 
   const requestLeave = useCallback(
     async (
@@ -862,10 +955,21 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     [state.leaveRequests],
   );
 
-  const cancelLeaveRequest = useCallback(async (id: string) => {
-    await updateLeaveRequestRow(id, { status: "cancelled" });
-    dispatch({ type: "cancelLeaveRequest", id });
-  }, []);
+  const cancelLeaveRequest = useCallback(
+    async (id: string) => {
+      const existing = state.leaveRequests.find((l) => l.id === id);
+      await updateLeaveRequestRow(id, { status: "cancelled" });
+      dispatch({ type: "cancelLeaveRequest", id });
+      if (existing && existing.status === "approved") {
+        await adjustLeaveBalance(
+          existing.personId,
+          existing.type,
+          daysInclusive(existing.startDate, existing.endDate),
+        );
+      }
+    },
+    [state.leaveRequests, adjustLeaveBalance],
+  );
 
   const reviewLeave = useCallback(
     async (
@@ -884,6 +988,13 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const request = state.leaveRequests.find((l) => l.id === id);
       if (!request) return { ok: true };
       const person = state.people.find((p) => p.id === request.personId);
+      if (status === "approved") {
+        await adjustLeaveBalance(
+          request.personId,
+          request.type,
+          -daysInclusive(request.startDate, request.endDate),
+        );
+      }
       await logActivity(
         request.personId,
         "notified",
@@ -902,7 +1013,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       notifyLeaveReviewed(id).catch(() => {});
       return { ok: true };
     },
-    [state.leaveRequests, state.people, logActivity, logAudit],
+    [state.leaveRequests, state.people, logActivity, logAudit, adjustLeaveBalance],
   );
 
   const approveLeave = useCallback(
@@ -933,6 +1044,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         reviewedBy: undefined,
         reviewedAt: undefined,
       });
+      await adjustLeaveBalance(
+        request.personId,
+        request.type,
+        daysInclusive(request.startDate, request.endDate),
+      );
       const person = state.people.find((p) => p.id === request.personId);
       await logActivity(
         request.personId,
@@ -949,7 +1065,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       });
       return { ok: true };
     },
-    [state.leaveRequests, state.people, logActivity, logAudit],
+    [state.leaveRequests, state.people, logActivity, logAudit, adjustLeaveBalance],
   );
 
   // ---------------------------------------------------------------------
@@ -2558,6 +2674,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       approveLeave,
       denyLeave,
       revertLeaveApproval,
+      createLeaveType,
+      updateLeaveType,
+      setPersonLeaveBalance,
+      getPersonLeaveBalance,
       markActivityRead,
       markAllActivityRead,
       createShiftTemplate,
@@ -2631,6 +2751,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       approveLeave,
       denyLeave,
       revertLeaveApproval,
+      createLeaveType,
+      updateLeaveType,
+      setPersonLeaveBalance,
+      getPersonLeaveBalance,
       markActivityRead,
       markAllActivityRead,
       createShiftTemplate,

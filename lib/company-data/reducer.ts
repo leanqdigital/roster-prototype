@@ -10,6 +10,8 @@ export const initialState: CompanyState = {
   breakEntries: [],
   complianceViolations: [],
   leaveRequests: [],
+  leaveTypes: [],
+  personLeaveBalances: [],
   shiftTemplates: [],
   shifts: [],
   shiftAssignments: [],
@@ -91,6 +93,9 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
         ),
         leaveRequests: state.leaveRequests.filter(
           (l) => l.personId !== action.id,
+        ),
+        personLeaveBalances: state.personLeaveBalances.filter(
+          (b) => b.personId !== action.id,
         ),
         // Clear any team where this person was the manager.
         teams: state.teams.map((t) =>
@@ -200,6 +205,33 @@ export function reducer(state: CompanyState, action: CompanyAction): CompanyStat
             : l,
         ),
       };
+    case "addLeaveType":
+      return { ...state, leaveTypes: [...state.leaveTypes, action.leaveType] };
+    case "updateLeaveType":
+      return {
+        ...state,
+        leaveTypes: state.leaveTypes.map((t) =>
+          t.id === action.id ? { ...t, ...action.patch } : t,
+        ),
+      };
+    case "upsertPersonLeaveBalance": {
+      const exists = state.personLeaveBalances.some(
+        (b) =>
+          b.personId === action.balance.personId &&
+          b.leaveTypeId === action.balance.leaveTypeId,
+      );
+      return {
+        ...state,
+        personLeaveBalances: exists
+          ? state.personLeaveBalances.map((b) =>
+              b.personId === action.balance.personId &&
+              b.leaveTypeId === action.balance.leaveTypeId
+                ? action.balance
+                : b,
+            )
+          : [...state.personLeaveBalances, action.balance],
+      };
+    }
     case "createShiftTemplate":
       return {
         ...state,

@@ -55,6 +55,7 @@ interface EditForm {
   timezone: string;
   designation: string;
   notes: string;
+  leaveBalances: Record<string, number>;
 }
 
 const activityLabel: Record<string, string> = {
@@ -75,6 +76,9 @@ export default function PersonDetailPage() {
     clockEntries,
     shifts,
     shiftAssignments,
+    leaveTypes,
+    getPersonLeaveBalance,
+    setPersonLeaveBalance,
     updatePerson,
     resendInvite,
     deletePerson,
@@ -94,6 +98,7 @@ export default function PersonDetailPage() {
     timezone: DEFAULT_TIMEZONE,
     designation: "",
     notes: "",
+    leaveBalances: {},
   });
 
   const knownDesignations = useMemo(
@@ -148,6 +153,8 @@ export default function PersonDetailPage() {
     ? locations.find((l) => l.id === person.locationId)
     : null;
 
+  const trackedLeaveTypes = leaveTypes.filter((t) => t.tracksBalance && t.isActive);
+
   const openEdit = () => {
     setForm({
       name: person.name,
@@ -158,6 +165,9 @@ export default function PersonDetailPage() {
       timezone: person.timezone,
       designation: person.designation ?? "",
       notes: person.notes ?? "",
+      leaveBalances: Object.fromEntries(
+        trackedLeaveTypes.map((t) => [t.id, getPersonLeaveBalance(person.id, t.id)]),
+      ),
     });
     setEditing(true);
   };
@@ -174,6 +184,11 @@ export default function PersonDetailPage() {
       designation: form.designation.trim() || undefined,
       notes: form.notes.trim() || undefined,
     });
+    await Promise.all(
+      Object.entries(form.leaveBalances).map(([typeId, days]) =>
+        setPersonLeaveBalance(person.id, typeId, days),
+      ),
+    );
     setEditing(false);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2600);
@@ -305,6 +320,30 @@ export default function PersonDetailPage() {
               )}
             </div>
           </div>
+
+          {trackedLeaveTypes.length > 0 && (
+            <div className="overflow-hidden rounded-xl border border-hairline bg-surface-2">
+              <p className="border-b border-hairline px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-subtle">
+                Leave balances
+              </p>
+              <dl className="divide-y divide-hairline/60 px-4">
+                {trackedLeaveTypes.map((t) => {
+                  const days = getPersonLeaveBalance(person.id, t.id);
+                  return (
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between gap-4 py-2.5"
+                    >
+                      <dt className="text-[13px] text-ink-subtle">{t.name}</dt>
+                      <dd className="text-[13px] font-medium text-ink">
+                        {days}/{t.defaultBalanceDays} days remaining
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </div>
+          )}
 
           <StatCard
             label="Teams"
@@ -624,6 +663,43 @@ export default function PersonDetailPage() {
                 className="mt-1.5"
               />
             </div>
+
+            {trackedLeaveTypes.length > 0 && (
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-subtle">
+                Leave balances
+              </p>
+            )}
+
+            {trackedLeaveTypes.map((t) => (
+              <div key={t.id}>
+                <label
+                  htmlFor={`person-leave-balance-${t.id}`}
+                  className="block text-xs font-medium text-ink-muted"
+                >
+                  {t.name} balance (days)
+                </label>
+                <input
+                  id={`person-leave-balance-${t.id}`}
+                  type="number"
+                  step="0.5"
+                  value={form.leaveBalances[t.id] ?? 0}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      leaveBalances: {
+                        ...form.leaveBalances,
+                        [t.id]: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className={inputClass}
+                />
+                <p className="mt-1 text-[11px] text-ink-subtle">
+                  Manually granted. Decreases automatically when a{" "}
+                  {t.name.toLowerCase()} request is approved.
+                </p>
+              </div>
+            ))}
 
             <div>
               <label

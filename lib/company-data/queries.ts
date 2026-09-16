@@ -13,8 +13,10 @@ import {
   COMPANY_HOLIDAY_COLUMNS,
   COMPLIANCE_VIOLATION_COLUMNS,
   LEAVE_REQUEST_COLUMNS,
+  LEAVE_TYPE_COLUMNS,
   LOCATION_COLUMNS,
   PERSON_COLUMNS,
+  PERSON_LEAVE_BALANCE_COLUMNS,
   PERSONAL_NOTE_COLUMNS,
   SHIFT_ASSIGNMENT_COLUMNS,
   SHIFT_ADJUSTMENT_REQUEST_COLUMNS,
@@ -30,8 +32,10 @@ import {
   fromCompanyHolidayRow,
   fromComplianceViolationRow,
   fromLeaveRequestRow,
+  fromLeaveTypeRow,
   fromLocationRow,
   fromPersonalNoteRow,
+  fromPersonLeaveBalanceRow,
   fromPersonRow,
   fromShiftAssignmentRow,
   fromShiftAdjustmentRequestRow,
@@ -60,9 +64,12 @@ import type {
   LeaveRequest,
   LeaveStatus,
   LeaveType,
+  LeaveTypeDef,
+  LeaveTypeInput,
   Location,
   Person,
   PersonalNote,
+  PersonLeaveBalance,
   PersonRole,
   PersonStatus,
   Shift,
@@ -356,6 +363,88 @@ export async function insertCompanyHolidaysMany(
     .select(COMPANY_HOLIDAY_COLUMNS);
   if (error || !data) fail(error, "insertCompanyHolidaysMany");
   return data.map(fromCompanyHolidayRow);
+}
+
+// ---------------------------------------------------------------------------
+// leave_types
+// ---------------------------------------------------------------------------
+
+export async function fetchLeaveTypes(): Promise<LeaveTypeDef[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from("leave_types").select(LEAVE_TYPE_COLUMNS);
+  if (error) fail(error, "fetchLeaveTypes");
+  return (data ?? []).map(fromLeaveTypeRow);
+}
+
+export async function insertLeaveType(input: LeaveTypeInput): Promise<LeaveTypeDef> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("leave_types")
+    .insert({
+      name: input.name,
+      key: input.key,
+      tracks_balance: input.tracksBalance,
+      default_balance_days: input.defaultBalanceDays,
+      is_active: input.isActive,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select(LEAVE_TYPE_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "insertLeaveType");
+  return fromLeaveTypeRow(data);
+}
+
+export async function updateLeaveTypeRow(
+  id: string,
+  patch: Partial<LeaveTypeInput>,
+): Promise<LeaveTypeDef> {
+  const supabase = createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.name !== undefined) update.name = patch.name;
+  if (patch.tracksBalance !== undefined) update.tracks_balance = patch.tracksBalance;
+  if (patch.defaultBalanceDays !== undefined)
+    update.default_balance_days = patch.defaultBalanceDays;
+  if (patch.isActive !== undefined) update.is_active = patch.isActive;
+  if (patch.sortOrder !== undefined) update.sort_order = patch.sortOrder;
+  const { data, error } = await supabase
+    .from("leave_types")
+    .update(update)
+    .eq("id", id)
+    .select(LEAVE_TYPE_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "updateLeaveTypeRow");
+  return fromLeaveTypeRow(data);
+}
+
+// ---------------------------------------------------------------------------
+// person_leave_balances
+// ---------------------------------------------------------------------------
+
+export async function fetchPersonLeaveBalances(): Promise<PersonLeaveBalance[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("person_leave_balances")
+    .select(PERSON_LEAVE_BALANCE_COLUMNS);
+  if (error) fail(error, "fetchPersonLeaveBalances");
+  return (data ?? []).map(fromPersonLeaveBalanceRow);
+}
+
+export async function upsertPersonLeaveBalanceRow(
+  personId: string,
+  leaveTypeId: string,
+  balanceDays: number,
+): Promise<PersonLeaveBalance> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("person_leave_balances")
+    .upsert(
+      { person_id: personId, leave_type_id: leaveTypeId, balance_days: balanceDays },
+      { onConflict: "person_id,leave_type_id" },
+    )
+    .select(PERSON_LEAVE_BALANCE_COLUMNS)
+    .single();
+  if (error || !data) fail(error, "upsertPersonLeaveBalanceRow");
+  return fromPersonLeaveBalanceRow(data);
 }
 
 // ---------------------------------------------------------------------------
