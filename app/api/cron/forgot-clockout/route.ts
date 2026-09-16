@@ -7,8 +7,9 @@ import { getSiteOrigin } from "@/lib/site-url";
 import type { EmailSettings } from "@/lib/company";
 import type { EmailTemplates } from "@/lib/email-templates";
 
-// Vercel Cron hits this route once every 15 minutes. Auth via CRON_SECRET —
-// same bearer-check as app/api/cron/shift-reminders/route.ts.
+// Supabase pg_cron (migration 0029) fires this route every 15 minutes via
+// pg_net. Auth via CRON_SECRET — same bearer-check as
+// app/api/cron/shift-reminders/route.ts.
 function isAuthorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false; // fail closed — never accept requests if unset
