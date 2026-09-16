@@ -43,6 +43,7 @@ const NAV_ITEMS = [
   { href: "/holidays", label: "Holidays", icon: CalendarIcon, soon: false },
   { href: "/locations", label: "Locations", icon: MapPinIcon, soon: false },
   { href: "/notes", label: "Notes", icon: NoteIcon, soon: false },
+  { href: "/notifications", label: "Notifications", icon: BellIcon, soon: false },
   { href: "/settings", label: "Settings", icon: SettingsIcon, soon: false },
 ];
 
