@@ -31,10 +31,11 @@ export default function ManagerShiftRequestsPage() {
       .filter(
         (a) =>
           memberIds.has(a.personId) &&
-          a.status === "pending",
+          a.status === "pending" &&
+          myPerson && a.personId !== myPerson.id,
       )
       .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
-  }, [shiftAssignments, teamPeople]);
+  }, [shiftAssignments, teamPeople, myPerson]);
 
   const shiftMap = useMemo(
     () => new Map(shifts.map((s) => [s.id, s])),

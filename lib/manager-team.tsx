@@ -60,9 +60,7 @@ export function ManagerProvider({ children }: { children: ReactNode }) {
   const managedTeams = useMemo<Team[]>(
     () =>
       myPerson
-        ? teams.filter(
-            (t) => myPerson.teamIds.includes(t.id) || t.managerId === myPerson.id,
-          )
+        ? teams.filter((t) => t.managerId === myPerson.id)
         : [],
     [teams, myPerson],
   );

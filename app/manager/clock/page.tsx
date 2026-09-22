@@ -1,22 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-import { useAuth } from "@/lib/auth";
-import { useCompany } from "@/lib/company-data";
+import { useManager } from "@/lib/manager-team";
 import { ClockIcon, UsersIcon } from "@/components/ui/icons";
 import ClockInOutPanel from "@/components/timeclock/ClockInOutPanel";
 
-export default function EmployeeClockPage() {
-  const { user } = useAuth();
-  const { people } = useCompany();
-
-  const myPerson = useMemo(
-    () =>
-      people.find(
-        (p) => p.role === "employee" && p.email.toLowerCase() === user?.email.toLowerCase(),
-      ) ?? null,
-    [people, user?.email],
-  );
+export default function ManagerClockPage() {
+  const { myPerson } = useManager();
 
   if (!myPerson) {
     return (
@@ -28,7 +17,7 @@ export default function EmployeeClockPage() {
             You&apos;re not linked to a team member record yet
           </h2>
           <p className="mx-auto mt-1 max-w-sm text-xs text-ink-muted">
-            Ask your manager to invite you with the employee role.
+            Ask a company admin to set up your manager profile.
           </p>
         </div>
       </div>
@@ -47,7 +36,7 @@ export default function EmployeeClockPage() {
         </div>
       </div>
 
-      <ClockInOutPanel person={myPerson} requireShift />
+      <ClockInOutPanel person={myPerson} requireShift={false} />
     </div>
   );
 }

@@ -154,7 +154,7 @@ function NotesPageContent() {
   const myTeams = useMemo(() => {
     if (user?.role === "company_admin" || user?.role === "super_admin") return teams; // full oversight
     if (!myPerson) return [];
-    return teams.filter((t) => myPerson.teamIds.includes(t.id) || t.managerId === myPerson.id);
+    return teams.filter((t) => t.managerId === myPerson.id);
   }, [teams, myPerson, user?.role]);
 
   const [selectedTeamIdOverride, setSelectedTeamIdOverride] = useState<string | null>(

@@ -33,9 +33,14 @@ export default function ManagerTeamShiftSwapsPage() {
   const pendingSwaps = useMemo(() => {
     const memberIds = new Set(teamPeople.map((p) => p.id));
     return shiftSwapRequests
-      .filter((r) => r.status === "accepted_pending_manager" && memberIds.has(r.initiatorPersonId))
+      .filter(
+        (r) =>
+          r.status === "accepted_pending_manager" &&
+          memberIds.has(r.initiatorPersonId) &&
+          myPerson && r.initiatorPersonId !== myPerson.id,
+      )
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [shiftSwapRequests, teamPeople]);
+  }, [shiftSwapRequests, teamPeople, myPerson]);
 
   const shiftLabel = (shiftId: string): string => {
     const s = shiftById.get(shiftId);

@@ -37,9 +37,13 @@ export default function ManagerTeamAdjustmentsPage() {
     const memberIds = new Set(teamPeople.map((p) => p.id));
     if (team.managerId) memberIds.add(team.managerId);
     return shiftAdjustmentRequests
-      .filter((r) => memberIds.has(r.personId))
+      .filter(
+        (r) =>
+          memberIds.has(r.personId) &&
+          myPerson && r.personId !== myPerson.id,
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [shiftAdjustmentRequests, teamPeople, team.managerId]);
+  }, [shiftAdjustmentRequests, teamPeople, team.managerId, myPerson]);
 
   const personById = useMemo(() => {
     const map = new Map(people.map((p) => [p.id, p]));

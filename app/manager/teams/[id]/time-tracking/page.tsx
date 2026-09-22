@@ -257,13 +257,15 @@ function ManagerTeamTimeTrackingContent() {
                               <span className="text-xs text-ink-subtle">
                                 {formatDateTime(c.at)}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => setEditingEntry(c)}
-                                className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4"
-                              >
-                                <PencilIcon className="size-3.5" />
-                              </button>
+                              {selectedPerson?.id !== myPerson?.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingEntry(c)}
+                                  className="flex size-7 items-center justify-center rounded-lg border border-hairline bg-surface-3 text-ink transition-colors hover:bg-surface-4"
+                                >
+                                  <PencilIcon className="size-3.5" />
+                                </button>
+                              )}
                             </span>
                           </div>
                           {(breaks.length > 0 || violations.length > 0) && (

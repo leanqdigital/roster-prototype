@@ -75,6 +75,7 @@ export default function ManagerNav() {
     : [];
 
   const teamTab = (label: string) => teamTabs.find((t) => t.label === label);
+  const myClockItem = { href: "/manager/clock", label: "My Clock", icon: ClockIcon };
   const myLeaveItem = { href: "/manager/leave-requests", label: "My Leave", icon: CalendarOffIcon };
   const myNotesItem = { href: "/manager/notes", label: "Notes", icon: NoteIcon };
 
@@ -118,6 +119,7 @@ export default function ManagerNav() {
     },
   ];
   const mobileMoreItems = [
+    { href: myClockItem.href, label: myClockItem.label, icon: myClockItem.icon, disabled: false, badge: undefined as number | undefined },
     { href: myLeaveItem.href, label: myLeaveItem.label, icon: myLeaveItem.icon, disabled: false, badge: undefined as number | undefined },
     {
       href: teamTab("Templates")?.href ?? "#",
@@ -317,7 +319,7 @@ export default function ManagerNav() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {[myLeaveItem, ...teamTabs, myNotificationsItem, myNotesItem].map((item) => {
+        {[myClockItem, myLeaveItem, ...teamTabs, myNotificationsItem, myNotesItem].map((item) => {
           const active =
             item.label === "Members"
               ? pathname === item.href || pathname.startsWith(`${item.href}/people/`)

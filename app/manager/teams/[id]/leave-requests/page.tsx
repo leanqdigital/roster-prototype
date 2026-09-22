@@ -36,12 +36,16 @@ export default function ManagerTeamLeaveRequestsPage() {
 
   const teamLeave = useMemo(() => {
     const memberIds = new Set(teamPeople.map((p) => p.id));
-    // Include the team manager so their own leave requests are reviewable here.
+    // Include the team manager so their own leave requests are visible but not approveable.
     if (team.managerId) memberIds.add(team.managerId);
     return leaveRequests
-      .filter((l) => memberIds.has(l.personId))
+      .filter(
+        (l) =>
+          memberIds.has(l.personId) &&
+          myPerson && l.personId !== myPerson.id,
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [leaveRequests, teamPeople, team.managerId]);
+  }, [leaveRequests, teamPeople, team.managerId, myPerson]);
 
   const personById = useMemo(() => {
     const map = new Map(people.map((p) => [p.id, p]));
