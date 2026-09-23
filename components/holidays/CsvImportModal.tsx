@@ -13,6 +13,18 @@ interface CsvImportModalProps {
   ) => Promise<{ ok: boolean; error?: string; count: number }>;
 }
 
+// Accepts YYYY-MM-DD as-is, or converts MM/DD/YYYY -> YYYY-MM-DD.
+function normalizeDate(value: string): string | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const m = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, mm, dd, yyyy] = m;
+  const month = Number(mm);
+  const day = Number(dd);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+}
+
 export default function CsvImportModal({ onClose, onImport }: CsvImportModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<CompanyHolidayInput[] | null>(null);
@@ -77,20 +89,22 @@ export default function CsvImportModal({ onClose, onImport }: CsvImportModalProp
           row[normalized[j]] = raw[h] ?? "";
         });
         const name = row.name?.trim();
-        const startDate = row.start_date?.trim();
-        const endDate = row.end_date?.trim();
+        const startDateRaw = row.start_date?.trim();
+        const endDateRaw = row.end_date?.trim();
         const isActive = row.is_active?.trim().toLowerCase();
 
         if (!name) {
           errs.push(`Row ${i + 2}: name is required`);
           continue;
         }
-        if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-          errs.push(`Row ${i + 2}: start_date must be YYYY-MM-DD`);
+        const startDate = startDateRaw ? normalizeDate(startDateRaw) : null;
+        if (!startDate) {
+          errs.push(`Row ${i + 2}: start_date must be YYYY-MM-DD or MM/DD/YYYY`);
           continue;
         }
-        if (!endDate || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-          errs.push(`Row ${i + 2}: end_date must be YYYY-MM-DD`);
+        const endDate = endDateRaw ? normalizeDate(endDateRaw) : null;
+        if (!endDate) {
+          errs.push(`Row ${i + 2}: end_date must be YYYY-MM-DD or MM/DD/YYYY`);
           continue;
         }
         if (endDate < startDate) {
@@ -132,7 +146,7 @@ export default function CsvImportModal({ onClose, onImport }: CsvImportModalProp
     <Modal
       open
       title="Import holidays from CSV"
-      description="Upload a CSV file with columns: name, start_date, end_date, is_active (optional)."
+      description="Upload a CSV file with columns: name, start_date, end_date, is_active (optional). Dates: YYYY-MM-DD or MM/DD/YYYY."
       confirmLabel={preview ? `Import ${preview.length} holidays` : "Choose file"}
       hideFooter
       onClose={onClose}
